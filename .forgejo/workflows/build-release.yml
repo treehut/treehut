@@ -22,10 +22,10 @@
 #
 on:
   push:
-    tags: 'v[0-9]+.[0-9]+.*'
+    tags: "v[0-9]+.[0-9]+.*"
     branches:
-      - 'forgejo'
-      - 'v*/forgejo'
+      - "forgejo"
+      - "v*/forgejo"
 
 jobs:
   release:
@@ -129,7 +129,7 @@ jobs:
           #   webpack-cli: 5.1.4 => 5.1.4
           #
           chown -R $(id -u) .
-          make VERSION=$version TAGS=bindata sources-tarbal
+          make VERSION=$version TAGS=bindata sources-tarball
           mv dist/release release
 
           (
@@ -153,10 +153,10 @@ jobs:
             # When in sources the version is determined with git.
             # When in the tarbal the version is determined from a VERSION file.
             #
-            make sources-tarbal
-            tarbal=$(echo dist/release/*$version*.tar.gz)
-            if ! test -f $tarbal ; then
-              echo $tarbal does not exist
+            make sources-tarball
+            tarball=$(echo dist/release/*$version*.tar.gz)
+            if ! test -f $tarball ; then
+              echo $tarball does not exist
               find dist release
               exit 1
             fi
