@@ -107,12 +107,21 @@ VERSION ?= ${RELEASE_VERSION}
 
 FORGEJO_VERSION_API ?= ${FORGEJO_VERSION}
 
+TREEHUT_REV ?= 0
+TREEHUT_VERSION ?= ${FORGEJO_VERSION}.${TREEHUT_REV}
+
 # Strip binaries by default to reduce size, allow overriding for debugging
 STRIP ?= 1
 ifeq ($(STRIP),1)
 	LDFLAGS := $(LDFLAGS) -s -w
 endif
-LDFLAGS := $(LDFLAGS) -X "main.ReleaseVersion=$(RELEASE_VERSION)" -X "main.MakeVersion=$(MAKE_VERSION)" -X "main.Version=$(FORGEJO_VERSION)" -X "main.Tags=$(TAGS)" -X "main.ForgejoVersion=$(FORGEJO_VERSION_API)"
+LDFLAGS := $(LDFLAGS) \
+	-X "main.ReleaseVersion=$(RELEASE_VERSION)" \
+	-X "main.MakeVersion=$(MAKE_VERSION)" \
+	-X "main.Version=$(FORGEJO_VERSION)" \
+	-X "main.Tags=$(TAGS)" \
+	-X "main.ForgejoVersion=$(FORGEJO_VERSION_API)" \
+	-X "main.TreehutVersion=$(TREEHUT_VERSION)"
 
 LINUX_ARCHS ?= linux/amd64,linux/386,linux/arm-5,linux/arm-6,linux/arm64
 
@@ -345,6 +354,7 @@ clean: clean-no-bindata
 .PHONY: clean-no-bindata
 clean-no-bindata:
 	rm -rf $(EXECUTABLE) $(DIST) \
+		node_modules/ \
 		integrations*.test \
 		e2e*.test \
 		tests/integration/gitea-integration-* \

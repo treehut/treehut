@@ -36,10 +36,20 @@ func init() {
 // LanguageStatList defines a list of language statistics
 type LanguageStatList []*LanguageStat
 
+var languageColorOverrides map[string]string = map[string]string{
+	"Rust": "#a72145",
+	"Zig":  "#eba842",
+}
+
 // LoadAttributes loads attributes
 func (stats LanguageStatList) LoadAttributes() {
 	for i := range stats {
-		stats[i].Color = enry.GetColor(stats[i].Language)
+		lang := stats[i].Language
+		stats[i].Color = enry.GetColor(lang)
+		color, ok := languageColorOverrides[lang]
+		if ok {
+			stats[i].Color = color
+		}
 	}
 }
 

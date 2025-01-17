@@ -126,6 +126,9 @@ func NewFuncMap() template.FuncMap {
 			version, _, _ := strings.Cut(setting.AppVer, "+")
 			return version
 		},
+		"TreehutVer": func() string {
+			return setting.TreehutVersion
+		},
 		"AppDomain": func() string { // documented in mail-templates.md
 			return setting.Domain
 		},

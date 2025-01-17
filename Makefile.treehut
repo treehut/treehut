@@ -1,0 +1,31 @@
+VERSION =
+REV =
+TAG = latest
+
+ARGFLAGS := --build-arg RELEASE_VERSION=$(VERSION) --build-arg TREEHUT_REV=$(REV)
+
+TEST_TAG := codeberg.org/treehut/treehut:testing
+
+test: check-version
+	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
+	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
+	docker build $(ARGFLAGS) -t $(TEST_TAG) .
+	docker run --name treehut-mini --rm \
+		-p 127.0.0.1:3022:3022 \
+		-p 127.0.0.1:3000:3000 \
+		-v treehut-mini:/data \
+		$(TEST_TAG)
+.PHONY: test
+
+TAGFLAGS := -t codeberg.org/treehut/treehut:latest \
+	-t codeberg.org/treehut/treehut:$(TAG) \
+	-t codeberg.org/treehut/treehut:$(VERSION).$(REV)
+
+pub: check-version
+	docker buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+.PHONY: pub
+
+check-version:
+	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
+	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
+.PHONY: check-version
