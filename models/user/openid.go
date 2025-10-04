@@ -40,8 +40,8 @@ func GetUserOpenIDs(ctx context.Context, uid int64) ([]*UserOpenID, error) {
 	return openids, nil
 }
 
-// isOpenIDUsed returns true if the openid has been used.
-func isOpenIDUsed(ctx context.Context, uri string) (bool, error) {
+// IsOpenIDUsed returns true if the openid has been used.
+func IsOpenIDUsed(ctx context.Context, uri string) (bool, error) {
 	if len(uri) == 0 {
 		return true, nil
 	}
@@ -71,7 +71,7 @@ func (err ErrOpenIDAlreadyUsed) Unwrap() error {
 // AddUserOpenID adds an pre-verified/normalized OpenID URI to given user.
 // NOTE: make sure openid.URI is normalized already
 func AddUserOpenID(ctx context.Context, openid *UserOpenID) error {
-	used, err := isOpenIDUsed(ctx, openid.URI)
+	used, err := IsOpenIDUsed(ctx, openid.URI)
 	if err != nil {
 		return err
 	} else if used {

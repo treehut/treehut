@@ -36,8 +36,8 @@ func TestBadges(t *testing.T) {
 			owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 
 			repo, _, f := tests.CreateDeclarativeRepo(t, owner, "",
-				[]unit_model.Type{unit_model.TypeActions},
-				[]unit_model.Type{unit_model.TypeIssues, unit_model.TypePullRequests, unit_model.TypeReleases},
+				[]unit_model.Type{unit_model.TypeActions, unit_model.TypeReleases},
+				[]unit_model.Type{unit_model.TypeIssues, unit_model.TypePullRequests},
 				[]*files_service.ChangeRepoFile{
 					{
 						Operation:     "create",

@@ -109,7 +109,7 @@ func (f *RegisterForm) Validate(req *http.Request, errs binding.Errors) binding.
 // The email is marked as allowed if it matches any of the
 // domains in the whitelist or if it doesn't match any of
 // domains in the blocklist, if any such list is not empty.
-func (f *RegisterForm) IsEmailDomainAllowed() bool {
+func (f *RegisterForm) IsEmailDomainAllowed() (validEmail, ok bool) {
 	return validation.IsEmailDomainAllowed(f.Email)
 }
 

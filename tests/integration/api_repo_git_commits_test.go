@@ -231,3 +231,22 @@ func TestGetFileHistoryNotOnMaster(t *testing.T) {
 
 	assert.Equal(t, "1", resp.Header().Get("X-Total"))
 }
+
+func TestAPIReposGitCommit(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	session := loginUser(t, "user2")
+	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeReadRepository)
+
+	req := NewRequest(t, "GET", "/api/v1/repos/user2/repo16/git/commits/f27c2b2b03dcab38beaf89b0ab4ff61f6de63441").
+		AddTokenAuth(token)
+	resp := MakeRequest(t, req, http.StatusOK)
+
+	var apiData api.Commit
+	DecodeJSON(t, resp, &apiData)
+
+	assert.Equal(t, "f27c2b2b03dcab38beaf89b0ab4ff61f6de63441", apiData.CommitMeta.SHA)
+	assert.Equal(t, 1, apiData.Stats.Total)
+	assert.Equal(t, 1, apiData.Stats.Additions)
+	assert.Equal(t, 0, apiData.Stats.Deletions)
+}

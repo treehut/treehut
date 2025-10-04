@@ -1,0 +1,9 @@
+-
+  id: 1001
+  repo_id: 1
+  interval: 3600
+  enable_prune: false
+  updated_unix: 0
+  next_update_unix: 0
+  lfs_enabled: false
+  lfs_endpoint: ""

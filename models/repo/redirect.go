@@ -14,8 +14,9 @@ import (
 
 // ErrRedirectNotExist represents a "RedirectNotExist" kind of error.
 type ErrRedirectNotExist struct {
-	OwnerID  int64
-	RepoName string
+	OwnerID           int64
+	RepoName          string
+	MissingPermission bool
 }
 
 // IsErrRedirectNotExist check if an error is an ErrRepoRedirectNotExist.
@@ -49,8 +50,8 @@ func init() {
 	db.RegisterModel(new(Redirect))
 }
 
-// LookupRedirect look up if a repository has a redirect name
-func LookupRedirect(ctx context.Context, ownerID int64, repoName string) (int64, error) {
+// GetRedirect returns the redirect for a given pair of ownerID and repository name.
+func GetRedirect(ctx context.Context, ownerID int64, repoName string) (int64, error) {
 	repoName = strings.ToLower(repoName)
 	redirect := &Redirect{OwnerID: ownerID, LowerName: repoName}
 	if has, err := db.GetEngine(ctx).Get(redirect); err != nil {

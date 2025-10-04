@@ -1,0 +1,15 @@
+# A corrupted cron spec with a valid schedule workflow
+-
+  id: 1
+  repo_id: 4
+  schedule_id: 1
+  next: 1
+  spec: 'corrupted * *'
+
+# A valid cron spec with a corrupted schedule workflow
+-
+  id: 2
+  repo_id: 4
+  schedule_id: 2
+  next: 1
+  spec: '* * * * *'

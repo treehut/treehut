@@ -1,0 +1,23 @@
+X-Ratelimit-Limit: 5000
+X-Ratelimit-Remaining: 4856
+X-Ratelimit-Used: 144
+X-Accepted-Oauth-Scopes: repo
+X-Github-Media-Type: github.v3; format=json
+X-Github-Api-Version-Selected: 2022-11-28
+Access-Control-Expose-Headers: ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset
+X-Xss-Protection: 0
+Content-Security-Policy: default-src 'none'
+Vary: Accept-Encoding, Accept, X-Requested-With
+X-Github-Request-Id: EDE1:32C4F6:A76DB4:9D7693:689B37A6
+X-Ratelimit-Reset: 1755004338
+X-Ratelimit-Resource: core
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+X-Frame-Options: deny
+Content-Type: application/json; charset=utf-8
+X-Oauth-Scopes: public_repo, repo:status
+Github-Authentication-Token-Expiration: 2025-09-11 10:37:11 UTC
+Access-Control-Allow-Origin: *
+X-Content-Type-Options: nosniff
+Referrer-Policy: origin-when-cross-origin, strict-origin-when-cross-origin
+
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/pulls/reviews#list-reviews-for-a-pull-request","status":"404"}

@@ -336,5 +336,8 @@ func getUnitsByRepoID(ctx context.Context, repoID int64) (units []*RepoUnit, err
 // UpdateRepoUnit updates the provided repo unit
 func UpdateRepoUnit(ctx context.Context, unit *RepoUnit) error {
 	_, err := db.GetEngine(ctx).ID(unit.ID).Update(unit)
-	return err
+	if err != nil {
+		return fmt.Errorf("UpdateRepoUnit: %v", err)
+	}
+	return nil
 }

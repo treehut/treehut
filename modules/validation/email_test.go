@@ -67,8 +67,3 @@ func TestEmailAddressValidate(t *testing.T) {
 		})
 	}
 }
-
-func TestEmailDomainAllowList(t *testing.T) {
-	res := IsEmailDomainAllowed("someuser@localhost.localdomain")
-	assert.True(t, res)
-}

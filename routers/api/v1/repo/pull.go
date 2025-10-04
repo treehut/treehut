@@ -1016,6 +1016,9 @@ func MergePullRequest(ctx *context.APIContext) {
 		} else if models.IsErrMergeUnrelatedHistories(err) {
 			conflictError := err.(models.ErrMergeUnrelatedHistories)
 			ctx.JSON(http.StatusConflict, conflictError)
+		} else if models.IsErrPullRequestHasMerged(err) {
+			conflictError := err.(models.ErrPullRequestHasMerged)
+			ctx.JSON(http.StatusConflict, conflictError)
 		} else if git.IsErrPushOutOfDate(err) {
 			ctx.Error(http.StatusConflict, "Merge", "merge push out of date")
 		} else if models.IsErrSHADoesNotMatch(err) {

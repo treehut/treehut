@@ -31,6 +31,7 @@ import (
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/util"
 	"forgejo.org/services/context"
+	redirect_service "forgejo.org/services/redirect"
 	repo_service "forgejo.org/services/repository"
 
 	"github.com/go-chi/cors"
@@ -111,7 +112,7 @@ func httpBase(ctx *context.Context) *serviceHandler {
 			return nil
 		}
 
-		if redirectRepoID, err := repo_model.LookupRedirect(ctx, owner.ID, reponame); err == nil {
+		if redirectRepoID, err := redirect_service.LookupRepoRedirect(ctx, ctx.Doer, owner.ID, reponame); err == nil {
 			context.RedirectToRepo(ctx.Base, redirectRepoID)
 			return nil
 		}

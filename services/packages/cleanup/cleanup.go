@@ -64,13 +64,12 @@ func ExecuteCleanupRules(outerCtx context.Context) error {
 				PackageID:  p.ID,
 				IsInternal: optional.Some(false),
 				Sort:       packages_model.SortCreatedDesc,
-				Paginator:  db.NewAbsoluteListOptions(pcr.KeepCount, 200),
 			})
 			if err != nil {
 				return fmt.Errorf("CleanupRule [%d]: SearchVersions failed: %w", pcr.ID, err)
 			}
 			versionDeleted := false
-			for _, pv := range pvs {
+			for _, pv := range pvs[pcr.KeepCount:] {
 				if pcr.Type == packages_model.TypeContainer {
 					if skip, err := container_service.ShouldBeSkipped(ctx, pcr, p, pv); err != nil {
 						return fmt.Errorf("CleanupRule [%d]: container.ShouldBeSkipped failed: %w", pcr.ID, err)

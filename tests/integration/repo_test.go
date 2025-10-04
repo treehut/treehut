@@ -587,6 +587,26 @@ func TestRenamedFileHistory(t *testing.T) {
 		assert.Equal(t, "/user2/repo59/commits/commit/80b83c5c8220c3aa3906e081f202a2a7563ec879/licnse", oldFileHistoryLink)
 	})
 
+	t.Run("Renamed file, pagination", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+		defer test.MockVariableValue(&setting.Git.CommitsRangeSize, 1)() // Limit commits displayed on the page to one
+
+		resp := MakeRequest(t, NewRequest(t, "GET", "/user2/repo59/commits/branch/master/license"), http.StatusOK)
+		page1 := NewHTMLParser(t, resp.Body)
+
+		resp = MakeRequest(t, NewRequest(t, "GET", "/user2/repo59/commits/branch/master/license?page=2"), http.StatusOK)
+		page2 := NewHTMLParser(t, resp.Body)
+
+		// Browse further is only shown on 2nd page
+		browseFurtherSel := ".ui.bottom.attached.header a[href='/user2/repo59/commits/commit/80b83c5c8220c3aa3906e081f202a2a7563ec879/licnse']"
+		page1.AssertElement(t, browseFurtherSel, false)
+		page2.AssertElement(t, browseFurtherSel, true)
+
+		// Pagination goes after Browser further
+		afterBrowseFurther := page2.Find(browseFurtherSel).Parent().Parent().NextAll()
+		assert.Equal(t, 1, afterBrowseFurther.Find(".pagination.menu").Length())
+	})
+
 	t.Run("Non renamed file", func(t *testing.T) {
 		req := NewRequest(t, "GET", "/user2/repo59/commits/branch/master/README.md")
 		resp := MakeRequest(t, req, http.StatusOK)

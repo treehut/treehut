@@ -835,3 +835,25 @@ func TestPronounsPrivacy(t *testing.T) {
 		assert.Equal(t, "any", user.GetPronouns(true))
 	})
 }
+
+func TestGetUserByEmail(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	t.Run("Normal", func(t *testing.T) {
+		u, err := user_model.GetUserByEmail(t.Context(), "user2@example.com")
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, u.ID)
+	})
+
+	t.Run("Not activated", func(t *testing.T) {
+		u, err := user_model.GetUserByEmail(t.Context(), "user11@example.com")
+		require.ErrorIs(t, err, user_model.ErrUserNotExist{Name: "user11@example.com"})
+		assert.Nil(t, u)
+	})
+
+	t.Run("Not primary", func(t *testing.T) {
+		u, err := user_model.GetUserByEmail(t.Context(), "user1-3@example.com")
+		require.NoError(t, err)
+		assert.EqualValues(t, 1, u.ID)
+	})
+}

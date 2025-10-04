@@ -6,7 +6,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"testing"
@@ -79,17 +78,11 @@ func TestAPICreateIssueAttachment(t *testing.T) {
 	body := &bytes.Buffer{}
 
 	// Setup multi-part
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("attachment", filename)
-	require.NoError(t, err)
-	_, err = io.Copy(part, &buff)
-	require.NoError(t, err)
-	err = writer.Close()
-	require.NoError(t, err)
+	contentType := tests.WriteImageBody(t, buff, filename, body)
 
 	req := NewRequestWithBody(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/issues/%d/assets", repoOwner.Name, repo.Name, issue.Index), body).
 		AddTokenAuth(token)
-	req.Header.Add("Content-Type", writer.FormDataContentType())
+	req.Header.Add("Content-Type", contentType)
 	resp := session.MakeRequest(t, req, http.StatusCreated)
 
 	apiAttachment := new(api.Attachment)
@@ -118,16 +111,10 @@ func TestAPICreateIssueAttachmentAutoDate(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 
 		// Setup multi-part
-		writer := multipart.NewWriter(body)
-		part, err := writer.CreateFormFile("attachment", filename)
-		require.NoError(t, err)
-		_, err = io.Copy(part, &buff)
-		require.NoError(t, err)
-		err = writer.Close()
-		require.NoError(t, err)
+		contentType := tests.WriteImageBody(t, buff, filename, body)
 
 		req := NewRequestWithBody(t, "POST", urlStr, body).AddTokenAuth(token)
-		req.Header.Add("Content-Type", writer.FormDataContentType())
+		req.Header.Add("Content-Type", contentType)
 		resp := session.MakeRequest(t, req, http.StatusCreated)
 
 		apiAttachment := new(api.Attachment)
@@ -150,16 +137,10 @@ func TestAPICreateIssueAttachmentAutoDate(t *testing.T) {
 		urlStr += fmt.Sprintf("?updated_at=%s", updatedAt.UTC().Format(time.RFC3339))
 
 		// Setup multi-part
-		writer := multipart.NewWriter(body)
-		part, err := writer.CreateFormFile("attachment", filename)
-		require.NoError(t, err)
-		_, err = io.Copy(part, &buff)
-		require.NoError(t, err)
-		err = writer.Close()
-		require.NoError(t, err)
+		contentType := tests.WriteImageBody(t, buff, filename, body)
 
 		req := NewRequestWithBody(t, "POST", urlStr, body).AddTokenAuth(token)
-		req.Header.Add("Content-Type", writer.FormDataContentType())
+		req.Header.Add("Content-Type", contentType)
 		resp := session.MakeRequest(t, req, http.StatusCreated)
 
 		apiAttachment := new(api.Attachment)

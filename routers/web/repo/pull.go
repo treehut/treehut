@@ -360,7 +360,7 @@ func getPullInfo(ctx *context.Context) (issue *issues_model.Issue, ok bool) {
 	ctx.Data["Issue"] = issue
 
 	if !issue.IsPull {
-		ctx.NotFound("ViewPullCommits", nil)
+		ctx.Redirect(issue.Link())
 		return nil, false
 	}
 
@@ -1444,6 +1444,10 @@ func MergePullRequest(ctx *context.Context) {
 		} else if models.IsErrMergeUnrelatedHistories(err) {
 			log.Debug("MergeUnrelatedHistories error: %v", err)
 			ctx.Flash.Error(ctx.Tr("repo.pulls.unrelated_histories"))
+			ctx.JSONRedirect(issue.Link())
+		} else if models.IsErrPullRequestHasMerged(err) {
+			log.Debug("MergePullRequestHasMerged error: %v", err)
+			ctx.Flash.Error(ctx.Tr("repo.pulls.already_merged"))
 			ctx.JSONRedirect(issue.Link())
 		} else if git.IsErrPushOutOfDate(err) {
 			log.Debug("MergePushOutOfDate error: %v", err)

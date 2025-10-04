@@ -13,11 +13,6 @@
 			</div>
 		</div>
 		{{template "repo/commits_table" .}}
-		{{if .OldFilename}}
-			<div class="ui bottom attached header">
-				<span>{{ctx.Locale.Tr "repo.commits.renamed_from" .OldFilename}} (<a href="{{.OldFilenameHistory}}">{{ctx.Locale.Tr "repo.commits.browse_further"}}</a>)</span>
-			</div>
-		{{end}}
 	</div>
 </div>
 {{template "base/footer" .}}

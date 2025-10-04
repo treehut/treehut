@@ -78,3 +78,21 @@ test('User: Storage overview', async ({browser}, workerInfo) => {
   await expect(page.getByText('Git LFS')).toBeVisible();
   await save_visual(page);
 });
+
+test('User: Canceling adding SSH key clears inputs', async ({browser}, workerInfo) => {
+  const page = await login({browser}, workerInfo);
+  await page.goto('/user/settings/keys');
+  await page.locator('#add-ssh-button').click();
+
+  await page.getByLabel('Key name').fill('MyAwesomeKey');
+  await page.locator('#ssh-key-content').fill('Wront key material');
+
+  await page.getByRole('button', {name: 'Cancel'}).click();
+  await page.locator('#add-ssh-button').click();
+
+  const keyName = page.getByLabel('Key name');
+  await expect(keyName).toHaveValue('');
+
+  const content = page.locator('#ssh-key-content');
+  await expect(content).toHaveValue('');
+});

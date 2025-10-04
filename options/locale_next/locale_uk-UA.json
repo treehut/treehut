@@ -111,5 +111,6 @@
     "profile.edit.link": "Редагувати профіль",
     "feed.atom.link": "Стрічка Atom",
     "profile.actions.tooltip": "Більше дій",
-    "mail.actions.run_info_sha": "Коміт: %[1]s"
+    "mail.actions.run_info_sha": "Коміт: %[1]s",
+    "repo.pulls.already_merged": "Не вдалося об'єднати: цей запит на злиття вже об'єднано."
 }

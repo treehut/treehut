@@ -5,12 +5,9 @@ package setting
 
 import (
 	"fmt"
-	"math"
 	"net/url"
 	"os"
 	"path/filepath"
-
-	"github.com/dustin/go-humanize"
 )
 
 // Package registry settings
@@ -109,18 +106,4 @@ func loadPackagesFrom(rootCfg ConfigProvider) (err error) {
 	Packages.DefaultRPMSignEnabled = sec.Key("DEFAULT_RPM_SIGN_ENABLED").MustBool(false)
 	Packages.LimitSizeAlt = mustBytes(sec, "LIMIT_SIZE_ALT")
 	return nil
-}
-
-func mustBytes(section ConfigSection, key string) int64 {
-	const noLimit = "-1"
-
-	value := section.Key(key).MustString(noLimit)
-	if value == noLimit {
-		return -1
-	}
-	bytes, err := humanize.ParseBytes(value)
-	if err != nil || bytes > math.MaxInt64 {
-		return -1
-	}
-	return int64(bytes)
 }

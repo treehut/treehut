@@ -1,9 +1,11 @@
 // Copyright 2019 The Gitea Authors. All rights reserved.
+// Copyright 2025 The Forgejo Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
 package integration
 
 import (
+	"net/http"
 	"testing"
 
 	"forgejo.org/models/db"
@@ -13,6 +15,7 @@ import (
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/gitrepo"
 	"forgejo.org/modules/migration"
+	forgejo_context "forgejo.org/services/context"
 	mirror_service "forgejo.org/services/mirror"
 	release_service "forgejo.org/services/release"
 	repo_service "forgejo.org/services/repository"
@@ -100,4 +103,19 @@ func TestMirrorPull(t *testing.T) {
 	count, err = db.Count[repo_model.Release](db.DefaultContext, findOptions)
 	require.NoError(t, err)
 	assert.Equal(t, initCount, count)
+}
+
+func TestPullMirrorRedactCredentials(t *testing.T) {
+	defer unittest.OverrideFixtures("tests/integration/fixtures/TestPullMirrorRedactCredentials")()
+	defer tests.PrepareTestEnv(t)()
+
+	session := loginUser(t, "user2")
+	session.MakeRequest(t, NewRequestWithValues(t, "POST", "/user2/repo1001/settings", map[string]string{
+		"_csrf":  GetCSRF(t, session, "/user2/repo1001/settings"),
+		"action": "mirror-sync",
+	}), http.StatusSeeOther)
+
+	flashCookie := session.GetCookie(forgejo_context.CookieNameFlash)
+	assert.NotNil(t, flashCookie)
+	assert.Equal(t, "info%3DPulling%2Bchanges%2Bfrom%2Bthe%2Bremote%2Bhttps%253A%252F%252Fexample.com%252Fexample%252Fexample.git%2Bat%2Bthe%2Bmoment.", flashCookie.Value)
 }

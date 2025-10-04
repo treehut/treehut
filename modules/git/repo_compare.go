@@ -183,6 +183,17 @@ func (repo *Repository) GetDiffShortStat(base, head string) (numFiles, totalAddi
 	return numFiles, totalAdditions, totalDeletions, err
 }
 
+// GetCommitStat returns the number of files, total additions and total deletions the commit has.
+func (repo *Repository) GetCommitShortStat(commitID string) (numFiles, totalAdditions, totalDeletions int, err error) {
+	cmd := NewCommand(repo.Ctx, "diff-tree", "--shortstat", "--no-commit-id", "--root").AddDynamicArguments(commitID)
+	stdout, _, err := cmd.RunStdString(&RunOpts{Dir: repo.Path})
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	return parseDiffStat(stdout)
+}
+
 // GetDiffShortStat counts number of changed files, number of additions and deletions
 func GetDiffShortStat(ctx context.Context, repoPath string, trustedArgs TrustedCmdArgs, dynamicArgs ...string) (numFiles, totalAdditions, totalDeletions int, err error) {
 	// Now if we call:

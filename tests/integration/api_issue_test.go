@@ -4,6 +4,7 @@
 package integration
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,14 +17,18 @@ import (
 	"forgejo.org/models/db"
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
+	"forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
+	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/tests"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"xorm.io/xorm/convert"
 )
 
 func TestAPIListIssues(t *testing.T) {
@@ -619,4 +624,186 @@ func TestAPISearchIssuesWithLabels(t *testing.T) {
 	resp = MakeRequest(t, req, http.StatusOK)
 	DecodeJSON(t, resp, &apiIssues)
 	assert.Len(t, apiIssues, 2)
+}
+
+func TestAPIInternalAndExternalIssueTracker(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
+	otherUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
+	token := getUserToken(t, user.Name, auth_model.AccessTokenScopeAll)
+
+	internalIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
+		Name:          optional.Some("internal-issues"),
+		EnabledUnits:  optional.Some([]unit.Type{unit.TypeIssues}),
+		DisabledUnits: optional.Some([]unit.Type{unit.TypeExternalTracker}),
+		UnitConfig: optional.Some(map[unit.Type]convert.Conversion{
+			unit.TypeIssues: &repo_model.IssuesConfig{
+				EnableTimetracker:  true,
+				EnableDependencies: true,
+			},
+		}),
+	})
+	defer reset()
+
+	externalIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
+		Name:          optional.Some("external-issues"),
+		EnabledUnits:  optional.Some([]unit.Type{unit.TypeExternalTracker}),
+		DisabledUnits: optional.Some([]unit.Type{unit.TypeIssues}),
+	})
+	defer reset()
+
+	disabledIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
+		Name:          optional.Some("disabled-issues"),
+		DisabledUnits: optional.Some([]unit.Type{unit.TypeIssues, unit.TypeExternalTracker}),
+	})
+	defer reset()
+
+	runTest := func(t *testing.T, repo *repo_model.Repository, requestAllowed bool) {
+		t.Helper()
+		getPath := func(path string, args ...any) string {
+			suffix := path
+			if len(args) > 0 {
+				suffix = fmt.Sprintf(path, args...)
+			}
+			return fmt.Sprintf("/api/v1/repos/%s/%s/issues%s", repo.OwnerName, repo.Name, suffix)
+		}
+		getStatus := func(allowStatus int) int {
+			if requestAllowed {
+				return allowStatus
+			}
+			return http.StatusNotFound
+		}
+		okStatus := getStatus(http.StatusOK)
+		createdStatus := getStatus(http.StatusCreated)
+		noContentStatus := getStatus(http.StatusNoContent)
+
+		// setup
+		issue := createIssue(t, user, repo, "normal issue", uuid.NewString())
+		deleteIssue := createIssue(t, user, repo, "delete this issue", uuid.NewString())
+		dependencyIssue := createIssue(t, user, repo, "depend on this issue", uuid.NewString())
+		blocksIssue := createIssue(t, user, repo, "depend on this issue", uuid.NewString())
+
+		// issues
+		MakeRequest(t, NewRequest(t, "GET", getPath("/")).AddTokenAuth(token), http.StatusOK)
+		MakeRequest(t, NewRequestWithValues(t, "POST", getPath("/"), map[string]string{"title": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d", issue.Index)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithValues(t, "PATCH", getPath("/%d", deleteIssue.Index), map[string]string{"title": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d", deleteIssue.Index)).AddTokenAuth(token), noContentStatus)
+
+		MakeRequest(t, NewRequest(t, "GET", getPath("/pinned")).AddTokenAuth(token), okStatus)
+
+		// comments
+		MakeRequest(t, NewRequest(t, "GET", getPath("/comments")).AddTokenAuth(token), http.StatusOK)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/comments", issue.Index)).AddTokenAuth(token), okStatus)
+		resp := MakeRequest(t, NewRequestWithValues(t, "POST", getPath("/%d/comments", issue.Index), map[string]string{"body": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		var comment api.Comment
+		DecodeJSON(t, resp, &comment)
+		resp = MakeRequest(t, NewRequestWithValues(t, "POST", getPath("/%d/comments", issue.Index), map[string]string{"body": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		var commentTwo api.Comment
+		DecodeJSON(t, resp, &commentTwo)
+		resp = MakeRequest(t, NewRequestWithValues(t, "POST", getPath("/%d/comments", issue.Index), map[string]string{"body": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		var commentThree api.Comment
+		DecodeJSON(t, resp, &commentThree)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/comments/%d", commentTwo.ID)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithValues(t, "PATCH", getPath("/comments/%d", commentTwo.ID), map[string]string{"body": uuid.NewString()}).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/comments/%d", commentTwo.ID)).AddTokenAuth(token), noContentStatus)
+		MakeRequest(t, NewRequestWithValues(t, "PATCH", getPath("/%d/comments/%d", issue.Index, commentThree.ID), map[string]string{"body": uuid.NewString()}).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/comments/%d", issue.Index, commentThree.ID)).AddTokenAuth(token), noContentStatus)
+		// comment-reactions
+		MakeRequest(t, NewRequest(t, "GET", getPath("/comments/%d/reactions", comment.ID)).AddTokenAuth(token), okStatus)
+		reaction := &api.EditReactionOption{Reaction: "+1"}
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/comments/%d/reactions", comment.ID), reaction).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "DELETE", getPath("/comments/%d/reactions", comment.ID), reaction).AddTokenAuth(token), okStatus)
+		// comment-assets
+		MakeRequest(t, NewRequest(t, "GET", getPath("/comments/%d/assets", comment.ID)).AddTokenAuth(token), okStatus)
+		body := &bytes.Buffer{}
+		contentType := tests.WriteImageBody(t, generateImg(), "image.png", body)
+		req := NewRequestWithBody(t, "POST", getPath("/comments/%d/assets", comment.ID), bytes.NewReader(body.Bytes())).AddTokenAuth(token)
+		req.Header.Add("Content-Type", contentType)
+		resp = MakeRequest(t, req, createdStatus)
+		var commentAttachment api.Attachment
+		DecodeJSON(t, resp, &commentAttachment)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/comments/%d/assets/%d", comment.ID, commentAttachment.ID)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithValues(t, "PATCH", getPath("/comments/%d/assets/%d", comment.ID, commentAttachment.ID), map[string]string{"name": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/comments/%d/assets/%d", comment.ID, commentAttachment.ID)).AddTokenAuth(token), noContentStatus)
+
+		// timeline
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/timeline", issue.Index)).AddTokenAuth(token), okStatus)
+
+		// labels
+		labelName := uuid.NewString()
+		labelCreateURL := fmt.Sprintf("/api/v1/repos/%s/%s/labels", repo.OwnerName, repo.Name)
+		resp = MakeRequest(t, NewRequestWithValues(t, "POST", labelCreateURL, map[string]string{"name": labelName, "color": "#333333"}).AddTokenAuth(token), http.StatusCreated)
+		var label api.Label
+		DecodeJSON(t, resp, &label)
+
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/labels", issue.Index)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/labels", issue.Index), api.IssueLabelsOption{Labels: []any{labelName}}).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "PUT", getPath("/%d/labels", issue.Index), api.IssueLabelsOption{Labels: []any{labelName}}).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/labels", issue.Index)).AddTokenAuth(token), noContentStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/labels/%d", issue.Index, label.ID)).AddTokenAuth(token), noContentStatus)
+
+		// times
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/times", issue.Index)).AddTokenAuth(token), okStatus)
+		resp = MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/times", issue.Index), api.AddTimeOption{Time: 60}).AddTokenAuth(token), okStatus)
+		var trackedTime api.TrackedTime
+		DecodeJSON(t, resp, &trackedTime)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/times", issue.Index)).AddTokenAuth(token), noContentStatus)
+		resp = MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/times", issue.Index), api.AddTimeOption{Time: 75}).AddTokenAuth(token), okStatus)
+		DecodeJSON(t, resp, &trackedTime)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/times/%d", issue.Index, trackedTime.ID)).AddTokenAuth(token), noContentStatus)
+
+		// deadline
+		MakeRequest(t, NewRequestWithValues(t, "POST", getPath("/%d/deadline", issue.Index), map[string]string{"due_date": "2022-04-06T00:00:00.000Z"}).AddTokenAuth(token), createdStatus)
+
+		// stopwatch
+		MakeRequest(t, NewRequest(t, "POST", getPath("/%d/stopwatch/start", issue.Index)).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "POST", getPath("/%d/stopwatch/stop", issue.Index)).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "POST", getPath("/%d/stopwatch/start", issue.Index)).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/stopwatch/delete", issue.Index)).AddTokenAuth(token), noContentStatus)
+
+		// subscriptions
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/subscriptions", issue.Index)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/subscriptions/check", issue.Index)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequest(t, "PUT", getPath("/%d/subscriptions/%s", issue.Index, otherUser.Name)).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/subscriptions/%s", issue.Index, otherUser.Name)).AddTokenAuth(token), createdStatus)
+
+		// reactions
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/reactions", issue.Index)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/reactions", issue.Index), api.EditReactionOption{Reaction: "+1"}).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "DELETE", getPath("/%d/reactions", issue.Index), api.EditReactionOption{Reaction: "+1"}).AddTokenAuth(token), okStatus)
+
+		// assets
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/assets", issue.Index)).AddTokenAuth(token), okStatus)
+		req = NewRequestWithBody(t, "POST", getPath("/%d/assets", issue.Index), bytes.NewReader(body.Bytes())).AddTokenAuth(token)
+		req.Header.Add("Content-Type", contentType)
+		resp = MakeRequest(t, req, createdStatus)
+		var attachment api.Attachment
+		DecodeJSON(t, resp, &attachment)
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/assets/%d", issue.Index, attachment.ID)).AddTokenAuth(token), okStatus)
+		MakeRequest(t, NewRequestWithValues(t, "PATCH", getPath("/%d/assets/%d", issue.Index, attachment.ID), map[string]string{"name": uuid.NewString()}).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequest(t, "DELETE", getPath("/%d/assets/%d", issue.Index, attachment.ID)).AddTokenAuth(token), noContentStatus)
+
+		// dependencies
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/dependencies", issue.Index)).AddTokenAuth(token), okStatus)
+		dependencyMeta := api.IssueMeta{Index: dependencyIssue.Index, Owner: dependencyIssue.Repo.OwnerName, Name: dependencyIssue.Repo.Name}
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/dependencies", issue.Index), dependencyMeta).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "DELETE", getPath("/%d/dependencies", issue.Index), dependencyMeta).AddTokenAuth(token), createdStatus)
+
+		// blocks
+		MakeRequest(t, NewRequest(t, "GET", getPath("/%d/blocks", issue.Index)).AddTokenAuth(token), okStatus)
+		blockMeta := api.IssueMeta{Index: blocksIssue.Index, Owner: blocksIssue.Repo.OwnerName, Name: blocksIssue.Repo.Name}
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/blocks", issue.Index), blockMeta).AddTokenAuth(token), createdStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "DELETE", getPath("/%d/blocks", issue.Index), blockMeta).AddTokenAuth(token), createdStatus)
+
+		// pin
+		MakeRequest(t, NewRequestWithJSON(t, "POST", getPath("/%d/pin", issue.Index), blockMeta).AddTokenAuth(token), noContentStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "PATCH", getPath("/%d/pin/1", issue.Index), blockMeta).AddTokenAuth(token), noContentStatus)
+		MakeRequest(t, NewRequestWithJSON(t, "DELETE", getPath("/%d/pin", issue.Index), blockMeta).AddTokenAuth(token), noContentStatus)
+	}
+
+	runTest(t, internalIssueRepo, true)
+	runTest(t, externalIssueRepo, false)
+	runTest(t, disabledIssueRepo, false)
 }

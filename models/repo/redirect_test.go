@@ -10,20 +10,8 @@ import (
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/models/unittest"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestLookupRedirect(t *testing.T) {
-	require.NoError(t, unittest.PrepareTestDatabase())
-
-	repoID, err := repo_model.LookupRedirect(db.DefaultContext, 2, "oldrepo1")
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, repoID)
-
-	_, err = repo_model.LookupRedirect(db.DefaultContext, unittest.NonexistentID, "doesnotexist")
-	assert.True(t, repo_model.IsErrRedirectNotExist(err))
-}
 
 func TestNewRedirect(t *testing.T) {
 	// redirect to a completely new name

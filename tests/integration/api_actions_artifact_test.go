@@ -316,8 +316,10 @@ func TestActionsArtifactOverwrite(t *testing.T) {
 		var listResp listArtifactsResponse
 		DecodeJSON(t, resp, &listResp)
 
+		const itemName = "artifact-download"
+		assert.Equal(t, itemName, listResp.Value[0].Name)
 		idx := strings.Index(listResp.Value[0].FileContainerResourceURL, "/api/actions_pipeline/_apis/pipelines/")
-		url := listResp.Value[0].FileContainerResourceURL[idx+1:] + "?itemPath=artifact-download"
+		url := listResp.Value[0].FileContainerResourceURL[idx+1:] + "?itemPath=" + itemName
 		req = NewRequest(t, "GET", url).
 			AddTokenAuth("8061e833a55f6fc0157c98b883e91fcfeeb1a71a")
 		resp = MakeRequest(t, req, http.StatusOK)

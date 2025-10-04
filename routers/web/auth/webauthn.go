@@ -166,6 +166,14 @@ func WebAuthnLoginAssertionPost(ctx *context.Context) {
 		}
 	}
 
+	// Handle OpenID linking to user.
+	if oid, ok := ctx.Session.Get("twofaOpenID").(string); ok {
+		if err := user_model.AddUserOpenID(ctx, &user_model.UserOpenID{UID: user.ID, URI: oid}); err != nil {
+			ctx.ServerError("AddUserOpenID", err)
+			return
+		}
+	}
+
 	remember := ctx.Session.Get("twofaRemember").(bool)
 	redirect := handleSignInFull(ctx, user, remember, false)
 	if redirect == "" {

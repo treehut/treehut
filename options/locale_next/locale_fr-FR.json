@@ -103,5 +103,12 @@
     "settings.visibility.description": "La visibilité du profil affecte la capacité des autres à accéder à vos dépôts non-privés. <a href=\"%s\" target=\"_blank\">Voir plus</a>",
     "editor.textarea.shift_tab_hint": "Pas d'indentation sur cette ligne. Appuyez sur <kbd>Maj</kbd> + <kbd>Tab</kbd> une nouvelle fois ou sur <kbd>Échap</kbd> pour quitter l'éditeur.",
     "avatar.constraints_hint": "L'avatar personnalisé ne doit pas dépasser une taille de %[1]s ou être plus grand que %[2]dx%[3]d pixels",
-    "editor.textarea.tab_hint": "Ligne déjà indentée. Appuyez sur <kbd>Tab</kbd> une nouvelle fois ou sur <kbd>Échap</kbd> pour quitter l'éditeur."
+    "editor.textarea.tab_hint": "Ligne déjà indentée. Appuyez sur <kbd>Tab</kbd> une nouvelle fois ou sur <kbd>Échap</kbd> pour quitter l'éditeur.",
+    "profile.actions.tooltip": "Plus d'actions",
+    "profile.edit.link": "Éditer le profil",
+    "keys.ssh.link": "Clé SSH",
+    "keys.gpg.link": "Clés GPG",
+    "repo.diff.commit.next-short": "Suiv.",
+    "repo.diff.commit.previous-short": "Préc.",
+    "mail.actions.run_info_sha": "Commit: %[1]s"
 }

@@ -15,7 +15,6 @@ import (
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/util"
 	ctx "forgejo.org/services/context"
-	"forgejo.org/services/gitdiff"
 )
 
 // ToCommitUser convert a git.Signature to an api.CommitUser
@@ -210,17 +209,15 @@ func ToCommit(ctx context.Context, repo *repo_model.Repository, gitRepo *git.Rep
 
 	// Get diff stats for commit
 	if opts.Stat {
-		diff, _, err := gitdiff.GetDiffSimple(ctx, gitRepo, &gitdiff.DiffOptions{
-			AfterCommitID: commit.ID.String(),
-		})
+		_, totalAdditions, totalDeletions, err := gitRepo.GetCommitShortStat(commit.ID.String())
 		if err != nil {
 			return nil, err
 		}
 
 		res.Stats = &api.CommitStats{
-			Total:     diff.TotalAddition + diff.TotalDeletion,
-			Additions: diff.TotalAddition,
-			Deletions: diff.TotalDeletion,
+			Total:     totalAdditions + totalDeletions,
+			Additions: totalAdditions,
+			Deletions: totalDeletions,
 		}
 	}
 

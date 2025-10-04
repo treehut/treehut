@@ -101,3 +101,38 @@ func TestParseTreeEntriesInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.Empty(t, entries)
 }
+
+func TestParseMode(t *testing.T) {
+	ok := func(t *testing.T, mode string, entry EntryMode) {
+		t.Helper()
+		actualEntry, err := parseMode(mode)
+		require.NoError(t, err)
+		assert.Equal(t, entry, actualEntry)
+	}
+
+	fail := func(t *testing.T, mode string) {
+		t.Helper()
+		entry, err := parseMode(mode)
+		require.Error(t, err)
+		assert.Zero(t, entry)
+	}
+
+	ok(t, "100644", EntryModeBlob)
+	ok(t, "100755", EntryModeExec)
+	ok(t, "100754", EntryModeExec)
+	ok(t, "100700", EntryModeExec)
+	ok(t, "100744", EntryModeExec)
+	ok(t, "120000", EntryModeSymlink)
+	ok(t, "120644", EntryModeSymlink)
+	ok(t, "160000", EntryModeCommit)
+	ok(t, "160644", EntryModeCommit)
+	ok(t, "040000", EntryModeTree)
+	ok(t, "040755", EntryModeTree)
+	ok(t, "040775", EntryModeTree)
+	ok(t, "040754", EntryModeTree)
+
+	fail(t, "not-a-number")
+	fail(t, "000000")
+	fail(t, "400000")
+	fail(t, "111111")
+}

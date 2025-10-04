@@ -125,3 +125,24 @@ test('New repo: label set', async ({page}) => {
   await expect(page.getByText('Kind/Bug Something is not')).toBeVisible();
   await save_visual(page);
 });
+
+test('New repo: gitignore', async ({page}) => {
+  await page.goto('/repo/create');
+
+  await page.getByText('Start the Git history with').click();
+  const gitignoreDropdown = page.locator('.hide-unless-checked label:first-of-type > div');
+  await gitignoreDropdown.click();
+  await page.getByRole('option', {name: 'ArchLinuxPackages'}).click();
+  await page.getByRole('option', {name: 'Android'}).click();
+  await page.getByRole('option', {name: 'ChefCookbook'}).click();
+  await page.getByRole('option', {name: 'GNOMEShellExtension'}).click();
+  await page.getByRole('option', {name: 'JupyterNotebooks'}).click();
+  await page.getByRole('option', {name: 'NotesAndExtendedConfiguration'}).click();
+  await page.getByRole('option', {name: 'MetaProgrammingSystem'}).click();
+  await page.getByRole('option', {name: 'AppceleratorTitanium'}).click();
+  await save_visual(page);
+
+  const segmentWidth = (await page.locator('.segment').boundingBox()).width;
+  const dropdownWidth = (await gitignoreDropdown.boundingBox()).width;
+  expect(dropdownWidth).toBeLessThan(segmentWidth);
+});

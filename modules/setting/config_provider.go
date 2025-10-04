@@ -6,6 +6,7 @@ package setting
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/util"
 
+	"github.com/dustin/go-humanize"
 	"gopkg.in/ini.v1" //nolint:depguard
 )
 
@@ -318,6 +320,16 @@ func mustMapSetting(rootCfg ConfigProvider, sectionName string, setting any) {
 	if err := rootCfg.Section(sectionName).MapTo(setting); err != nil {
 		log.Fatal("Failed to map %s settings: %v", sectionName, err)
 	}
+}
+
+// mustBytes returns -1 on parse error, or value out of range 0 to math.MaxInt64
+func mustBytes(section ConfigSection, key string) int64 {
+	value := section.Key(key).String()
+	bytes, err := humanize.ParseBytes(value)
+	if err != nil || bytes > math.MaxInt64 {
+		return -1
+	}
+	return int64(bytes)
 }
 
 // DeprecatedWarnings contains the warning message for various deprecations, including: setting option, file/folder, etc

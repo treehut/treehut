@@ -3,3 +3,9 @@
   owner_id: 2
   lower_name: oldrepo1
   redirect_repo_id: 1
+
+-
+  id: 2
+  owner_id: 17
+  lower_name: oldrepo24
+  redirect_repo_id: 24

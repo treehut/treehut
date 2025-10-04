@@ -19,8 +19,10 @@ import (
 	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
+	"forgejo.org/modules/container"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
+	"forgejo.org/modules/translation"
 	"forgejo.org/modules/util"
 	packages_service "forgejo.org/services/packages"
 	packages_cleanup_service "forgejo.org/services/packages/cleanup"
@@ -533,6 +535,9 @@ func TestPackageCleanup(t *testing.T) {
 	t.Run("CleanupRules", func(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 
+		locale := translation.NewLocale("en-US")
+		session := loginUser(t, user.Name)
+
 		type version struct {
 			Version     string
 			ShouldExist bool
@@ -654,17 +659,34 @@ func TestPackageCleanup(t *testing.T) {
 				pcr, err := packages_model.InsertCleanupRule(db.DefaultContext, c.Rule)
 				require.NoError(t, err)
 
+				req := NewRequest(t, "GET", fmt.Sprintf("/user/settings/packages/rules/%d/preview", pcr.ID))
+				resp := session.MakeRequest(t, req, http.StatusOK)
+				htmlDoc := NewHTMLParser(t, resp.Body)
+
+				toDelete := container.FilterSlice(c.Versions, func(v version) (version, bool) {
+					return v, !v.ShouldExist
+				})
+				deletedCount := len(toDelete)
+
+				// disabled rule would delete everything
+				if !pcr.Enabled {
+					deletedCount = 1
+					htmlDoc.AssertSelection(t, htmlDoc.FindByText(fmt.Sprintf("a[href='/%s/-/packages/generic/package/keep']", user.Name), "keep"), true)
+				}
+
+				htmlDoc.AssertSelection(t, htmlDoc.FindByText("p", locale.TrString("packages.owner.settings.cleanuprules.preview.overview", deletedCount)), true)
+
 				err = packages_cleanup_service.CleanupTask(db.DefaultContext, duration)
 				require.NoError(t, err)
 
 				for _, v := range c.Versions {
 					pv, err := packages_model.GetVersionByNameAndVersion(db.DefaultContext, user.ID, packages_model.TypeGeneric, "package", v.Version)
 					if v.ShouldExist {
-						require.NoError(t, err)
+						require.NoError(t, err, `version "%s" should exist`, v.Version)
 						err = packages_service.DeletePackageVersionAndReferences(db.DefaultContext, pv)
 						require.NoError(t, err)
 					} else {
-						require.ErrorIs(t, err, packages_model.ErrPackageNotExist)
+						require.ErrorIs(t, err, packages_model.ErrPackageNotExist, `version "%s" should not exist`, v.Version)
 					}
 				}
 

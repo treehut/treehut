@@ -71,7 +71,7 @@ func PullRequestCodeOwnersReview(ctx context.Context, issue *issues_model.Issue,
 	}
 
 	var rules []*issues_model.CodeOwnerRule
-	for _, file := range []string{"CODEOWNERS", "docs/CODEOWNERS", ".gitea/CODEOWNERS"} {
+	for _, file := range []string{"CODEOWNERS", "docs/CODEOWNERS", ".gitea/CODEOWNERS", ".forgejo/CODEOWNERS"} {
 		if blob, err := commit.GetBlobByPath(file); err == nil {
 			rc, size, err := blob.NewTruncatedReader(setting.UI.MaxDisplayFileSize)
 			if err == nil {

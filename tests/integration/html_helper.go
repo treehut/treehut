@@ -76,9 +76,25 @@ func (doc *HTMLDoc) Find(selector string) *goquery.Selection {
 	return doc.doc.Find(selector)
 }
 
+// FindByText gets all elements by selector that also has the given text
+func (doc *HTMLDoc) FindByText(selector, text string) *goquery.Selection {
+	return doc.doc.Find(selector).FilterFunction(func(i int, s *goquery.Selection) bool {
+		return s.Text() == text
+	})
+}
+
 // GetCSRF for getting CSRF token value from input
 func (doc *HTMLDoc) GetCSRF() string {
 	return doc.GetInputValueByName("_csrf")
+}
+
+// AssertSelection check if selection exists or does not exist depending on checkExists
+func (doc *HTMLDoc) AssertSelection(t testing.TB, selection *goquery.Selection, checkExists bool) {
+	if checkExists {
+		assert.Equal(t, 1, selection.Length())
+	} else {
+		assert.Equal(t, 0, selection.Length())
+	}
 }
 
 // AssertElement check if element by selector exists or does not exist depending on checkExists

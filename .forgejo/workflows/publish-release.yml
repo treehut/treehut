@@ -44,7 +44,7 @@ jobs:
       - uses: https://data.forgejo.org/actions/checkout@v4
 
       - name: copy & sign
-        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/publish@v5.3.5
+        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/publish@v5.4.1
         with:
           from-forgejo: ${{ vars.FORGEJO }}
           to-forgejo: ${{ vars.FORGEJO }}
@@ -80,7 +80,7 @@ jobs:
           label: trigger
 
       - name: upgrade v*.next.forgejo.org
-        uses: https://data.forgejo.org/infrastructure/next-digest@v1.1.0
+        uses: https://data.forgejo.org/infrastructure/next-digest@v1.2.2
         with:
           url: https://placeholder:${{ secrets.TOKEN_NEXT_DIGEST }}@invisible.forgejo.org/infrastructure/next-digest
           ref_name: '${{ github.ref_name }}'

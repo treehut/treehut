@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"forgejo.org/modules/log"
 	"forgejo.org/modules/proxy"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/util"
@@ -160,22 +161,87 @@ func CloneWithArgs(ctx context.Context, args TrustedCmdArgs, from, to string, op
 	if len(opts.Branch) > 0 {
 		cmd.AddArguments("-b").AddDynamicArguments(opts.Branch)
 	}
-	cmd.AddDashesAndList(from, to)
 
-	if strings.Contains(from, "://") && strings.Contains(from, "@") {
-		cmd.SetDescription(fmt.Sprintf("clone branch %s from %s to %s (shared: %t, mirror: %t, depth: %d)", opts.Branch, util.SanitizeCredentialURLs(from), to, opts.Shared, opts.Mirror, opts.Depth))
-	} else {
-		cmd.SetDescription(fmt.Sprintf("clone branch %s from %s to %s (shared: %t, mirror: %t, depth: %d)", opts.Branch, from, to, opts.Shared, opts.Mirror, opts.Depth))
+	envs := os.Environ()
+	parsedFromURL, err := url.Parse(from)
+	if err == nil {
+		envs = proxy.EnvWithProxy(parsedFromURL)
 	}
+
+	fromURL := from
+	sanitizedFrom := from
+
+	// If the clone URL has credentials, sanitize it and store the credentials in
+	// a temporary file that git will access.
+	if strings.Contains(from, "://") && strings.Contains(from, "@") {
+		sanitizedFrom = util.SanitizeCredentialURLs(from)
+		if parsedFromURL != nil {
+			if pwd, has := parsedFromURL.User.Password(); has {
+				parsedFromURL.User = url.User(parsedFromURL.User.Username())
+				fromURL = parsedFromURL.String()
+
+				credentialsFile, err := os.CreateTemp(os.TempDir(), "forgejo-clone-credentials")
+				if err != nil {
+					return err
+				}
+				credentialsPath := credentialsFile.Name()
+
+				defer func() {
+					_ = credentialsFile.Close()
+					if err := util.Remove(credentialsPath); err != nil {
+						log.Warn("Unable to remove temporary file %q: %v", credentialsPath, err)
+					}
+				}()
+
+				// Make it read-write.
+				if err := credentialsFile.Chmod(0o600); err != nil {
+					return err
+				}
+
+				// Write the password.
+				if _, err := fmt.Fprint(credentialsFile, pwd); err != nil {
+					return err
+				}
+
+				askpassFile, err := os.CreateTemp(os.TempDir(), "forgejo-askpass")
+				if err != nil {
+					return err
+				}
+				askpassPath := askpassFile.Name()
+
+				defer func() {
+					_ = askpassFile.Close()
+					if err := util.Remove(askpassPath); err != nil {
+						log.Warn("Unable to remove temporary file %q: %v", askpassPath, err)
+					}
+				}()
+
+				// Make it executable.
+				if err := askpassFile.Chmod(0o700); err != nil {
+					return err
+				}
+
+				// Write the password script.
+				if _, err := fmt.Fprintf(askpassFile, "exec cat %s", credentialsPath); err != nil {
+					return err
+				}
+
+				// Close it, so that Git can use it and no busy errors arise.
+				_ = askpassFile.Close()
+				_ = credentialsFile.Close()
+
+				// Use environments to specify that git should ask for credentials, this
+				// takes precedences over anything else https://git-scm.com/docs/gitcredentials#_requesting_credentials.
+				envs = append(envs, "GIT_ASKPASS="+askpassPath)
+			}
+		}
+	}
+
+	cmd.SetDescription(fmt.Sprintf("clone branch %s from %s to %s (shared: %t, mirror: %t, depth: %d)", opts.Branch, sanitizedFrom, to, opts.Shared, opts.Mirror, opts.Depth))
+	cmd.AddDashesAndList(fromURL, to)
 
 	if opts.Timeout <= 0 {
 		opts.Timeout = -1
-	}
-
-	envs := os.Environ()
-	u, err := url.Parse(from)
-	if err == nil {
-		envs = proxy.EnvWithProxy(u)
 	}
 
 	stderr := new(bytes.Buffer)

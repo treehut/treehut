@@ -25,7 +25,7 @@ type UsedSize struct {
 }
 
 func (u UsedSize) All() int64 {
-	return u.Repos.All() + u.Git.All(u.Repos) + u.Assets.All()
+	return u.Git.All(u.Repos) + u.Assets.All()
 }
 
 type UsedSizeRepos struct {

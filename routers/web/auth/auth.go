@@ -310,6 +310,7 @@ func handleSignInFull(ctx *context.Context, u *user_model.User, remember, obeyRe
 		"openid_determined_username",
 		"twofaUid",
 		"twofaRemember",
+		"twofaOpenID",
 		"linkAccount",
 	}, map[string]any{
 		"uid": u.ID,
@@ -452,7 +453,10 @@ func SignUpPost(ctx *context.Context) {
 		return
 	}
 
-	if !form.IsEmailDomainAllowed() {
+	if emailValid, ok := form.IsEmailDomainAllowed(); !emailValid {
+		ctx.RenderWithErr(ctx.Tr("form.email_invalid"), tplSignUp, form)
+		return
+	} else if !ok {
 		ctx.RenderWithErr(ctx.Tr("auth.email_domain_blacklisted"), tplSignUp, &form)
 		return
 	}

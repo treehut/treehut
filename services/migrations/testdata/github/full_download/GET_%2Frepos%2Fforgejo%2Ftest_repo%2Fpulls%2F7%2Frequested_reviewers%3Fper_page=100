@@ -1,0 +1,25 @@
+X-Ratelimit-Remaining: 4958
+X-Content-Type-Options: nosniff
+Content-Security-Policy: default-src 'none'
+X-Oauth-Scopes: public_repo, repo:status
+X-Accepted-Oauth-Scopes: 
+Github-Authentication-Token-Expiration: 2025-09-11 10:37:11 UTC
+X-Github-Media-Type: github.v3; format=json
+X-Github-Api-Version-Selected: 2022-11-28
+X-Ratelimit-Reset: 1755007969
+X-Ratelimit-Used: 42
+X-Ratelimit-Resource: core
+Etag: W/"bf72ef7e37aa7c7a418e89035db9d7f23b969af0705f1e9c7ee692aad6c272f7"
+Access-Control-Expose-Headers: ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset
+Access-Control-Allow-Origin: *
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+X-Frame-Options: deny
+X-Xss-Protection: 0
+Referrer-Policy: origin-when-cross-origin, strict-origin-when-cross-origin
+Cache-Control: private, max-age=60, s-maxage=60
+X-Github-Request-Id: F852:1553BC:10F18A:FD450:689B3DFF
+Content-Type: application/json; charset=utf-8
+Vary: Accept, Authorization, Cookie, X-GitHub-OTP,Accept-Encoding, Accept, X-Requested-With
+X-Ratelimit-Limit: 5000
+
+{"users":[],"teams":[]}

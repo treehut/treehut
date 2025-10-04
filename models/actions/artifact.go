@@ -132,6 +132,13 @@ func (opts FindArtifactsOptions) ToConds() builder.Cond {
 	return cond
 }
 
+var _ db.FindOptionsOrder = FindArtifactsOptions{}
+
+// ToOrders implements db.FindOptionsOrder, to have a stable order
+func (opts FindArtifactsOptions) ToOrders() string {
+	return "id"
+}
+
 // ActionArtifactMeta is the meta data of an artifact
 type ActionArtifactMeta struct {
 	ArtifactName string

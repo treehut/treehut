@@ -10,8 +10,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-
-	"forgejo.org/modules/log"
 )
 
 // ParseTreeEntries parses the output of a `git ls-tree -l` command.
@@ -55,19 +53,9 @@ func parseTreeEntries(data []byte, ptree *Tree) ([]*TreeEntry, error) {
 			entry.sized = true
 		}
 
-		switch string(entryMode) {
-		case "100644":
-			entry.entryMode = EntryModeBlob
-		case "100755":
-			entry.entryMode = EntryModeExec
-		case "120000":
-			entry.entryMode = EntryModeSymlink
-		case "160000":
-			entry.entryMode = EntryModeCommit
-		case "040000", "040755": // git uses 040000 for tree object, but some users may get 040755 for unknown reasons
-			entry.entryMode = EntryModeTree
-		default:
-			return nil, fmt.Errorf("unknown type: %v", string(entryMode))
+		entry.entryMode, err = parseMode(string(entryMode))
+		if err != nil {
+			return nil, err
 		}
 
 		entry.ID, err = NewIDFromString(string(entryObjectID))
@@ -108,23 +96,10 @@ loop:
 		sz -= int64(count)
 		entry := new(TreeEntry)
 		entry.ptree = ptree
-
-		switch string(mode) {
-		case "100644":
-			entry.entryMode = EntryModeBlob
-		case "100755":
-			entry.entryMode = EntryModeExec
-		case "120000":
-			entry.entryMode = EntryModeSymlink
-		case "160000":
-			entry.entryMode = EntryModeCommit
-		case "40000", "40755": // git uses 40000 for tree object, but some users may get 40755 for unknown reasons
-			entry.entryMode = EntryModeTree
-		default:
-			log.Debug("Unknown mode: %v", string(mode))
-			return nil, fmt.Errorf("unknown mode: %v", string(mode))
+		entry.entryMode, err = parseMode(string(mode))
+		if err != nil {
+			return nil, err
 		}
-
 		entry.ID = objectFormat.MustID(sha)
 		entry.name = string(fname)
 		entries = append(entries, entry)
@@ -134,4 +109,32 @@ loop:
 	}
 
 	return entries, nil
+}
+
+// Parse the file mode, we cannot hardcode the modes that we expect for
+// a variety of reasons (that is not known to us) the permissions bits
+// of files can vary, usually the result because of tooling that uses Git in
+// a funny way. So we have to parse the mode as a integer and do bit tricks.
+func parseMode(modeStr string) (EntryMode, error) {
+	mode, err := strconv.ParseUint(modeStr, 8, 64)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse mode: %v", err)
+	}
+
+	switch mode & 0o170000 {
+	case 0o040000:
+		return EntryModeTree, nil
+	case 0o120000:
+		return EntryModeSymlink, nil
+	case 0o160000:
+		return EntryModeCommit, nil
+	case 0o100000:
+		// Check for the permission bit on the owner.
+		if mode&0o100 == 0o100 {
+			return EntryModeExec, nil
+		}
+		return EntryModeBlob, nil
+	}
+
+	return 0, fmt.Errorf("unknown mode: %o", mode)
 }

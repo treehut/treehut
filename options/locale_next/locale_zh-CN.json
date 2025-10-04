@@ -79,5 +79,6 @@
     "repo.diff.commit.previous-short": "上一个",
     "feed.atom.link": "Atom 订阅源",
     "profile.edit.link": "编辑个人资料",
-    "mail.actions.run_info_sha": "提交：%[1]s"
+    "mail.actions.run_info_sha": "提交：%[1]s",
+    "repo.pulls.already_merged": "合并失败：此合并请求已被合并。"
 }

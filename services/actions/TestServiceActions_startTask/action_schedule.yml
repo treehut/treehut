@@ -1,0 +1,41 @@
+# A corrupted cron spec with a valid schedule workflow
+-
+  id: 1
+  title: schedule_title1
+  specs:
+    - '* * * * *'
+  repo_id: 4
+  owner_id: 2
+  workflow_id: 'workflow1.yml'
+  trigger_user_id: 2
+  ref: main
+  commit_sha: shashasha
+  event: "schedule"
+  event_payload: "fakepayload"
+  content: |
+    jobs:
+      job2:
+        runs-on: ubuntu-latest
+        steps:
+          - run: true
+
+# A valid cron spec with a corrupted schedule workflow
+-
+  id: 2
+  title: schedule_title2
+  specs:
+    - '* * * * *'
+  repo_id: 4
+  owner_id: 2
+  workflow_id: 'workflow2.yml'
+  trigger_user_id: 2
+  ref: main
+  commit_sha: shashasha
+  event: "schedule"
+  event_payload: "fakepayload"
+  content: |
+    jobs:
+      job2: { invalid yaml
+        runs-on: ubuntu-latest
+        steps:
+          - run: true

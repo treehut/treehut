@@ -1,7 +1,8 @@
 #
 # Additional integration tests designed to run once a day when
 # `mirror.yml` pushes to https://codeberg.org/forgejo-integration/forgejo
-# and send a notification via email should they fail.
+# and send a notification via email to the contact email of the
+# organization should they fail.
 #
 # For debug purposes:
 #
@@ -21,6 +22,8 @@ on:
     branches:
       - 'forgejo'
       - 'v*/forgejo'
+
+enable-email-notifications: true
 
 jobs:
   test-unit:

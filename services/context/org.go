@@ -16,6 +16,7 @@ import (
 	"forgejo.org/modules/markup/markdown"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/structs"
+	redirect_service "forgejo.org/services/redirect"
 )
 
 // Organization contains organization context
@@ -48,13 +49,13 @@ func GetOrganizationByParams(ctx *Context) {
 	ctx.Org.Organization, err = organization.GetOrgByName(ctx, orgName)
 	if err != nil {
 		if organization.IsErrOrgNotExist(err) {
-			redirectUserID, err := user_model.LookupUserRedirect(ctx, orgName)
+			redirectUserID, err := redirect_service.LookupUserRedirect(ctx, ctx.Doer, orgName)
 			if err == nil {
 				RedirectToUser(ctx.Base, orgName, redirectUserID)
 			} else if user_model.IsErrUserRedirectNotExist(err) {
 				ctx.NotFound("GetUserByName", err)
 			} else {
-				ctx.ServerError("LookupUserRedirect", err)
+				ctx.ServerError("LookupRedirect", err)
 			}
 		} else {
 			ctx.ServerError("GetUserByName", err)

@@ -111,5 +111,6 @@
     "keys.ssh.link": "Ключи SSH",
     "keys.gpg.link": "Ключи GPG",
     "profile.edit.link": "Изменить профиль",
-    "mail.actions.run_info_sha": "Коммит: %[1]s"
+    "mail.actions.run_info_sha": "Коммит: %[1]s",
+    "repo.pulls.already_merged": "Слияние не удалось: слияние уже выполнено."
 }

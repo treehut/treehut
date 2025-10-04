@@ -20,7 +20,9 @@ func TestRegisterForm_IsDomainAllowed_Empty(t *testing.T) {
 
 	form := RegisterForm{}
 
-	assert.True(t, form.IsEmailDomainAllowed())
+	emailValid, ok := form.IsEmailDomainAllowed()
+	assert.False(t, emailValid)
+	assert.False(t, ok)
 }
 
 func TestRegisterForm_IsDomainAllowed_InvalidEmail(t *testing.T) {
@@ -36,7 +38,8 @@ func TestRegisterForm_IsDomainAllowed_InvalidEmail(t *testing.T) {
 	for _, v := range tt {
 		form := RegisterForm{Email: v.email}
 
-		assert.False(t, form.IsEmailDomainAllowed())
+		_, ok := form.IsEmailDomainAllowed()
+		assert.False(t, ok)
 	}
 }
 
@@ -59,7 +62,8 @@ func TestRegisterForm_IsDomainAllowed_AllowedEmail(t *testing.T) {
 	for _, v := range tt {
 		form := RegisterForm{Email: v.email}
 
-		assert.Equal(t, v.valid, form.IsEmailDomainAllowed())
+		_, ok := form.IsEmailDomainAllowed()
+		assert.Equal(t, v.valid, ok)
 	}
 }
 
@@ -72,7 +76,6 @@ func TestRegisterForm_IsDomainAllowed_BlockedEmail(t *testing.T) {
 	}{
 		{"security@gitea.io", false},
 		{"security@gitea.example", true},
-		{"invalid", true},
 
 		{"user@my.block", false},
 		{"user@my.block1", true},
@@ -81,7 +84,8 @@ func TestRegisterForm_IsDomainAllowed_BlockedEmail(t *testing.T) {
 	for _, v := range tt {
 		form := RegisterForm{Email: v.email}
 
-		assert.Equal(t, v.valid, form.IsEmailDomainAllowed())
+		_, ok := form.IsEmailDomainAllowed()
+		assert.Equal(t, v.valid, ok)
 	}
 }
 

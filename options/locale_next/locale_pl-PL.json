@@ -2,5 +2,18 @@
     "repo.pulls.merged_title_desc": "scala %[1]d commity/ów z <code>%[2]s</code> do <code>%[3]s</code> %[4]s",
     "repo.pulls.title_desc": "chce scalić %[1]d commity/ów z <code>%[2]s</code> do <code id=\"%[4]s\">%[3]s</code>",
     "search.milestone_kind": "Wyszukaj kamienie milowe...",
-    "incorrect_root_url": "Ta instancja Forgejo jest skonfigurowana do korzystania z \"%s\". Obecnie oglądasz Forgejo za pomocą innego URL, co może powodować błędne działanie tej aplikacji. URL kanoniczny jest kontrolowany przez administratorów Forgejo za pomocą ROOT_URL w app.ini."
+    "incorrect_root_url": "Ta instancja Forgejo jest skonfigurowana do korzystania z \"%s\". Obecnie oglądasz Forgejo za pomocą innego URL, co może powodować błędne działanie tej aplikacji. URL kanoniczny jest kontrolowany przez administratorów Forgejo za pomocą ROOT_URL w app.ini.",
+    "home.welcome.no_activity": "Brak aktywności",
+    "home.welcome.activity_hint": "Na razie nie ma nic w twoich aktualnościach. Pojawią się tutaj twoje działania oraz wydarzenia z repozytoriów, które obserwujesz.",
+    "home.explore_repos": "Eksploruj repozytoria",
+    "home.explore_users": "Eksploruj użytkowników",
+    "home.explore_orgs": "Eksploruj organizacje",
+    "stars.list.none": "Nikt nie dał gwiazdki temu repozytorium.",
+    "watch.list.none": "Nikt nie obserwuje tego repozytorium.",
+    "followers.incoming.list.self.none": "Nikt nie obserwuje twojego profilu.",
+    "followers.incoming.list.none": "Nikt nie obserwuje tego użytkownika.",
+    "followers.outgoing.list.self.none": "Nie obserwujesz nikogo.",
+    "followers.outgoing.list.none": "%s nie obserwuje nikogo.",
+    "relativetime.now": "teraz",
+    "relativetime.future": "w przyszłości"
 }

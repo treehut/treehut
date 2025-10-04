@@ -149,7 +149,7 @@ func CreateUser(ctx *context.APIContext) {
 		return
 	}
 
-	if !validation.IsEmailDomainAllowed(u.Email) {
+	if _, ok := validation.IsEmailDomainAllowed(u.Email); !ok {
 		ctx.Resp.Header().Add("X-Gitea-Warning", fmt.Sprintf("the domain of user email %s conflicts with EMAIL_DOMAIN_ALLOWLIST or EMAIL_DOMAIN_BLOCKLIST", u.Email))
 	}
 
@@ -235,7 +235,7 @@ func EditUser(ctx *context.APIContext) {
 			return
 		}
 
-		if !validation.IsEmailDomainAllowed(*form.Email) {
+		if _, ok := validation.IsEmailDomainAllowed(*form.Email); !ok {
 			ctx.Resp.Header().Add("X-Gitea-Warning", fmt.Sprintf("the domain of user email %s conflicts with EMAIL_DOMAIN_ALLOWLIST or EMAIL_DOMAIN_BLOCKLIST", *form.Email))
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"strings"
 
+	auth_model "forgejo.org/models/auth"
 	"forgejo.org/models/db"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/setting"
@@ -168,6 +169,11 @@ func ReplaceInactivePrimaryEmail(ctx context.Context, oldEmail string, email *us
 
 	err = MakeEmailAddressPrimary(ctx, user, email, false)
 	if err != nil {
+		return err
+	}
+
+	// Delete previous activation token.
+	if err := auth_model.DeleteAuthTokenByUser(ctx, user.ID); err != nil {
 		return err
 	}
 

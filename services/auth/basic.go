@@ -151,6 +151,7 @@ func (b *Basic) Verify(req *http.Request, w http.ResponseWriter, store DataStore
 
 	log.Trace("Basic Authorization: Logged in user %-v", u)
 
+	store.GetData()["IsPasswordLogin"] = true
 	return u, nil
 }
 

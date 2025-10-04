@@ -336,3 +336,28 @@ func TestAPIModifyOrgLabels(t *testing.T) {
 		AddTokenAuth(token)
 	MakeRequest(t, req, http.StatusNoContent)
 }
+
+func TestAPIReplaceIssueLabelsActionsToken(t *testing.T) {
+	require.NoError(t, unittest.LoadFixtures())
+
+	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
+	issue := unittest.AssertExistsAndLoadBean(t, &issues_model.Issue{RepoID: repo.ID})
+	label := unittest.AssertExistsAndLoadBean(t, &issues_model.Label{RepoID: repo.ID})
+	owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: repo.OwnerID})
+
+	task := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionTask{ID: 47})
+	task.RepoID = repo.ID
+	task.OwnerID = owner.ID
+	task.IsForkPullRequest = true // Read permission.
+	require.NoError(t, task.GenerateToken())
+
+	// Explicitly need "is_fork_pull_request".
+	require.NoError(t, actions_model.UpdateTask(t.Context(), task, "repo_id", "owner_id", "is_fork_pull_request", "token", "token_salt", "token_hash", "token_last_eight"))
+
+	urlStr := fmt.Sprintf("/api/v1/repos/%s/%s/issues/%d/labels",
+		owner.Name, repo.Name, issue.Index)
+	req := NewRequestWithJSON(t, "PUT", urlStr, &api.IssueLabelsOption{
+		Labels: []any{label.Name},
+	}).AddTokenAuth(task.Token)
+	MakeRequest(t, req, http.StatusForbidden)
+}

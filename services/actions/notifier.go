@@ -343,7 +343,7 @@ func notifyIssueCommentChange(ctx context.Context, doer *user_model.User, commen
 		newNotifyInputFromIssue(comment.Issue, event).
 			WithDoer(doer).
 			WithPayload(payload).
-			WithPullRequest(comment.Issue.PullRequest).
+			WithPullRequestData(comment.Issue.PullRequest).
 			Notify(ctx)
 		return
 	}

@@ -33,19 +33,19 @@
     "relativetime.now": "ngayon",
     "relativetime.mins": {
         "one": "%d minuto ang nakalipas",
-        "other": "%d minuto ang nakalipas"
+        "other": "%d (na) minuto ang nakalipas"
     },
     "relativetime.days": {
         "one": "%d araw ang nakalipas",
-        "other": "%d araw ang nakalipas"
+        "other": "%d (na) araw ang nakalipas"
     },
     "relativetime.weeks": {
         "one": "%d linggo ang nakalipas",
-        "other": "%d linggo ang nakalipas"
+        "other": "%d (na) linggo ang nakalipas"
     },
     "relativetime.years": {
         "one": "%d taon ang nakalipas",
-        "other": "%d taon ang nakalipas"
+        "other": "%d (na) taon ang nakalipas"
     },
     "relativetime.2days": "2 araw ang nakalipas",
     "relativetime.2weeks": "2 linggo ang nakalipas",
@@ -56,11 +56,11 @@
     "relativetime.1day": "kahapon",
     "relativetime.hours": {
         "one": "%d oras ang nakalipas",
-        "other": "%d oras ang nakalipas"
+        "other": "%d (na) oras ang nakalipas"
     },
     "relativetime.months": {
         "one": "%d buwan ang nakalipas",
-        "other": "%d buwan ang nakalipas"
+        "other": "%d (na) buwan ang nakalipas"
     },
     "discussion.locked": "Naka-kandado ang pag-uusap na ito. Nilimitahan ang pagkomento sa mga tagatulong.",
     "relativetime.1month": "nakaraang buwan",
@@ -103,5 +103,6 @@
     "keys.ssh.link": "Mga SSH key",
     "keys.gpg.link": "Mga GPG key",
     "profile.actions.tooltip": "Higit pang mga aksyon",
-    "mail.actions.run_info_sha": "Commit: %[1]s"
+    "mail.actions.run_info_sha": "Commit: %[1]s",
+    "repo.pulls.already_merged": "Nabigo ang pagsasama: Naisama na ang hiling sa paghila na ito."
 }

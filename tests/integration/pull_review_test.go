@@ -791,6 +791,8 @@ func TestPullRequestStaleReview(t *testing.T) {
 		cloneURL.User = url.UserPassword("user2", userPassword)
 		require.NoError(t, git.CloneWithArgs(t.Context(), nil, cloneURL.String(), dstPath, git.CloneRepoOptions{}))
 
+		doGitSetRemoteURL(dstPath, "origin", cloneURL)(t)
+
 		// Create first commit.
 		require.NoError(t, os.WriteFile(path.Join(dstPath, "README.md"), []byte("## test content"), 0o600))
 		require.NoError(t, git.AddChanges(dstPath, true))

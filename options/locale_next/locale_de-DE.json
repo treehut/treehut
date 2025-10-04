@@ -103,5 +103,6 @@
     "keys.ssh.link": "SSH-Schlüssel",
     "keys.gpg.link": "GPG-Schlüssel",
     "profile.actions.tooltip": "Mehr Aktionen",
-    "mail.actions.run_info_sha": "Commit: %[1]s"
+    "mail.actions.run_info_sha": "Commit: %[1]s",
+    "repo.pulls.already_merged": "Zusammenführung fehlgeschlagen. Der Pull-Request wurde bereits zusammengeführt."
 }

@@ -12,19 +12,100 @@ import (
 	"forgejo.org/models/unittest"
 	base "forgejo.org/modules/migration"
 
+	"github.com/google/go-github/v64/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGithubDownloaderFilterComments(t *testing.T) {
+	GithubLimitRateRemaining = 3 // Wait at 3 remaining since we could have 3 CI in //
+
+	token := os.Getenv("GITHUB_READ_TOKEN")
+	fixturePath := "./testdata/github/full_download"
+	server := unittest.NewMockWebServer(t, "https://api.github.com", fixturePath, false)
+	defer server.Close()
+
+	downloader := NewGithubDownloaderV3(t.Context(), server.URL, true, true, "", "", token, "forgejo", "test_repo")
+	err := downloader.RefreshRate()
+	require.NoError(t, err)
+
+	var githubComments []*github.IssueComment
+	issueID := int64(7)
+	iNodeID := "MDEyOklzc3VlQ29tbWVudDE=" // "IssueComment1"
+	iBody := "Hello"
+	iCreated := new(github.Timestamp)
+	iUpdated := new(github.Timestamp)
+	iCreated.Time = time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	iUpdated.Time = time.Date(2025, 1, 1, 12, 1, 0, 0, time.UTC)
+	iAssociation := "COLLABORATOR"
+	iURL := "https://api.github.com/repos/forgejo/test_repo/issues/comments/3164032267"
+	iHTMLURL := "https://github.com/forgejo/test_repo/issues/1#issuecomment-3164032267"
+	iIssueURL := "https://api.github.com/repos/forgejo/test_repo/issues/1"
+
+	githubComments = append(githubComments,
+		&github.IssueComment{
+			ID:                &issueID,
+			NodeID:            &iNodeID,
+			Body:              &iBody,
+			Reactions:         nil,
+			CreatedAt:         iCreated,
+			UpdatedAt:         iUpdated,
+			AuthorAssociation: &iAssociation,
+			URL:               &iURL,
+			HTMLURL:           &iHTMLURL,
+			IssueURL:          &iIssueURL,
+		},
+	)
+
+	prID := int64(4)
+	pNodeID := "IC_kwDOPQx9Mc65LHhx"
+	pBody := "Hello"
+	pCreated := new(github.Timestamp)
+	pUpdated := new(github.Timestamp)
+	pCreated.Time = time.Date(2025, 1, 1, 11, 0, 0, 0, time.UTC)
+	pUpdated.Time = time.Date(2025, 1, 1, 11, 1, 0, 0, time.UTC)
+	pAssociation := "COLLABORATOR"
+	pURL := "https://api.github.com/repos/forgejo/test_repo/issues/comments/3164118916"
+	pHTMLURL := "https://github.com/forgejo/test_repo/pull/3#issuecomment-3164118916"
+	pIssueURL := "https://api.github.com/repos/forgejo/test_repo/issues/3"
+
+	githubComments = append(githubComments, &github.IssueComment{
+		ID:                &prID,
+		NodeID:            &pNodeID,
+		Body:              &pBody,
+		Reactions:         nil,
+		CreatedAt:         pCreated,
+		UpdatedAt:         pUpdated,
+		AuthorAssociation: &pAssociation,
+		URL:               &pURL,
+		HTMLURL:           &pHTMLURL,
+		IssueURL:          &pIssueURL,
+	})
+
+	filteredComments := downloader.filterPRComments(githubComments)
+
+	// Check each issue index not being from the PR
+	for _, comment := range filteredComments {
+		assert.NotEqual(t, *comment.ID, prID)
+	}
+
+	filteredComments = downloader.filterIssueComments(githubComments)
+
+	// Check each issue index not being from the issue
+	for _, comment := range filteredComments {
+		assert.NotEqual(t, *comment.ID, issueID)
+	}
+}
 
 func TestGitHubDownloadRepo(t *testing.T) {
 	GithubLimitRateRemaining = 3 // Wait at 3 remaining since we could have 3 CI in //
 
 	token := os.Getenv("GITHUB_READ_TOKEN")
 	fixturePath := "./testdata/github/full_download"
-	server := unittest.NewMockWebServer(t, "https://api.github.com", fixturePath, token != "")
+	server := unittest.NewMockWebServer(t, "https://api.github.com", fixturePath, false)
 	defer server.Close()
 
-	downloader := NewGithubDownloaderV3(t.Context(), server.URL, "", "", token, "go-gitea", "test_repo")
+	downloader := NewGithubDownloaderV3(t.Context(), server.URL, true, true, "", "", token, "forgejo", "test_repo")
 	err := downloader.RefreshRate()
 	require.NoError(t, err)
 
@@ -32,38 +113,44 @@ func TestGitHubDownloadRepo(t *testing.T) {
 	require.NoError(t, err)
 	assertRepositoryEqual(t, &base.Repository{
 		Name:          "test_repo",
-		Owner:         "go-gitea",
-		Description:   "Test repository for testing migration from github to gitea",
-		CloneURL:      server.URL + "/go-gitea/test_repo.git",
-		OriginalURL:   server.URL + "/go-gitea/test_repo",
-		DefaultBranch: "master",
+		Owner:         "forgejo",
+		Description:   "Exclusively used for testing Github->Forgejo migration",
+		CloneURL:      server.URL + "/forgejo/test_repo.git",
+		OriginalURL:   server.URL + "/forgejo/test_repo",
+		DefaultBranch: "main",
 		Website:       "https://codeberg.org/forgejo/forgejo/",
 	}, repo)
 
 	topics, err := downloader.GetTopics()
 	require.NoError(t, err)
-	assert.Contains(t, topics, "gitea")
+	assert.Contains(t, topics, "forgejo")
 
 	milestones, err := downloader.GetMilestones()
 	require.NoError(t, err)
 	assertMilestonesEqual(t, []*base.Milestone{
 		{
 			Title:       "1.0.0",
-			Description: "Milestone 1.0.0",
-			Deadline:    timePtr(time.Date(2019, 11, 11, 8, 0, 0, 0, time.UTC)),
-			Created:     time.Date(2019, 11, 12, 19, 37, 8, 0, time.UTC),
-			Updated:     timePtr(time.Date(2019, 11, 12, 21, 56, 17, 0, time.UTC)),
-			Closed:      timePtr(time.Date(2019, 11, 12, 19, 45, 49, 0, time.UTC)),
+			Description: "Version 1",
+			Created:     time.Date(2025, 8, 7, 12, 48, 56, 0, time.UTC),
+			Updated:     timePtr(time.Date(2025, time.August, 12, 12, 34, 20, 0, time.UTC)),
+			State:       "open",
+		},
+		{
+			Title:       "0.9.0",
+			Description: "A milestone",
+			Deadline:    timePtr(time.Date(2025, 8, 1, 7, 0, 0, 0, time.UTC)),
+			Created:     time.Date(2025, 8, 7, 12, 54, 20, 0, time.UTC),
+			Updated:     timePtr(time.Date(2025, 8, 12, 11, 29, 52, 0, time.UTC)),
+			Closed:      timePtr(time.Date(2025, 8, 7, 12, 54, 38, 0, time.UTC)),
 			State:       "closed",
 		},
 		{
 			Title:       "1.1.0",
-			Description: "Milestone 1.1.0",
-			Deadline:    timePtr(time.Date(2019, 11, 12, 8, 0, 0, 0, time.UTC)),
-			Created:     time.Date(2019, 11, 12, 19, 37, 25, 0, time.UTC),
-			Updated:     timePtr(time.Date(2019, 11, 12, 21, 39, 27, 0, time.UTC)),
-			Closed:      timePtr(time.Date(2019, 11, 12, 19, 45, 46, 0, time.UTC)),
-			State:       "closed",
+			Description: "We can do that",
+			Deadline:    timePtr(time.Date(2025, 8, 31, 7, 0, 0, 0, time.UTC)),
+			Created:     time.Date(2025, 8, 7, 12, 50, 58, 0, time.UTC),
+			Updated:     timePtr(time.Date(2025, 8, 7, 12, 53, 15, 0, time.UTC)),
+			State:       "open",
 		},
 	}, milestones)
 
@@ -117,18 +204,34 @@ func TestGitHubDownloadRepo(t *testing.T) {
 		},
 	}, labels)
 
+	id := int64(280443629)
+	ct := "application/pdf"
+	size := 550175
+	dc := 0
+
 	releases, err := downloader.GetReleases()
 	require.NoError(t, err)
 	assertReleasesEqual(t, []*base.Release{
 		{
-			TagName:         "v0.9.99",
-			TargetCommitish: "master",
+			TagName:         "v1.0",
+			TargetCommitish: "main",
 			Name:            "First Release",
-			Body:            "A test release",
-			Created:         time.Date(2019, 11, 9, 16, 49, 21, 0, time.UTC),
-			Published:       time.Date(2019, 11, 12, 20, 12, 10, 0, time.UTC),
-			PublisherID:     1669571,
-			PublisherName:   "mrsdizzie",
+			Body:            "Hi, this is the first release! The asset contains the wireguard whitepaper, amazing read for such a simple protocol.",
+			Created:         time.Date(2025, time.August, 7, 13, 2, 19, 0, time.UTC),
+			Published:       time.Date(2025, time.August, 7, 13, 7, 49, 0, time.UTC),
+			PublisherID:     25481501,
+			PublisherName:   "Gusted",
+			Assets: []*base.ReleaseAsset{
+				{
+					ID:            id,
+					Name:          "wireguard.pdf",
+					ContentType:   &ct,
+					Size:          &size,
+					DownloadCount: &dc,
+					Created:       time.Date(2025, time.August, 7, 23, 39, 27, 0, time.UTC),
+					Updated:       time.Date(2025, time.August, 7, 23, 39, 29, 0, time.UTC),
+				},
+			},
 		},
 	}, releases)
 
@@ -139,85 +242,41 @@ func TestGitHubDownloadRepo(t *testing.T) {
 	assertIssuesEqual(t, []*base.Issue{
 		{
 			Number:     1,
-			Title:      "Please add an animated gif icon to the merge button",
-			Content:    "I just want the merge button to hurt my eyes a little. \xF0\x9F\x98\x9D ",
-			Milestone:  "1.0.0",
-			PosterID:   18600385,
-			PosterName: "guillep2k",
-			State:      "closed",
-			Created:    time.Date(2019, 11, 9, 17, 0, 29, 0, time.UTC),
-			Updated:    time.Date(2019, 11, 12, 20, 29, 53, 0, time.UTC),
-			Labels: []*base.Label{
-				{
-					Name:        "bug",
-					Color:       "d73a4a",
-					Description: "Something isn't working",
-				},
-				{
-					Name:        "good first issue",
-					Color:       "7057ff",
-					Description: "Good for newcomers",
-				},
-			},
-			Reactions: []*base.Reaction{
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "+1",
-				},
-			},
-			Closed: timePtr(time.Date(2019, 11, 12, 20, 22, 22, 0, time.UTC)),
+			Title:      "First issue",
+			Content:    "This is an issue.",
+			PosterID:   37243484,
+			PosterName: "PatDyn",
+			State:      "open",
+			Created:    time.Date(2025, time.August, 7, 12, 44, 7, 0, time.UTC),
+			Updated:    time.Date(2025, time.August, 7, 12, 44, 47, 0, time.UTC),
 		},
 		{
 			Number:     2,
-			Title:      "Test issue",
-			Content:    "This is test issue 2, do not touch!",
+			Title:      "Second Issue",
+			Content:    "Mentioning #1 ",
 			Milestone:  "1.1.0",
-			PosterID:   1669571,
-			PosterName: "mrsdizzie",
-			State:      "closed",
-			Created:    time.Date(2019, 11, 12, 21, 0, 6, 0, time.UTC),
-			Updated:    time.Date(2019, 11, 12, 22, 7, 14, 0, time.UTC),
+			PosterID:   37243484,
+			PosterName: "PatDyn",
+			State:      "open",
+			Created:    time.Date(2025, 8, 7, 12, 45, 44, 0, time.UTC),
+			Updated:    time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
 			Labels: []*base.Label{
 				{
 					Name:        "duplicate",
 					Color:       "cfd3d7",
 					Description: "This issue or pull request already exists",
 				},
-			},
-			Reactions: []*base.Reaction{
 				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "heart",
+					Name:        "good first issue",
+					Color:       "7057ff",
+					Description: "Good for newcomers",
 				},
 				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "laugh",
-				},
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "-1",
-				},
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "confused",
-				},
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "hooray",
-				},
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "+1",
+					Name:        "help wanted",
+					Color:       "008672",
+					Description: "Extra attention is needed",
 				},
 			},
-			Closed: timePtr(time.Date(2019, 11, 12, 21, 1, 31, 0, time.UTC)),
 		},
 	}, issues)
 
@@ -227,26 +286,11 @@ func TestGitHubDownloadRepo(t *testing.T) {
 	assertCommentsEqual(t, []*base.Comment{
 		{
 			IssueIndex: 2,
-			PosterID:   1669571,
-			PosterName: "mrsdizzie",
-			Created:    time.Date(2019, 11, 12, 21, 0, 13, 0, time.UTC),
-			Updated:    time.Date(2019, 11, 12, 21, 0, 13, 0, time.UTC),
-			Content:    "This is a comment",
-			Reactions: []*base.Reaction{
-				{
-					UserID:   1669571,
-					UserName: "mrsdizzie",
-					Content:  "+1",
-				},
-			},
-		},
-		{
-			IssueIndex: 2,
-			PosterID:   1669571,
-			PosterName: "mrsdizzie",
-			Created:    time.Date(2019, 11, 12, 22, 7, 14, 0, time.UTC),
-			Updated:    time.Date(2019, 11, 12, 22, 7, 14, 0, time.UTC),
-			Content:    "A second comment",
+			PosterID:   37243484,
+			PosterName: "PatDyn",
+			Created:    time.Date(2025, time.August, 7, 13, 7, 25, 0, time.UTC),
+			Updated:    time.Date(2025, time.August, 7, 13, 7, 25, 0, time.UTC),
+			Content:    "Mentioning #3 \nWith some **bold** *statement*",
 			Reactions:  nil,
 		},
 	}, comments)
@@ -257,52 +301,50 @@ func TestGitHubDownloadRepo(t *testing.T) {
 	assertPullRequestsEqual(t, []*base.PullRequest{
 		{
 			Number:     3,
-			Title:      "Update README.md",
-			Content:    "add warning to readme",
-			Milestone:  "1.1.0",
-			PosterID:   1669571,
-			PosterName: "mrsdizzie",
-			State:      "closed",
-			Created:    time.Date(2019, 11, 12, 21, 21, 43, 0, time.UTC),
-			Updated:    time.Date(2019, 11, 12, 21, 39, 28, 0, time.UTC),
+			Title:      "Update readme.md",
+			Content:    "Added a feature description",
+			Milestone:  "1.0.0",
+			PosterID:   37243484,
+			PosterName: "PatDyn",
+			State:      "open",
+			Created:    time.Date(2025, time.August, 7, 12, 47, 6, 0, time.UTC),
+			Updated:    time.Date(2025, time.August, 12, 13, 16, 49, 0, time.UTC),
 			Labels: []*base.Label{
 				{
-					Name:        "documentation",
-					Color:       "0075ca",
-					Description: "Improvements or additions to documentation",
+					Name:        "enhancement",
+					Color:       "a2eeef",
+					Description: "New feature or request",
 				},
 			},
-			PatchURL: server.URL + "/go-gitea/test_repo/pull/3.patch",
+			PatchURL: server.URL + "/forgejo/test_repo/pull/3.patch",
 			Head: base.PullRequestBranch{
-				Ref:      "master",
-				CloneURL: server.URL + "/mrsdizzie/test_repo.git",
-				SHA:      "076160cf0b039f13e5eff19619932d181269414b",
+				Ref:      "some-feature",
+				CloneURL: server.URL + "/forgejo/test_repo.git",
+				SHA:      "c608ab3997349219e1510cdb5ddd1e5e82897dfa",
 				RepoName: "test_repo",
 
-				OwnerName: "mrsdizzie",
+				OwnerName: "forgejo",
 			},
 			Base: base.PullRequestBranch{
-				Ref:       "master",
-				SHA:       "72866af952e98d02a73003501836074b286a78f6",
-				OwnerName: "go-gitea",
+				Ref:       "main",
+				SHA:       "442d28a55b842472c95bead51a4c61f209ac1636",
+				OwnerName: "forgejo",
 				RepoName:  "test_repo",
 			},
-			Closed:         timePtr(time.Date(2019, 11, 12, 21, 39, 27, 0, time.UTC)),
-			Merged:         true,
-			MergedTime:     timePtr(time.Date(2019, 11, 12, 21, 39, 27, 0, time.UTC)),
-			MergeCommitSHA: "f32b0a9dfd09a60f616f29158f772cedd89942d2",
-			ForeignIndex:   3,
+			ForeignIndex: 3,
 		},
 		{
-			Number:     4,
-			Title:      "Test branch",
-			Content:    "do not merge this PR",
+			Number:     7,
+			Title:      "Update readme.md",
+			Content:    "Adding some text to the readme",
 			Milestone:  "1.0.0",
-			PosterID:   1669571,
-			PosterName: "mrsdizzie",
-			State:      "open",
-			Created:    time.Date(2019, 11, 12, 21, 54, 18, 0, time.UTC),
-			Updated:    time.Date(2020, 1, 4, 11, 30, 1, 0, time.UTC),
+			PosterID:   37243484,
+			PosterName: "PatDyn",
+			State:      "closed",
+			Created:    time.Date(2025, time.August, 7, 13, 1, 36, 0, time.UTC),
+			Updated:    time.Date(2025, time.August, 12, 12, 47, 35, 0, time.UTC),
+			Closed:     timePtr(time.Date(2025, time.August, 7, 13, 2, 19, 0, time.UTC)),
+			MergedTime: timePtr(time.Date(2025, time.August, 7, 13, 2, 19, 0, time.UTC)),
 			Labels: []*base.Label{
 				{
 					Name:        "bug",
@@ -310,35 +352,23 @@ func TestGitHubDownloadRepo(t *testing.T) {
 					Description: "Something isn't working",
 				},
 			},
-			PatchURL: server.URL + "/go-gitea/test_repo/pull/4.patch",
+			PatchURL: server.URL + "/forgejo/test_repo/pull/7.patch",
 			Head: base.PullRequestBranch{
-				Ref:       "test-branch",
-				SHA:       "2be9101c543658591222acbee3eb799edfc3853d",
+				Ref:       "another-feature",
+				SHA:       "5638cb8f3278e467fc1eefcac14d3c0d5d91601f",
 				RepoName:  "test_repo",
-				OwnerName: "mrsdizzie",
-				CloneURL:  server.URL + "/mrsdizzie/test_repo.git",
+				OwnerName: "forgejo",
+				CloneURL:  server.URL + "/forgejo/test_repo.git",
 			},
 			Base: base.PullRequestBranch{
-				Ref:       "master",
-				SHA:       "f32b0a9dfd09a60f616f29158f772cedd89942d2",
-				OwnerName: "go-gitea",
+				Ref:       "main",
+				SHA:       "6dd0c6801ddbb7333787e73e99581279492ff449",
+				OwnerName: "forgejo",
 				RepoName:  "test_repo",
 			},
-			Merged:         false,
-			MergeCommitSHA: "565d1208f5fffdc1c5ae1a2436491eb9a5e4ebae",
-			Reactions: []*base.Reaction{
-				{
-					UserID:   81045,
-					UserName: "lunny",
-					Content:  "heart",
-				},
-				{
-					UserID:   81045,
-					UserName: "lunny",
-					Content:  "+1",
-				},
-			},
-			ForeignIndex: 4,
+			Merged:         true,
+			MergeCommitSHA: "ca43b48ca2c461f9a5cb66500a154b23d07c9f90",
+			ForeignIndex:   7,
 		},
 	}, prs)
 
@@ -346,88 +376,50 @@ func TestGitHubDownloadRepo(t *testing.T) {
 	require.NoError(t, err)
 	assertReviewsEqual(t, []*base.Review{
 		{
-			ID:           315859956,
+			ID:           3096999684,
 			IssueIndex:   3,
-			ReviewerID:   42128690,
-			ReviewerName: "jolheiser",
-			CommitID:     "076160cf0b039f13e5eff19619932d181269414b",
-			CreatedAt:    time.Date(2019, 11, 12, 21, 35, 24, 0, time.UTC),
-			State:        base.ReviewStateApproved,
-		},
-		{
-			ID:           315860062,
-			IssueIndex:   3,
-			ReviewerID:   1824502,
-			ReviewerName: "zeripath",
-			CommitID:     "076160cf0b039f13e5eff19619932d181269414b",
-			CreatedAt:    time.Date(2019, 11, 12, 21, 35, 36, 0, time.UTC),
-			State:        base.ReviewStateApproved,
-		},
-		{
-			ID:           315861440,
-			IssueIndex:   3,
-			ReviewerID:   165205,
-			ReviewerName: "lafriks",
-			CommitID:     "076160cf0b039f13e5eff19619932d181269414b",
-			CreatedAt:    time.Date(2019, 11, 12, 21, 38, 0, 0, time.UTC),
-			State:        base.ReviewStateApproved,
-		},
-	}, reviews)
-
-	reviews, err = downloader.GetReviews(&base.PullRequest{Number: 4, ForeignIndex: 4})
-	require.NoError(t, err)
-	assertReviewsEqual(t, []*base.Review{
-		{
-			ID:           338338740,
-			IssueIndex:   4,
-			ReviewerID:   81045,
-			ReviewerName: "lunny",
-			CommitID:     "2be9101c543658591222acbee3eb799edfc3853d",
-			CreatedAt:    time.Date(2020, 1, 4, 5, 33, 18, 0, time.UTC),
-			State:        base.ReviewStateApproved,
+			ReviewerID:   37243484,
+			ReviewerName: "PatDyn",
+			CommitID:     "c608ab3997349219e1510cdb5ddd1e5e82897dfa",
+			CreatedAt:    time.Date(2025, 8, 7, 12, 47, 55, 0, time.UTC),
+			State:        base.ReviewStateCommented,
 			Comments: []*base.ReviewComment{
 				{
-					ID:        363017488,
-					Content:   "This is a good pull request.",
-					TreePath:  "README.md",
-					DiffHunk:  "@@ -1,2 +1,4 @@\n # test_repo\n Test repository for testing migration from github to gitea\n+",
-					Position:  3,
-					CommitID:  "2be9101c543658591222acbee3eb799edfc3853d",
-					PosterID:  81045,
-					CreatedAt: time.Date(2020, 1, 4, 5, 33, 6, 0, time.UTC),
-					UpdatedAt: time.Date(2020, 1, 4, 5, 33, 18, 0, time.UTC),
+					ID:        2260216729,
+					InReplyTo: 0,
+					Content:   "May want to write more",
+					TreePath:  "readme.md",
+					DiffHunk:  "@@ -1,3 +1,5 @@\n # Forgejo Test Repo\n \n This repo is used to test migrations\n+\n+Add some feature description.",
+					Position:  5,
+					Line:      0,
+					CommitID:  "c608ab3997349219e1510cdb5ddd1e5e82897dfa",
+					PosterID:  37243484,
+					CreatedAt: time.Date(2025, 8, 7, 12, 47, 50, 0, time.UTC),
+					UpdatedAt: time.Date(2025, 8, 7, 12, 47, 55, 0, time.UTC),
 				},
 			},
 		},
 		{
-			ID:           338339651,
-			IssueIndex:   4,
-			ReviewerID:   81045,
-			ReviewerName: "lunny",
-			CommitID:     "2be9101c543658591222acbee3eb799edfc3853d",
-			CreatedAt:    time.Date(2020, 1, 4, 6, 7, 6, 0, time.UTC),
-			State:        base.ReviewStateChangesRequested,
-			Content:      "Don't add more reviews",
-		},
-		{
-			ID:           338349019,
-			IssueIndex:   4,
-			ReviewerID:   81045,
-			ReviewerName: "lunny",
-			CommitID:     "2be9101c543658591222acbee3eb799edfc3853d",
-			CreatedAt:    time.Date(2020, 1, 4, 11, 21, 41, 0, time.UTC),
+			ID:           3097007243,
+			IssueIndex:   3,
+			ReviewerID:   37243484,
+			ReviewerName: "PatDyn",
+			CommitID:     "c608ab3997349219e1510cdb5ddd1e5e82897dfa",
+			CreatedAt:    time.Date(2025, 8, 7, 12, 49, 36, 0, time.UTC),
 			State:        base.ReviewStateCommented,
 			Comments: []*base.ReviewComment{
 				{
-					ID:        363029944,
-					Content:   "test a single comment.",
-					TreePath:  "LICENSE",
-					DiffHunk:  "@@ -19,3 +19,5 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n SOFTWARE.\n+",
-					Position:  4,
-					CommitID:  "2be9101c543658591222acbee3eb799edfc3853d",
-					PosterID:  81045,
-					CreatedAt: time.Date(2020, 1, 4, 11, 21, 41, 0, time.UTC),
-					UpdatedAt: time.Date(2020, 1, 4, 11, 21, 41, 0, time.UTC),
+					ID:        2260221159,
+					InReplyTo: 0,
+					Content:   "Comment",
+					TreePath:  "readme.md",
+					DiffHunk:  "@@ -1,3 +1,5 @@\n # Forgejo Test Repo\n \n This repo is used to test migrations",
+					Position:  3,
+					Line:      0,
+					CommitID:  "c608ab3997349219e1510cdb5ddd1e5e82897dfa",
+					PosterID:  37243484,
+					CreatedAt: time.Date(2025, 8, 7, 12, 49, 36, 0, time.UTC),
+					UpdatedAt: time.Date(2025, 8, 7, 12, 49, 36, 0, time.UTC),
 				},
 			},
 		},

@@ -77,7 +77,11 @@
 							<label for="token">{{ctx.Locale.Tr "settings.ssh_token"}}</label>
 							<input readonly="" value="{{$.TokenToSign}}">
 							<div class="help">
+								<br>
 								<p>{{ctx.Locale.Tr "settings.ssh_token_help"}}</p>
+								<div class="markup"><pre class="code-block"><code>echo -n '{{$.TokenToSign}}' | ssh-keygen -Y sign -n gitea -f ~/.ssh/id_ed25519 # or the path to the private key if it is different.</code></pre></div>
+								<br>
+								<p>{{ctx.Locale.Tr "settings.ssh_token_help_ssh_agent"}}</p>
 								<div class="markup"><pre class="code-block"><code>bash -c "echo -n '{{$.TokenToSign}}' | ssh-keygen -Y sign -n gitea -f <(echo '{{.OmitEmail}}')"</code></pre></div>
 								<br>
 								<details>

@@ -121,6 +121,7 @@ type ErrInvalidCloneAddr struct {
 	IsInvalidPath      bool
 	IsProtocolInvalid  bool
 	IsPermissionDenied bool
+	HasCredentials     bool
 	LocalPath          bool
 }
 
@@ -142,6 +143,9 @@ func (err *ErrInvalidCloneAddr) Error() string {
 	}
 	if err.IsURLError {
 		return fmt.Sprintf("migration/cloning from '%s' is not allowed: the provided url is invalid", err.Host)
+	}
+	if err.HasCredentials {
+		return fmt.Sprintf("migration/cloning from '%s' is not allowed: the provided url contains credentials", err.Host)
 	}
 
 	return fmt.Sprintf("migration/cloning from '%s' is not allowed", err.Host)

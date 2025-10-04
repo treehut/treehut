@@ -41,6 +41,10 @@ func NewMockWebServer(t *testing.T, liveServerBaseURL, testDataDir string, liveM
 		log.Info("Mock HTTP Server: got request for path %s", r.URL.Path)
 		// TODO check request method (support POST?)
 		fixturePath := fmt.Sprintf("%s/%s_%s", testDataDir, r.Method, url.PathEscape(path))
+		if strings.Contains(path, "test_repo.git") {
+			// We got a git clone request against our mock server
+			fixturePath = fmt.Sprintf("%s/%s", testDataDir, strings.TrimLeft(r.URL.Path, "/"))
+		}
 		if liveMode {
 			liveURL := fmt.Sprintf("%s%s", liveServerBaseURL, path)
 

@@ -23,4 +23,7 @@ var Quota = struct {
 
 func loadQuotaFrom(rootCfg ConfigProvider) {
 	mustMapSetting(rootCfg, "quota", &Quota)
+
+	sec := rootCfg.Section("quota.default")
+	Quota.Default.Total = mustBytes(sec, "TOTAL")
 }

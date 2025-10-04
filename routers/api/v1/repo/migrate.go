@@ -283,6 +283,8 @@ func handleRemoteAddrError(ctx *context.APIContext, err error) {
 			}
 		case addrErr.IsInvalidPath:
 			ctx.Error(http.StatusUnprocessableEntity, "", "Invalid local path, it does not exist or not a directory.")
+		case addrErr.HasCredentials:
+			ctx.Error(http.StatusUnprocessableEntity, "", "The URL contains credentials.")
 		default:
 			ctx.Error(http.StatusInternalServerError, "ParseRemoteAddr", "Unknown error type (ErrInvalidCloneAddr): "+err.Error())
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"forgejo.org/models/unittest"
@@ -43,6 +44,8 @@ func TestWebfinger(t *testing.T) {
 
 	session := loginUser(t, "user1")
 
+	ctx := t.Context()
+
 	req := NewRequest(t, "GET", fmt.Sprintf("/.well-known/webfinger?resource=acct:%s@%s", user.LowerName, appURL.Host))
 	resp := MakeRequest(t, req, http.StatusOK)
 	assert.Equal(t, "application/jrd+json", resp.Header().Get("Content-Type"))
@@ -50,6 +53,26 @@ func TestWebfinger(t *testing.T) {
 	var jrd webfingerJRD
 	DecodeJSON(t, resp, &jrd)
 	assert.Equal(t, "acct:user2@"+appURL.Host, jrd.Subject)
+	assert.ElementsMatch(t, []*webfingerLink{
+		{
+			Rel:  "http://webfinger.net/rel/profile-page",
+			Type: "text/html",
+			Href: user.HTMLURL(),
+		},
+		{
+			Rel:  "http://webfinger.net/rel/avatar",
+			Href: user.AvatarLink(ctx),
+		},
+		{
+			Rel:  "self",
+			Type: "application/activity+json",
+			Href: appURL.String() + "api/v1/activitypub/user-id/" + fmt.Sprint(user.ID),
+		},
+		{
+			Rel:  "http://openid.net/specs/connect/1.0/issuer",
+			Href: strings.TrimSuffix(appURL.String(), "/"),
+		},
+	}, jrd.Links)
 	assert.ElementsMatch(t, []string{user.HTMLURL(), appURL.String() + "api/v1/activitypub/user-id/" + fmt.Sprint(user.ID)}, jrd.Aliases)
 
 	req = NewRequest(t, "GET", fmt.Sprintf("/.well-known/webfinger?resource=acct:%s@%s", user.LowerName, "unknown.host"))

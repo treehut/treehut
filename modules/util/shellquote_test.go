@@ -3,7 +3,11 @@
 
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestShellEscape(t *testing.T) {
 	tests := []struct {
@@ -79,13 +83,23 @@ func TestShellEscape(t *testing.T) {
 			"Single quotes don't need to escape except for '...",
 			"~/<gitea> ${gitea} `gitea` (gitea) !gitea! \"gitea\" \\gitea\\ 'gitea'",
 			"~/'<gitea> ${gitea} `gitea` (gitea) !gitea! \"gitea\" \\gitea\\ '\\''gitea'\\'",
+		}, {
+			"Inline command",
+			"some`echo foo`thing",
+			"\"some\\`echo foo\\`thing\"",
+		}, {
+			"Substitution",
+			`;${HOME}`,
+			`";\${HOME}"`,
+		}, {
+			"ANSI Escape codes (not escaped)",
+			"\033[31;1;4mHello\033[0m",
+			"\"\x1b[31;1;4mHello\x1b[0m\"",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ShellEscape(tt.toEscape); got != tt.want {
-				t.Errorf("ShellEscape(%q):\nGot:    %s\nWanted: %s", tt.toEscape, got, tt.want)
-			}
+			assert.Equal(t, tt.want, ShellEscape(tt.toEscape))
 		})
 	}
 }

@@ -111,5 +111,6 @@
     "feed.atom.link": "Feed Atom",
     "keys.ssh.link": "Chaves SSH",
     "keys.gpg.link": "Chaves GPG",
-    "mail.actions.run_info_sha": "Commit: %[1]s"
+    "mail.actions.run_info_sha": "Commit: %[1]s",
+    "repo.pulls.already_merged": "Mescla falhou: Este pull request já foi mesclado."
 }

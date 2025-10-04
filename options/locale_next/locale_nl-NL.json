@@ -103,5 +103,6 @@
     "admin.dashboard.cleanup_offline_runners": "Offline runners opruimen",
     "settings.visibility.description": "Profielzichtbaarheid beïnvloedt de mogelijkheid van anderen om toegang te krijgen tot je niet-privé repositories. <a href=\"%s\" target=\"_blank\">Lees meer</a>",
     "avatar.constraints_hint": "Eigen avatars mogen niet groter zijn dan %[1]s in grootte of groter zijn dan %[2]dx%[3]d pixels",
-    "mail.actions.run_info_sha": "Commit: %[1]s"
+    "mail.actions.run_info_sha": "Commit: %[1]s",
+    "repo.pulls.already_merged": "Samenvoegen mislukt: deze pull request is al samengevoegd."
 }

@@ -105,6 +105,9 @@ func ParseRemoteAddr(remoteAddr, authUsername, authPassword string) (string, err
 		if err != nil {
 			return "", &models.ErrInvalidCloneAddr{IsURLError: true, Host: remoteAddr}
 		}
+		if u.User != nil {
+			return "", &models.ErrInvalidCloneAddr{Host: remoteAddr, HasCredentials: true}
+		}
 		if len(authUsername)+len(authPassword) > 0 {
 			u.User = url.UserPassword(authUsername, authPassword)
 		}

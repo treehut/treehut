@@ -21,7 +21,8 @@ import (
 
 // ErrUserRedirectNotExist represents a "UserRedirectNotExist" kind of error.
 type ErrUserRedirectNotExist struct {
-	Name string
+	Name              string
+	MissingPermission bool
 }
 
 // IsErrUserRedirectNotExist check if an error is an ErrUserRedirectNotExist.
@@ -79,15 +80,6 @@ func GetUserRedirect(ctx context.Context, userName string) (*Redirect, error) {
 		return nil, ErrUserRedirectNotExist{Name: userName}
 	}
 	return redirect, nil
-}
-
-// LookupUserRedirect look up userID if a user has a redirect name
-func LookupUserRedirect(ctx context.Context, userName string) (int64, error) {
-	redirect, err := GetUserRedirect(ctx, userName)
-	if err != nil {
-		return 0, err
-	}
-	return redirect.RedirectUserID, nil
 }
 
 // NewUserRedirect create a new user redirect

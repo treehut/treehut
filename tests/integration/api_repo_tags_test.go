@@ -121,3 +121,36 @@ func TestAPIGetTagArchiveDownloadCount(t *testing.T) {
 	assert.Equal(t, int64(1), tagInfo.ArchiveDownloadCount.TarGz)
 	assert.Equal(t, int64(0), tagInfo.ArchiveDownloadCount.Zip)
 }
+
+func TestAPIGetTagsPaginated(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+	// Login as User2.
+	session := loginUser(t, user.Name)
+	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
+
+	repoName := "repo1"
+	expectedTagName := "TagDownloadCount"
+
+	for i := range 5 {
+		createNewTagUsingAPI(t, token, user.Name, repoName, expectedTagName+fmt.Sprintf("%d", i), "", "")
+	}
+
+	// List tags with pagination
+	req := NewRequestf(t, "GET", "/api/v1/repos/%s/%s/tags?limit=1", user.Name, repoName).
+		AddTokenAuth(token)
+	resp := MakeRequest(t, req, http.StatusOK)
+
+	var tags []*api.Tag
+	DecodeJSON(t, resp, &tags)
+
+	assert.Len(t, tags, 1)
+
+	assert.Equal(t, fmt.Sprintf("%s%d", expectedTagName, 0), tags[0].Name)
+
+	// Check if Link header is present for pagination
+	link := resp.Header().Get("Link")
+	assert.NotEmpty(t, link, "Link header should be set for paginated responses")
+	assert.Contains(t, link, "rel=\"next\"")
+	assert.Contains(t, link, "page=2")
+}

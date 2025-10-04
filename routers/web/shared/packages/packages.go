@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"forgejo.org/models/db"
 	packages_model "forgejo.org/models/packages"
 	repo_model "forgejo.org/models/repo"
 	user_model "forgejo.org/models/user"
@@ -168,13 +167,12 @@ func SetRulePreviewContext(ctx *context.Context, owner *user_model.User) {
 			PackageID:  p.ID,
 			IsInternal: optional.Some(false),
 			Sort:       packages_model.SortCreatedDesc,
-			Paginator:  db.NewAbsoluteListOptions(pcr.KeepCount, 200),
 		})
 		if err != nil {
 			ctx.ServerError("SearchVersions", err)
 			return
 		}
-		for _, pv := range pvs {
+		for _, pv := range pvs[pcr.KeepCount:] {
 			if skip, err := container_service.ShouldBeSkipped(ctx, pcr, p, pv); err != nil {
 				ctx.ServerError("ShouldBeSkipped", err)
 				return

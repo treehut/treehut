@@ -25,6 +25,7 @@ import (
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/test"
 	"forgejo.org/modules/timeutil"
+	redirect_service "forgejo.org/services/redirect"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -145,10 +146,16 @@ func TestRenameUser(t *testing.T) {
 
 	t.Run("Non-Local", func(t *testing.T) {
 		u := &user_model.User{
+			ID:        2,
+			Name:      "old-name",
 			Type:      user_model.UserTypeIndividual,
 			LoginType: auth.OAuth2,
 		}
-		require.ErrorIs(t, RenameUser(db.DefaultContext, u, "user_rename"), user_model.ErrUserIsNotLocal{})
+		require.ErrorIs(t, RenameUser(db.DefaultContext, u, "user_rename2"), user_model.ErrUserIsNotLocal{UID: 2, Name: "old-name"})
+
+		t.Run("Admin", func(t *testing.T) {
+			require.NoError(t, AdminRenameUser(t.Context(), u, "user_rename2"))
+		})
 	})
 
 	t.Run("Same username", func(t *testing.T) {
@@ -190,7 +197,7 @@ func TestRenameUser(t *testing.T) {
 		require.NoError(t, RenameUser(db.DefaultContext, user, newUsername))
 		unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: user.ID, Name: newUsername, LowerName: strings.ToLower(newUsername)})
 
-		redirectUID, err := user_model.LookupUserRedirect(db.DefaultContext, oldUsername)
+		redirectUID, err := redirect_service.LookupUserRedirect(db.DefaultContext, user, oldUsername)
 		require.NoError(t, err)
 		assert.Equal(t, user.ID, redirectUID)
 

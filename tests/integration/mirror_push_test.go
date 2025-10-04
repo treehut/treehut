@@ -17,6 +17,7 @@ import (
 	"time"
 
 	asymkey_model "forgejo.org/models/asymkey"
+	auth_model "forgejo.org/models/auth"
 	"forgejo.org/models/db"
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/models/unit"
@@ -26,7 +27,9 @@ import (
 	"forgejo.org/modules/gitrepo"
 	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
+	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
+	"forgejo.org/modules/translation"
 	gitea_context "forgejo.org/services/context"
 	doctor "forgejo.org/services/doctor"
 	"forgejo.org/services/migrations"
@@ -37,6 +40,46 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPushMirrorRedactCredential(t *testing.T) {
+	defer test.MockVariableValue(&setting.Mirror.Enabled, true)()
+	defer tests.PrepareTestEnv(t)()
+
+	session := loginUser(t, "user2")
+	cloneAddr := "https://:TOKEN@example.com/example/example.git"
+
+	t.Run("Web route", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+
+		resp := session.MakeRequest(t, NewRequestWithValues(t, "POST", "/user2/repo1/settings", map[string]string{
+			"_csrf":                GetCSRF(t, session, "/user2/repo1/settings"),
+			"action":               "push-mirror-add",
+			"push_mirror_address":  cloneAddr,
+			"push_mirror_interval": "0",
+		}), http.StatusOK)
+
+		htmlDoc := NewHTMLParser(t, resp.Body)
+		assert.Contains(t,
+			htmlDoc.doc.Find(".ui.negative.message").Text(),
+			translation.NewLocale("en-US").Tr("migrate.form.error.url_credentials"),
+		)
+	})
+
+	t.Run("API route", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+
+		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
+		resp := MakeRequest(t, NewRequestWithJSON(t, "POST", "/api/v1/repos/user2/repo1/push_mirrors", &api.CreatePushMirrorOption{
+			RemoteAddress: cloneAddr,
+			Interval:      "0",
+		}).AddTokenAuth(token), http.StatusBadRequest)
+
+		var respBody map[string]any
+		DecodeJSON(t, resp, &respBody)
+
+		assert.Equal(t, "The URL contains credentials", respBody["message"])
+	})
+}
 
 func TestMirrorPush(t *testing.T) {
 	onGiteaRun(t, testMirrorPush)

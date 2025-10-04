@@ -2,7 +2,7 @@ module forgejo.org
 
 go 1.24
 
-toolchain go1.24.4
+toolchain go1.24.6
 
 require (
 	code.forgejo.org/f3/gof3/v3 v3.11.0
@@ -91,7 +91,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/ulikunitz/xz v0.5.12
+	github.com/ulikunitz/xz v0.5.15
 	github.com/urfave/cli/v3 v3.3.3
 	github.com/valyala/fastjson v1.6.4
 	github.com/yohcop/openid-go v1.0.1

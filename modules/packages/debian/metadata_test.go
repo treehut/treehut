@@ -167,6 +167,14 @@ func TestParseControlFile(t *testing.T) {
 		require.ErrorIs(t, err, ErrInvalidArchitecture)
 	})
 
+	t.Run("ValidVersionEpoch", func(t *testing.T) {
+		for _, version := range []string{"0:1.2.3-test", "1:1.2.3-test", "9:1.2.3-test", "10:1.2.3-test", "37:1.2.3-test", "99:1.2.3-test"} {
+			p, err := ParseControlFile(buildContent(packageName, version, packageArchitecture))
+			require.NoError(t, err)
+			assert.NotNil(t, p)
+		}
+	})
+
 	t.Run("Valid", func(t *testing.T) {
 		content := buildContent(packageName, packageVersion, packageArchitecture)
 		full := content.String()

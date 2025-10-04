@@ -5,6 +5,7 @@ package integration
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"forgejo.org/models/db"
@@ -92,8 +93,8 @@ func testSearchRepo(t *testing.T, indexer bool) {
 	testSearch(t, "/user2/glob/search?q=file5&page=1&mode=exact", []string{}, indexer)
 }
 
-func testSearch(t *testing.T, url string, expected []string, indexer bool) {
-	req := NewRequest(t, "GET", url)
+func testSearch(t *testing.T, rawURL string, expected []string, indexer bool) {
+	req := NewRequest(t, "GET", rawURL)
 	resp := MakeRequest(t, req, http.StatusOK)
 
 	doc := NewHTMLParser(t, resp.Body)
@@ -119,4 +120,41 @@ func testSearch(t *testing.T, url string, expected []string, indexer bool) {
 
 	filenames := resultFilenames(t, doc)
 	assert.ElementsMatch(t, expected, filenames)
+
+	testSearchPagination(t, rawURL, doc)
+}
+
+// Tests that the variables set in the url persist for all the paginated links
+func testSearchPagination(t *testing.T, rawURL string, doc *HTMLDoc) {
+	original, err := queryFromStr(rawURL)
+	require.NoError(t, err)
+
+	hrefs := doc.
+		Find(".pagination.menu a[href]:not(.disabled)").
+		Map(func(i int, el *goquery.Selection) string {
+			attr, ok := el.Attr("href")
+			require.True(t, ok)
+			return attr
+		})
+	query := make([]url.Values, len(hrefs))
+	for i, href := range hrefs {
+		query[i], err = queryFromStr(href)
+		require.NoError(t, err)
+	}
+
+	for key := range original {
+		for i, q := range query {
+			assert.Equal(t, original.Get(key), q.Get(key),
+				"failed at index '%d' with url '%v'", i, hrefs[i])
+		}
+	}
+}
+
+func queryFromStr(rawURL string) (url.Values, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return url.ParseQuery(u.RawQuery)
 }

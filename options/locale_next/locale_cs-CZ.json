@@ -35,9 +35,9 @@
     "discussion.locked": "Tato diskuze byla uzamčena. Komentování je omezené na přispěvatele.",
     "relativetime.future": "v budoucnu",
     "relativetime.years": {
-        "one": "Před %d rokem",
+        "one": "před %d rokem",
         "few": "Před %d lety",
-        "other": "Před %d lety"
+        "other": "před %d lety"
     },
     "relativetime.1day": "včera",
     "relativetime.2days": "před dvěma dny",
@@ -48,30 +48,30 @@
     "relativetime.1year": "minulý rok",
     "relativetime.2years": "před dvěma lety",
     "relativetime.weeks": {
-        "one": "Před %d týdnem",
+        "one": "před %d týdnem",
         "few": "Před %d týdny",
-        "other": "Před %d týdny"
+        "other": "před %d týdny"
     },
     "relativetime.days": {
-        "one": "Před %d dnem",
+        "one": "před %d dnem",
         "few": "Před %d dny",
-        "other": "Před %d dny"
+        "other": "před %d dny"
     },
     "relativetime.mins": {
-        "one": "Před %d minutou",
+        "one": "před %d minutou",
         "few": "Před %d minutami",
-        "other": "Před %d minutami"
+        "other": "před %d minutami"
     },
     "relativetime.hours": {
-        "one": "Před %d hodinou",
+        "one": "před %d hodinou",
         "few": "Před %d hodinami",
-        "other": "Před %d hodinami"
+        "other": "před %d hodinami"
     },
     "relativetime.now": "nyní",
     "relativetime.months": {
-        "one": "Před %d měsícem",
+        "one": "před %d měsícem",
         "few": "Před %d měsíci",
-        "other": "Před %d měsíci"
+        "other": "před %d měsíci"
     },
     "moderation.report_content": "Nahlásit obsah",
     "moderation.report_abuse_form.details": "Tento formulář je určen k nahlašování uživatelů, kteří si vytvářejí spamové profily, repozitáře, problémy, komentáře nebo se chovají nevhodně.",
@@ -111,5 +111,6 @@
     "feed.atom.link": "Zdroj Atom",
     "keys.ssh.link": "Klíče SSH",
     "keys.gpg.link": "Klíče GPG",
-    "mail.actions.run_info_sha": "Revize: %[1]s"
+    "mail.actions.run_info_sha": "Revize: %[1]s",
+    "repo.pulls.already_merged": "Sloučení selhalo: tato žádost již byla sloučena."
 }

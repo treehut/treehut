@@ -125,7 +125,7 @@ export default {
           const data = await response.json();
           const {total, ...rest} = data;
           // below line might be deleted if we are sure go produces map always sorted by keys
-          total.weeks = Object.fromEntries(Object.entries(total.weeks).sort());
+          total.weeks = Object.fromEntries(Object.entries(total.weeks).map((x) => [parseInt(x[0]), x[1]]).sort((a, b) => a[0] - b[0]));
 
           const weekValues = Object.values(total.weeks);
           this.xAxisStart = weekValues[0].week;

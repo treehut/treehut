@@ -1526,3 +1526,35 @@ func TestIssuePostersSearch(t *testing.T) {
 		assert.EqualValues(t, 1, data.Results[0].UserID)
 	})
 }
+
+func TestIssueAndPullRedirect(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	req := NewRequest(t, "GET", "/user2/repo1/issues/1")
+	MakeRequest(t, req, http.StatusOK)
+
+	req = NewRequest(t, "GET", "/user2/repo1/pulls/2")
+	MakeRequest(t, req, http.StatusOK)
+
+	req = NewRequest(t, "GET", "/user2/repo1/pulls/1")
+	resp := MakeRequest(t, req, http.StatusSeeOther)
+	assert.Equal(t, "/user2/repo1/issues/1", resp.Header().Get("Location"))
+
+	req = NewRequest(t, "GET", "/user2/repo1/pulls/1/commits")
+	resp = MakeRequest(t, req, http.StatusSeeOther)
+	assert.Equal(t, "/user2/repo1/issues/1", resp.Header().Get("Location"))
+
+	req = NewRequest(t, "GET", "/user2/repo1/pulls/1/files")
+	resp = MakeRequest(t, req, http.StatusSeeOther)
+	assert.Equal(t, "/user2/repo1/issues/1", resp.Header().Get("Location"))
+
+	req = NewRequest(t, "GET", "/user2/repo1/issues/2")
+	resp = MakeRequest(t, req, http.StatusSeeOther)
+	assert.Equal(t, "/user2/repo1/pulls/2", resp.Header().Get("Location"))
+
+	req = NewRequest(t, "GET", "/user2/repo1/issues/9999999")
+	MakeRequest(t, req, http.StatusNotFound)
+
+	req = NewRequest(t, "GET", "/user2/repo1/pulls/9999999")
+	MakeRequest(t, req, http.StatusNotFound)
+}

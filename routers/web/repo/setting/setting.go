@@ -542,7 +542,13 @@ func SettingsPost(ctx *context.Context) {
 
 		mirror_service.AddPullMirrorToQueue(repo.ID)
 
-		ctx.Flash.Info(ctx.Tr("repo.settings.pull_mirror_sync_in_progress", repo.OriginalURL))
+		sanitizedOriginalURL, err := util.SanitizeURL(repo.OriginalURL)
+		if err != nil {
+			ctx.ServerError("SanitizeURL", err)
+			return
+		}
+
+		ctx.Flash.Info(ctx.Tr("repo.settings.pull_mirror_sync_in_progress", sanitizedOriginalURL))
 		ctx.Redirect(repo.Link() + "/settings")
 
 	case "push-mirror-sync":
@@ -1091,6 +1097,8 @@ func handleSettingRemoteAddrError(ctx *context.Context, err error, form *forms.R
 			}
 		case addrErr.IsInvalidPath:
 			ctx.RenderWithErr(ctx.Tr("repo.migrate.invalid_local_path"), tplSettingsOptions, form)
+		case addrErr.HasCredentials:
+			ctx.RenderWithErr(ctx.Tr("migrate.form.error.url_credentials"), tplSettingsOptions, form)
 		default:
 			ctx.ServerError("Unknown error", err)
 		}

@@ -6,7 +6,15 @@ package pull
 import (
 	"testing"
 
+	"forgejo.org/models"
+	issues_model "forgejo.org/models/issues"
+	repo_model "forgejo.org/models/repo"
+	"forgejo.org/models/unittest"
+	user_model "forgejo.org/models/user"
+	"forgejo.org/modules/gitrepo"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_expandDefaultMergeMessage(t *testing.T) {
@@ -89,4 +97,30 @@ func TestAddCommitMessageTailer(t *testing.T) {
 	// add tailer for message with existing tailer and different value (will append)
 	assert.Equal(t, "title\n\nTest-tailer: v1\nTest-tailer: v2", AddCommitMessageTrailer("title\n\nTest-tailer: v1", "Test-tailer", "v2"))
 	assert.Equal(t, "title\n\nTest-tailer: v1\nTest-tailer: v2", AddCommitMessageTrailer("title\n\nTest-tailer: v1\n", "Test-tailer", "v2"))
+}
+
+func TestMergeMergedPR(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+	pr := unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{ID: 1})
+	doer := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+
+	require.NoError(t, pr.LoadBaseRepo(t.Context()))
+
+	gitRepo, err := gitrepo.OpenRepository(t.Context(), pr.BaseRepo)
+	require.NoError(t, err)
+	defer gitRepo.Close()
+
+	assert.True(t, pr.HasMerged)
+	pr.HasMerged = false
+
+	err = Merge(t.Context(), pr, doer, gitRepo, repo_model.MergeStyleRebase, "", "I should not exist", false)
+	require.Error(t, err)
+	assert.True(t, models.IsErrPullRequestHasMerged(err))
+
+	if mergeErr, ok := err.(models.ErrPullRequestHasMerged); ok {
+		assert.Equal(t, pr.ID, mergeErr.ID)
+		assert.Equal(t, pr.IssueID, mergeErr.IssueID)
+		assert.Equal(t, pr.HeadBranch, mergeErr.HeadBranch)
+		assert.Equal(t, pr.BaseBranch, mergeErr.BaseBranch)
+	}
 }

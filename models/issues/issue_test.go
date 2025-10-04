@@ -211,6 +211,30 @@ func TestIssues(t *testing.T) {
 			},
 			[]int64{2},
 		},
+		{
+			issues_model.IssuesOptions{
+				SubscriberID: 11,
+			},
+			[]int64{11, 5, 9, 8, 3, 2, 1},
+		},
+		{
+			issues_model.IssuesOptions{
+				SubscriberID: 4,
+			},
+			[]int64{11, 5, 7, 4, 3, 2, 1},
+		},
+		{
+			issues_model.IssuesOptions{
+				SubscriberID: 1,
+			},
+			[]int64{11, 6, 5, 3, 2, 1},
+		},
+		{
+			issues_model.IssuesOptions{
+				SubscriberID: 8,
+			},
+			[]int64{},
+		},
 	} {
 		issues, err := issues_model.Issues(db.DefaultContext, &test.Opts)
 		require.NoError(t, err)

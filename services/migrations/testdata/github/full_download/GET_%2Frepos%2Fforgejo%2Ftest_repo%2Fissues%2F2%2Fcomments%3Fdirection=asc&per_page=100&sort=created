@@ -1,0 +1,25 @@
+X-Content-Type-Options: nosniff
+X-Xss-Protection: 0
+Cache-Control: private, max-age=60, s-maxage=60
+X-Oauth-Scopes: public_repo, repo:status
+X-Github-Media-Type: github.v3; param=squirrel-girl-preview
+X-Ratelimit-Reset: 1755007969
+Strict-Transport-Security: max-age=31536000; includeSubdomains; preload
+Content-Security-Policy: default-src 'none'
+X-Github-Request-Id: E80A:118F3A:206AFD:1E8691:689B401E
+Content-Type: application/json; charset=utf-8
+X-Github-Api-Version-Selected: 2022-11-28
+X-Ratelimit-Remaining: 4873
+X-Ratelimit-Used: 127
+Access-Control-Expose-Headers: ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset
+Referrer-Policy: origin-when-cross-origin, strict-origin-when-cross-origin
+Vary: Accept, Authorization, Cookie, X-GitHub-OTP,Accept-Encoding, Accept, X-Requested-With
+X-Accepted-Oauth-Scopes: 
+Github-Authentication-Token-Expiration: 2025-09-11 10:37:11 UTC
+Etag: W/"efada731cc49c5e9612cad9e891f65f645857f94ff3ea109dc80927064a5978c"
+X-Ratelimit-Limit: 5000
+X-Ratelimit-Resource: core
+Access-Control-Allow-Origin: *
+X-Frame-Options: deny
+
+[{"url":"https://api.github.com/repos/forgejo/test_repo/issues/comments/3164123494","html_url":"https://github.com/forgejo/test_repo/issues/2#issuecomment-3164123494","issue_url":"https://api.github.com/repos/forgejo/test_repo/issues/2","id":3164123494,"node_id":"IC_kwDOPZ8tBM68mLFm","user":{"login":"PatDyn","id":37243484,"node_id":"MDQ6VXNlcjM3MjQzNDg0","avatar_url":"https://avatars.githubusercontent.com/u/37243484?v=4","gravatar_id":"","url":"https://api.github.com/users/PatDyn","html_url":"https://github.com/PatDyn","followers_url":"https://api.github.com/users/PatDyn/followers","following_url":"https://api.github.com/users/PatDyn/following{/other_user}","gists_url":"https://api.github.com/users/PatDyn/gists{/gist_id}","starred_url":"https://api.github.com/users/PatDyn/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/PatDyn/subscriptions","organizations_url":"https://api.github.com/users/PatDyn/orgs","repos_url":"https://api.github.com/users/PatDyn/repos","events_url":"https://api.github.com/users/PatDyn/events{/privacy}","received_events_url":"https://api.github.com/users/PatDyn/received_events","type":"User","user_view_type":"public","site_admin":false},"created_at":"2025-08-07T13:07:25Z","updated_at":"2025-08-07T13:07:25Z","author_association":"COLLABORATOR","body":"Mentioning #3 \nWith some **bold** *statement*","reactions":{"url":"https://api.github.com/repos/forgejo/test_repo/issues/comments/3164123494/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"performed_via_github_app":null}]

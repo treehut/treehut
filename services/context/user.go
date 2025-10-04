@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	user_model "forgejo.org/models/user"
+	redirect_service "forgejo.org/services/redirect"
 )
 
 // UserAssignmentWeb returns a middleware to handle context-user assignment for web routes
@@ -68,12 +69,12 @@ func userAssignment(ctx *Base, doer *user_model.User, errCb func(int, string, an
 		contextUser, err = user_model.GetUserByName(ctx, username)
 		if err != nil {
 			if user_model.IsErrUserNotExist(err) {
-				if redirectUserID, err := user_model.LookupUserRedirect(ctx, username); err == nil {
+				if redirectUserID, err := redirect_service.LookupUserRedirect(ctx, doer, username); err == nil {
 					RedirectToUser(ctx, username, redirectUserID)
 				} else if user_model.IsErrUserRedirectNotExist(err) {
 					errCb(http.StatusNotFound, "GetUserByName", err)
 				} else {
-					errCb(http.StatusInternalServerError, "LookupUserRedirect", err)
+					errCb(http.StatusInternalServerError, "LookupRedirect", err)
 				}
 			} else {
 				errCb(http.StatusInternalServerError, "GetUserByName", err)

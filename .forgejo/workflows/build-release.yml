@@ -164,7 +164,7 @@ jobs:
 
       - name: build container & release
         if: ${{ secrets.TOKEN != '' }}
-        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/build@v5.3.5
+        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/build@v5.4.1
         with:
           forgejo: "${{ env.GITHUB_SERVER_URL }}"
           owner: "${{ env.GITHUB_REPOSITORY_OWNER }}"
@@ -183,7 +183,7 @@ jobs:
 
       - name: build rootless container
         if: ${{ secrets.TOKEN != '' }}
-        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/build@v5.3.5
+        uses: https://data.forgejo.org/forgejo/forgejo-build-publish/build@v5.4.1
         with:
           forgejo: "${{ env.GITHUB_SERVER_URL }}"
           owner: "${{ env.GITHUB_REPOSITORY_OWNER }}"
@@ -212,6 +212,7 @@ jobs:
           destination-repo: forgejo/end-to-end
           destination-branch: main
           destination-token: ${{ secrets.CASCADE_DESTINATION_TOKEN }}
+          close: true
           update: .forgejo/cascading-release-end-to-end
 
       - name: copy to experimental

@@ -78,6 +78,7 @@ func TestPatchStatus(t *testing.T) {
 		// Clone repository.
 		dstPath := t.TempDir()
 		require.NoError(t, git.Clone(t.Context(), u.String(), dstPath, git.CloneRepoOptions{}))
+		doGitSetRemoteURL(dstPath, "origin", u)(t)
 
 		// Add `fork` remote.
 		u.Path = forkRepo.FullName()
@@ -143,11 +144,19 @@ func TestPatchStatus(t *testing.T) {
 			require.NoError(t, git.NewCommand(t.Context(), "push", "origin", "HEAD:main").Run(&git.RunOpts{Dir: dstPath}))
 			require.NoError(t, git.NewCommand(t.Context(), "switch", "normal").Run(&git.RunOpts{Dir: dstPath}))
 
+			assertConflictAndLoadBean := func(t *testing.T, pr issues_model.PullRequest, flow string) *issues_model.PullRequest {
+				t.Helper()
+				var found *issues_model.PullRequest
+				assert.Eventually(t, func() bool {
+					examplar := pr
+					found = unittest.AssertExistsAndLoadBean(t, &examplar, flow)
+					return found.Status == issues_model.PullRequestStatusConflict
+				}, time.Second*30, time.Millisecond*200)
+				return found
+			}
 			// Wait until status check queue is done, we cannot access the queue's
 			// internal information so we rely on the status of the patch being changed.
-			assert.Eventually(t, func() bool {
-				return unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{ID: normalAGitPR.ID}).Status == issues_model.PullRequestStatusConflict
-			}, time.Second*30, time.Millisecond*200)
+			_ = assertConflictAndLoadBean(t, issues_model.PullRequest{ID: normalAGitPR.ID}, "flow = 1")
 
 			test := func(t *testing.T, pr *issues_model.PullRequest) {
 				t.Helper()
@@ -164,7 +173,7 @@ func TestPatchStatus(t *testing.T) {
 				t.Run("Existing", func(t *testing.T) {
 					defer tests.PrintCurrentTest(t)()
 
-					pr := unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{BaseRepoID: repo.ID, HeadRepoID: forkRepo.ID, HeadBranch: "normal"}, "flow = 0")
+					pr := assertConflictAndLoadBean(t, issues_model.PullRequest{BaseRepoID: repo.ID, HeadRepoID: forkRepo.ID, HeadBranch: "normal"}, "flow = 0")
 					test(t, pr)
 					testAutomergeQueued(t, pr, issues_model.PullRequestStatusConflict)
 				})
@@ -175,7 +184,7 @@ func TestPatchStatus(t *testing.T) {
 					require.NoError(t, git.NewCommand(t.Context(), "push", "fork", "HEAD:conflict").Run(&git.RunOpts{Dir: dstPath}))
 					testPullCreateDirectly(t, session, repo.OwnerName, repo.Name, repo.DefaultBranch, forkRepo.OwnerName, forkRepo.Name, "conflict", "across repo conflict")
 
-					test(t, unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{BaseRepoID: repo.ID, HeadRepoID: forkRepo.ID, HeadBranch: "conflict"}, "flow = 0"))
+					test(t, assertConflictAndLoadBean(t, issues_model.PullRequest{BaseRepoID: repo.ID, HeadRepoID: forkRepo.ID, HeadBranch: "conflict"}, "flow = 0"))
 				})
 			})
 

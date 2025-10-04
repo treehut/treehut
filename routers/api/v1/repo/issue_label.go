@@ -384,7 +384,7 @@ func prepareForReplaceOrAdd(ctx *context.APIContext, form api.IssueLabelsOption)
 
 	if !ctx.Repo.CanWriteIssuesOrPulls(issue.IsPull) {
 		ctx.Status(http.StatusForbidden)
-		return nil, nil, nil
+		return nil, nil, errors.New("not issue/pull writer")
 	}
 
 	err = issue_service.SetIssueUpdateDate(ctx, issue, form.Updated, ctx.Doer)

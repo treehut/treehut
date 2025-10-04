@@ -201,7 +201,7 @@ func NewUserPost(ctx *context.Context) {
 		return
 	}
 
-	if !validation.IsEmailDomainAllowed(u.Email) {
+	if _, ok := validation.IsEmailDomainAllowed(u.Email); !ok {
 		ctx.Flash.Warning(ctx.Tr("form.email_domain_is_not_allowed", u.Email))
 	}
 
@@ -421,7 +421,7 @@ func EditUserPost(ctx *context.Context) {
 			}
 			return
 		}
-		if !validation.IsEmailDomainAllowed(form.Email) {
+		if _, ok := validation.IsEmailDomainAllowed(form.Email); !ok {
 			ctx.Flash.Warning(ctx.Tr("form.email_domain_is_not_allowed", form.Email))
 		}
 	}

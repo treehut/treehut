@@ -20,6 +20,7 @@ import (
 
 	"github.com/nektos/act/pkg/jobparser"
 	act_model "github.com/nektos/act/pkg/model"
+	"github.com/robfig/cron/v3"
 	"xorm.io/builder"
 )
 
@@ -83,20 +84,33 @@ func startTasks(ctx context.Context) error {
 				}
 				return fmt.Errorf("GetUnit: %w", err)
 			}
-			if cfg.ActionsConfig().IsWorkflowDisabled(row.Schedule.WorkflowID) {
+			actionConfig := cfg.ActionsConfig()
+			if actionConfig.IsWorkflowDisabled(row.Schedule.WorkflowID) {
 				continue
 			}
 
-			if err := CreateScheduleTask(ctx, row.Schedule); err != nil {
-				log.Error("CreateScheduleTask: %v", err)
-				return err
+			createAndSchedule := func(row *actions_model.ActionScheduleSpec) (cron.Schedule, error) {
+				if err := CreateScheduleTask(ctx, row.Schedule); err != nil {
+					return nil, fmt.Errorf("CreateScheduleTask: %v", err)
+				}
+
+				// Parse the spec
+				schedule, err := row.Parse()
+				if err != nil {
+					return nil, fmt.Errorf("Parse(Spec=%v): %v", row.Spec, err)
+				}
+				return schedule, nil
 			}
 
-			// Parse the spec
-			schedule, err := row.Parse()
+			schedule, err := createAndSchedule(row)
 			if err != nil {
-				log.Error("Parse: %v", err)
-				return err
+				log.Error("RepoID=%v WorkflowID=%v: %v", row.Schedule.RepoID, row.Schedule.WorkflowID, err)
+				actionConfig.DisableWorkflow(row.Schedule.WorkflowID)
+				if err := repo_model.UpdateRepoUnit(ctx, cfg); err != nil {
+					log.Error("RepoID=%v WorkflowID=%v: CreateScheduleTask: %v", row.Schedule.RepoID, row.Schedule.WorkflowID, err)
+					return err
+				}
+				continue
 			}
 
 			// Update the spec's next run time and previous run time
@@ -153,7 +167,7 @@ func CreateScheduleTask(ctx context.Context, cron *actions_model.ActionSchedule)
 	run.NotifyEmail = notifications
 
 	// Parse the workflow specification from the cron schedule
-	workflows, err := jobparser.Parse(cron.Content, jobparser.WithVars(vars))
+	workflows, err := jobParser(cron.Content, jobparser.WithVars(vars))
 	if err != nil {
 		return err
 	}

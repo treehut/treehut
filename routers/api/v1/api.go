@@ -69,6 +69,7 @@ package v1
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	actions_model "forgejo.org/models/actions"
@@ -100,6 +101,7 @@ import (
 	"forgejo.org/services/auth"
 	"forgejo.org/services/context"
 	"forgejo.org/services/forms"
+	redirect_service "forgejo.org/services/redirect"
 
 	_ "forgejo.org/routers/api/v1/swagger" // for swagger generation
 
@@ -153,12 +155,12 @@ func repoAssignment() func(ctx *context.APIContext) {
 			owner, err = user_model.GetUserByName(ctx, userName)
 			if err != nil {
 				if user_model.IsErrUserNotExist(err) {
-					if redirectUserID, err := user_model.LookupUserRedirect(ctx, userName); err == nil {
+					if redirectUserID, err := redirect_service.LookupUserRedirect(ctx, ctx.Doer, userName); err == nil {
 						context.RedirectToUser(ctx.Base, userName, redirectUserID)
 					} else if user_model.IsErrUserRedirectNotExist(err) {
 						ctx.NotFound("GetUserByName", err)
 					} else {
-						ctx.Error(http.StatusInternalServerError, "LookupUserRedirect", err)
+						ctx.Error(http.StatusInternalServerError, "LookupRedirect", err)
 					}
 				} else {
 					ctx.Error(http.StatusInternalServerError, "GetUserByName", err)
@@ -173,7 +175,7 @@ func repoAssignment() func(ctx *context.APIContext) {
 		repo, err := repo_model.GetRepositoryByName(ctx, owner.ID, repoName)
 		if err != nil {
 			if repo_model.IsErrRepoNotExist(err) {
-				redirectRepoID, err := repo_model.LookupRedirect(ctx, owner.ID, repoName)
+				redirectRepoID, err := redirect_service.LookupRepoRedirect(ctx, ctx.Doer, owner.ID, repoName)
 				if err == nil {
 					context.RedirectToRepo(ctx.Base, redirectRepoID)
 				} else if repo_model.IsErrRedirectNotExist(err) {
@@ -414,8 +416,11 @@ func reqBasicOrRevProxyAuth() func(ctx *context.APIContext) {
 		if ctx.IsSigned && setting.Service.EnableReverseProxyAuthAPI && ctx.Data["AuthedMethod"].(string) == auth.ReverseProxyMethodName {
 			return
 		}
-		if !ctx.IsBasicAuth {
-			ctx.Error(http.StatusUnauthorized, "reqBasicAuth", "auth required")
+
+		// Require basic authorization method to be used and that basic
+		// authorization used password login to verify the user.
+		if passwordLogin, ok := ctx.Data["IsPasswordLogin"].(bool); !ok || !passwordLogin {
+			ctx.Error(http.StatusUnauthorized, "reqBasicAuth", "auth method not allowed")
 			return
 		}
 	}
@@ -464,6 +469,12 @@ func reqAdmin() func(ctx *context.APIContext) {
 // reqRepoWriter user should have a permission to write to a repo, or be a site admin
 func reqRepoWriter(unitTypes ...unit.Type) func(ctx *context.APIContext) {
 	return func(ctx *context.APIContext) {
+		if !slices.ContainsFunc(unitTypes, func(unitType unit.Type) bool {
+			return ctx.Repo.Repository.UnitEnabled(ctx, unitType)
+		}) {
+			ctx.NotFound()
+			return
+		}
 		if !ctx.IsUserRepoWriter(unitTypes) && !ctx.IsUserRepoAdmin() && !ctx.IsUserSiteAdmin() {
 			ctx.Error(http.StatusForbidden, "reqRepoWriter", "user should have a permission to write to a repo")
 			return
@@ -483,6 +494,10 @@ func reqRepoBranchWriter(ctx *context.APIContext) {
 // reqRepoReader user should have specific read permission or be a repo admin or a site admin
 func reqRepoReader(unitType unit.Type) func(ctx *context.APIContext) {
 	return func(ctx *context.APIContext) {
+		if !ctx.Repo.Repository.UnitEnabled(ctx, unitType) {
+			ctx.NotFound()
+			return
+		}
 		if !ctx.Repo.CanRead(unitType) && !ctx.IsUserRepoAdmin() && !ctx.IsUserSiteAdmin() {
 			ctx.Error(http.StatusForbidden, "reqRepoReader", "user should have specific read permission or be a repo admin or a site admin")
 			return
@@ -638,13 +653,13 @@ func orgAssignment(args ...bool) func(ctx *context.APIContext) {
 			ctx.Org.Organization, err = organization.GetOrgByName(ctx, ctx.Params(":org"))
 			if err != nil {
 				if organization.IsErrOrgNotExist(err) {
-					redirectUserID, err := user_model.LookupUserRedirect(ctx, ctx.Params(":org"))
+					redirectUserID, err := redirect_service.LookupUserRedirect(ctx, ctx.Doer, ctx.Params(":org"))
 					if err == nil {
 						context.RedirectToUser(ctx.Base, ctx.Params(":org"), redirectUserID)
 					} else if user_model.IsErrUserRedirectNotExist(err) {
 						ctx.NotFound("GetOrgByName", err)
 					} else {
-						ctx.Error(http.StatusInternalServerError, "LookupUserRedirect", err)
+						ctx.Error(http.StatusInternalServerError, "LookupRedirect", err)
 					}
 				} else {
 					ctx.Error(http.StatusInternalServerError, "GetOrgByName", err)
@@ -735,6 +750,26 @@ func mustEnableIssuesOrPulls(ctx *context.APIContext) {
 					ctx.Repo.Permission)
 			}
 		}
+		ctx.NotFound()
+		return
+	}
+}
+
+func mustEnableLocalIssuesIfIsIssue(ctx *context.APIContext) {
+	if ctx.Repo.Repository.UnitEnabled(ctx, unit.TypeIssues) {
+		return
+	}
+
+	issue, err := issues_model.GetIssueByIndex(ctx, ctx.Repo.Repository.ID, ctx.ParamsInt64(":index"))
+	if err != nil {
+		if issues_model.IsErrIssueNotExist(err) {
+			ctx.NotFound()
+		} else {
+			ctx.Error(http.StatusInternalServerError, "GetIssueByIndex", err)
+		}
+		return
+	}
+	if !issue.IsPull {
 		ctx.NotFound()
 		return
 	}
@@ -1419,7 +1454,7 @@ func Routes() *web.Route {
 						m.Group("/comments", func() {
 							m.Combo("").Get(repo.ListIssueComments).
 								Post(reqToken(), mustNotBeArchived, bind(api.CreateIssueCommentOption{}), repo.CreateIssueComment)
-							m.Combo("/{id}", reqToken()).Patch(bind(api.EditIssueCommentOption{}), repo.EditIssueCommentDeprecated).
+							m.Combo("/{id}", reqToken(), commentAssignment(":id")).Patch(bind(api.EditIssueCommentOption{}), repo.EditIssueCommentDeprecated).
 								Delete(repo.DeleteIssueCommentDeprecated)
 						})
 						m.Get("/timeline", repo.ListIssueCommentsAndTimeline)
@@ -1476,7 +1511,7 @@ func Routes() *web.Route {
 								Delete(reqToken(), reqAdmin(), repo.UnpinIssue)
 							m.Patch("/{position}", reqToken(), reqAdmin(), repo.MoveIssuePin)
 						})
-					})
+					}, mustEnableLocalIssuesIfIsIssue)
 				}, mustEnableIssuesOrPulls)
 				m.Group("/labels", func() {
 					m.Combo("").Get(repo.ListLabels).
