@@ -14,7 +14,7 @@ test:
 		-v treehut-mini:/data \
 		tree.ht/nightly:$(TAG)
 
-TAGFLAGS := -t ghcr.io/treehut/treehut:$(TAG) -t ghcr.io/treehut/treehut:$(VERSION).$(REV)
+TAGFLAGS := -t codeberg.org/treehut/treehut:$(TAG) -t codeberg.org/treehut/treehut:$(VERSION).$(REV)
 
 pub:
 	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
