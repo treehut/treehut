@@ -129,14 +129,13 @@
 					</a>
 				{{end}}
 
-								{{if and .EnableActions (not .UnitActionsGlobalDisabled) (.Permission.CanRead $.UnitTypeActions)}}
+				{{if and .EnableActions (not .UnitActionsGlobalDisabled) (.Permission.CanRead $.UnitTypeActions)}}
 					<a class="{{if .PageIsActions}}active {{end}}item" href="{{.RepoLink}}/actions">
 						{{svg "octicon-play"}} {{ctx.Locale.Tr "actions.actions"}}
 						{{if .NumOpenActionRuns}}
 							<span class="ui small label">{{CountFmt .NumOpenActionRuns}}</span>
 						{{end}}
 					</a>
-				{{end}}
 				{{end}}
 
 				{{if and (.Permission.CanRead $.UnitTypeReleases) (not .IsEmptyRepo)}}
