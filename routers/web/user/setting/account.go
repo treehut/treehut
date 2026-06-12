@@ -19,7 +19,7 @@ import (
 	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/validation"
 	"forgejo.org/modules/web"
-	"forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/auth/source/db"
 	"forgejo.org/services/auth/source/smtp"
 	"forgejo.org/services/context"
@@ -274,7 +274,7 @@ func DeleteAccount(ctx *context.Context) {
 	ctx.Data["Title"] = ctx.Tr("settings")
 	ctx.Data["PageIsSettingsAccount"] = true
 
-	if _, _, err := auth.UserSignIn(ctx, ctx.Doer.Name, ctx.FormString("password")); err != nil {
+	if _, _, err := auth_method.UserSignIn(ctx, ctx.Doer.Name, ctx.FormString("password")); err != nil {
 		switch {
 		case user_model.IsErrUserNotExist(err):
 			loadAccountData(ctx)

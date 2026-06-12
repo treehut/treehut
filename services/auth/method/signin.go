@@ -1,7 +1,7 @@
 // Copyright 2021 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-package auth
+package method
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/optional"
+	auth_service "forgejo.org/services/auth"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/auth/source/smtp"
 
@@ -65,7 +66,7 @@ func UserSignIn(ctx context.Context, username, password string) (*user_model.Use
 				return nil, nil, oauth2.ErrAuthSourceNotActivated
 			}
 
-			authenticator, ok := source.Cfg.(PasswordAuthenticator)
+			authenticator, ok := source.Cfg.(auth_service.PasswordAuthenticator)
 			if !ok {
 				return nil, nil, smtp.ErrUnsupportedLoginType
 			}
@@ -98,7 +99,7 @@ func UserSignIn(ctx context.Context, username, password string) (*user_model.Use
 			continue
 		}
 
-		authenticator, ok := source.Cfg.(PasswordAuthenticator)
+		authenticator, ok := source.Cfg.(auth_service.PasswordAuthenticator)
 		if !ok {
 			continue
 		}

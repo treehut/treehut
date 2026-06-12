@@ -2,7 +2,7 @@
 // Copyright 2019 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-package auth
+package method
 
 import (
 	"fmt"
@@ -17,6 +17,7 @@ import (
 	"forgejo.org/modules/session"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/web/middleware"
+	"forgejo.org/services/auth"
 	user_service "forgejo.org/services/user"
 )
 
@@ -63,7 +64,7 @@ func isArchivePath(req *http.Request) bool {
 }
 
 // handleSignIn clears existing session variables and stores new ones for the specified user object
-func handleSignIn(resp http.ResponseWriter, req *http.Request, sess SessionStore, user *user_model.User) {
+func handleSignIn(resp http.ResponseWriter, req *http.Request, sess auth.SessionStore, user *user_model.User) {
 	// We need to regenerate the session...
 	newSess, err := session.RegenerateSession(resp, req)
 	if err != nil {

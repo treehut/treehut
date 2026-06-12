@@ -28,6 +28,7 @@ test('Dialog modal', async ({page}) => {
 
   await page.locator('.quick-pull-choice input[value="direct"]').click();
   await page.getByRole('button', {name: 'Commit changes'}).click();
+  await expect(page).toHaveURL(`/user2/repo1/src/branch/master/${filename}`);
 
   response = await page.goto(`/user2/repo1/_edit/master/${filename}`, {waitUntil: 'domcontentloaded'});
   expect(response?.status()).toBe(200);

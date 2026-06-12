@@ -10,10 +10,9 @@ import (
 
 	actions_model "forgejo.org/models/actions"
 	auth_model "forgejo.org/models/auth"
-	org_model "forgejo.org/models/organization"
-	"forgejo.org/models/unittest"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,8 +21,9 @@ import (
 func TestAPIOrgVariablesCreateOrganizationVariable(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	org := unittest.AssertExistsAndLoadBean(t, &org_model.Organization{Name: "org3"})
-	session := loginUser(t, "user2")
+	owner := forgery.CreateUser(t, nil)
+	org := forgery.CreateOrganisation(t, owner)
+	session := loginUser(t, owner.Name)
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteOrganization)
 
 	cases := []struct {
@@ -98,8 +98,9 @@ func TestAPIOrgVariablesCreateOrganizationVariable(t *testing.T) {
 func TestAPIOrgVariablesUpdateOrganizationVariable(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	org := unittest.AssertExistsAndLoadBean(t, &org_model.Organization{Name: "org3"})
-	session := loginUser(t, "user2")
+	owner := forgery.CreateUser(t, nil)
+	org := forgery.CreateOrganisation(t, owner)
+	session := loginUser(t, owner.Name)
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteOrganization)
 
 	variableName := "test_update_var"
@@ -194,10 +195,12 @@ func TestAPIOrgVariablesUpdateOrganizationVariable(t *testing.T) {
 func TestAPIOrgVariablesDeleteOrganizationVariable(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	org := unittest.AssertExistsAndLoadBean(t, &org_model.Organization{Name: "org3"})
+	owner := forgery.CreateUser(t, nil)
+	org := forgery.CreateOrganisation(t, owner)
+
 	variable, err := actions_model.InsertVariable(t.Context(), org.ID, 0, "FORGEJO_FORBIDDEN", "illegal")
 	require.NoError(t, err)
-	session := loginUser(t, "user2")
+	session := loginUser(t, owner.Name)
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteOrganization)
 
 	variableName := "test_delete_var"
@@ -226,8 +229,9 @@ func TestAPIOrgVariablesDeleteOrganizationVariable(t *testing.T) {
 func TestAPIOrgVariablesGetSingleOrganizationVariable(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	org := unittest.AssertExistsAndLoadBean(t, &org_model.Organization{Name: "org3"})
-	session := loginUser(t, "user2")
+	owner := forgery.CreateUser(t, nil)
+	org := forgery.CreateOrganisation(t, owner)
+	session := loginUser(t, owner.Name)
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteOrganization)
 
 	name := "some_variable"
@@ -258,8 +262,9 @@ func TestAPIOrgVariablesGetSingleOrganizationVariable(t *testing.T) {
 func TestAPIOrgVariablesGetAllOrganizationVariables(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	org := unittest.AssertExistsAndLoadBean(t, &org_model.Organization{Name: "org3"})
-	session := loginUser(t, "user2")
+	owner := forgery.CreateUser(t, nil)
+	org := forgery.CreateOrganisation(t, owner)
+	session := loginUser(t, owner.Name)
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteOrganization)
 
 	variables := map[string]string{"second": "Dolor sit amet", "first": "Lorem ipsum"}

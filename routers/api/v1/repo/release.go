@@ -62,7 +62,10 @@ func GetRelease(ctx *context.APIContext) {
 		ctx.NotFound()
 		return
 	}
-
+	if release.IsDraft && !ctx.Repo.CanWrite(unit.TypeReleases) {
+		ctx.NotFound()
+		return
+	}
 	if err := release.LoadAttributes(ctx); err != nil {
 		ctx.Error(http.StatusInternalServerError, "LoadAttributes", err)
 		return
@@ -103,7 +106,6 @@ func GetLatestRelease(ctx *context.APIContext) {
 		ctx.NotFound()
 		return
 	}
-
 	if err := release.LoadAttributes(ctx); err != nil {
 		ctx.Error(http.StatusInternalServerError, "LoadAttributes", err)
 		return

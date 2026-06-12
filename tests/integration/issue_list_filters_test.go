@@ -5,6 +5,7 @@ package integration
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"forgejo.org/modules/translation"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests for contents of pages .../issues and .../pulls
@@ -45,9 +47,8 @@ func TestIssueSorting(t *testing.T) {
 			htmlDoc.Find(`.list-header-sort .menu a`).Length(),
 			"Wrong amount of sort options in dropdown")
 
-		menuItemsHTML := htmlDoc.Find(`.list-header-sort .menu`).Text()
 		locale := translation.NewLocale("en-US")
-		for _, key := range []string{
+		keys := []string{
 			"relevance",
 			"latest",
 			"oldest",
@@ -57,12 +58,25 @@ func TestIssueSorting(t *testing.T) {
 			"leastcomment",
 			"nearduedate",
 			"farduedate",
-		} {
-			assert.Contains(t,
-				menuItemsHTML,
-				locale.Tr("repo.issues.filter_sort."+key),
-				"Sort option %s ('%s') not found in dropdown", key, locale.Tr("repo.issues.filter_sort."+key))
 		}
+
+		actual := htmlDoc.
+			Find(`.list-header-sort .menu .item`).
+			Map(func(i int, element *goquery.Selection) string {
+				href, ok := element.Attr("href")
+				assert.True(t, ok)
+
+				values, err := url.ParseQuery(href)
+				require.NoError(t, err)
+				assert.True(t, values.Has("sort"))
+
+				sort := values.Get("sort")
+				assert.Contains(t, keys, sort)
+				assert.Contains(t, element.Text(), locale.Tr("repo.issues.filter_sort."+sort))
+				return sort
+			})
+
+		assert.Equal(t, keys, actual)
 	})
 }
 

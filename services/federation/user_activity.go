@@ -9,8 +9,8 @@ import (
 	activities_model "forgejo.org/models/activities"
 	"forgejo.org/models/forgefed"
 	"forgejo.org/models/user"
+	"forgejo.org/modules/log"
 	"forgejo.org/modules/setting"
-	"forgejo.org/modules/structs"
 	"forgejo.org/services/convert"
 
 	ap "github.com/go-ap/activitypub"
@@ -64,17 +64,16 @@ func NotifyActivityPubFollowers(ctx context.Context, actions []activities_model.
 		return nil
 	}
 	for _, act := range actions {
-		if act.Repo != nil {
-			if act.Repo.IsPrivate {
-				continue
-			}
-			if act.Repo.Owner.KeepActivityPrivate || act.Repo.Owner.Visibility != structs.VisibleTypePublic {
-				continue
-			}
-		}
-		if act.ActUser.KeepActivityPrivate || act.ActUser.Visibility != structs.VisibleTypePublic {
+		private, err := act.IsActionPrivate(ctx)
+		if err != nil {
+			log.Error("Failed to check if action is private: %s", err.Error())
 			continue
 		}
+
+		if private {
+			continue
+		}
+
 		if err := SendUserActivity(ctx, act.ActUser, &act); err != nil {
 			return err
 		}

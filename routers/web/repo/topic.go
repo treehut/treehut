@@ -29,7 +29,7 @@ func TopicsPost(ctx *context.Context) {
 
 	validTopics, invalidTopics := repo_model.SanitizeAndValidateTopics(topics)
 
-	if len(validTopics) > 25 {
+	if len(validTopics) > repo_model.MaxTopicsPerRepo {
 		ctx.JSON(http.StatusUnprocessableEntity, map[string]any{
 			"invalidTopics": nil,
 			"message":       ctx.Tr("repo.topic.count_prompt"),

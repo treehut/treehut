@@ -11,12 +11,10 @@ import (
 	"testing"
 
 	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/test"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -37,21 +35,18 @@ func TestRenderFileSVGIsInImgTag(t *testing.T) {
 
 func TestAmbiguousCharacterDetection(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-		session := loginUser(t, user2.Name)
+		user := forgery.CreateUser(t, nil)
+		session := loginUser(t, user.Name)
 
 		// Prepare the environments. File view, commit view (diff), wiki page.
-		repo, commitID, f := tests.CreateDeclarativeRepo(t, user2, "",
-			[]unit_model.Type{unit_model.TypeCode, unit_model.TypeWiki}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "test.sh",
-					ContentReader: strings.NewReader("Hello there!\nline western"),
-				},
+		var commitID string
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"test.sh": forgery.MapFile("Hello there!\nline western"),
 			},
-		)
-		defer f()
+			LatestSha: &commitID,
+		})
+		forgery.EnableRepoUnits(t, repo, unit_model.TypeWiki)
 
 		req := NewRequestWithValues(t, "POST", repo.Link()+"/wiki?action=new", map[string]string{
 			"title":   "Normal",
@@ -132,19 +127,16 @@ func TestAmbiguousCharacterDetection(t *testing.T) {
 
 func TestCommitListActions(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-		session := loginUser(t, user2.Name)
-		repo, commitID, f := tests.CreateDeclarativeRepo(t, user2, "",
-			[]unit_model.Type{unit_model.TypeCode, unit_model.TypeWiki}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "test.sh",
-					ContentReader: strings.NewReader("Hello there!"),
-				},
+		user := forgery.CreateUser(t, nil)
+		session := loginUser(t, user.Name)
+		var commitID string
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"test.sh": forgery.MapFile("Hello there!"),
 			},
-		)
-		defer f()
+			LatestSha: &commitID,
+		})
+		forgery.EnableRepoUnits(t, repo, unit_model.TypeWiki)
 
 		req := NewRequestWithValues(t, "POST", repo.Link()+"/wiki?action=new", map[string]string{
 			"title":   "Normal",

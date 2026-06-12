@@ -20,6 +20,9 @@ func init() {
 	db.RegisterModel(new(RepoTopic))
 }
 
+// MaxTopicsPerRepo caps the amount of topics allowed per repository.
+const MaxTopicsPerRepo = 25
+
 var topicPattern = regexp.MustCompile(`^[a-z0-9][-.a-z0-9]*$`)
 
 // Topic represents a topic of repositories

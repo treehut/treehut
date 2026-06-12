@@ -6,7 +6,7 @@
   commit_sha: c2d72f548424103f01ee1dc02889c1e2bff816b0
   is_fork_pull_request: false
   name: job_2
-  attempt: 1
+  attempt: 3
   job_id: job_2
   task_id: 47
   status: 1
@@ -199,7 +199,7 @@
   commit_sha: 985f0301dba5e7b34be866819cd15ad3d8f508ee
   is_fork_pull_request: false
   name: job_2
-  attempt: 0
+  attempt: 1
   job_id: job_2
   task_id: null
   status: 5

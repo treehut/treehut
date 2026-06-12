@@ -89,6 +89,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -163,11 +164,20 @@ func ArtifactsV4Routes(prefix string) *web.Route {
 
 func (r artifactV4Routes) buildSignature(endp, expires, artifactName string, taskID, artifactID int64) []byte {
 	mac := hmac.New(sha256.New, setting.GetGeneralTokenSigningSecret())
+	// For each string field, write the length of the string first to prevent user-controlled strings from bleeding into
+	// each other and causing a signature match when it isn't expected.
+	_ = binary.Write(mac, binary.BigEndian, int64(len(endp)))
 	mac.Write([]byte(endp))
+	_ = binary.Write(mac, binary.BigEndian, int64(len(expires)))
 	mac.Write([]byte(expires))
+	_ = binary.Write(mac, binary.BigEndian, int64(len(artifactName)))
 	mac.Write([]byte(artifactName))
-	fmt.Fprint(mac, taskID)
-	fmt.Fprint(mac, artifactID)
+
+	// Write TaskID & ArtifactID as binary values to prevent them from bleeding together; eg. TaskID="2" &
+	// ArtifactID="18" could look the same in the signature as TaskID="21" and ArtifactID="8" if they're written as
+	// strings.
+	_ = binary.Write(mac, binary.BigEndian, taskID)
+	_ = binary.Write(mac, binary.BigEndian, artifactID)
 	return mac.Sum(nil)
 }
 

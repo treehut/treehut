@@ -1,0 +1,16 @@
+-
+  id: 1001
+  repo_id: 20
+  index: 1
+  poster_id: 1
+  original_author_id: 0
+  name: eepy
+  content: I am part of a migration.
+  milestone_id: 0
+  priority: 0
+  is_closed: false
+  is_pull: false
+  num_comments: 0
+  created_unix: 1777647620
+  updated_unix: 1777647620
+  is_locked: false

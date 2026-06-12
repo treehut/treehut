@@ -5,14 +5,17 @@ package convert
 
 import (
 	"testing"
+	"time"
 
 	actions_model "forgejo.org/models/actions"
 	"forgejo.org/models/db"
+	repo_model "forgejo.org/models/repo"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/timeutil"
+	"forgejo.org/modules/util"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,6 +106,102 @@ uf51WIBywxztet6vi+jYJK1jFoY4iA==
 			},
 			Payload: "tree e20aa0bcd2878f65a93de68a3eed9045d6efdd74\nparent 5cd9b9847563eb730d63d23c1f1b84868e52ae7d\nauthor user2 <user2+committer@example.com> 1759956520 -0600\ncommitter user2 <user2+committer@example.com> 1759956520 -0600\n\nAdd content\n",
 		}, commitVerification)
+	})
+}
+
+func TestToAnnotatedTag(t *testing.T) {
+	defer unittest.OverrideFixtures("models/fixtures/TestParseCommitWithSSHSignature")()
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	// Align user email for predictable test results (same as TestToVerification).
+	userModel := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+	userModel.Email = "secret-email@example.com"
+	db.GetEngine(t.Context()).ID(userModel.ID).Cols("email").Update(userModel)
+
+	headRepo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
+	sha1 := git.Sha1ObjectFormat
+
+	tagSHA := sha1.EmptyObjectID()
+	commitSHA := git.MustIDFromString("e20aa0bcd2878f65a93de68a3eed9045d6efdd74")
+	tagger := &git.Signature{Name: "user2", Email: "user2@example.com", When: time.Unix(1699707877, 0)}
+
+	t.Run("Unsigned tag falls back to commit signature (GPG)", func(t *testing.T) {
+		tag := &git.Tag{
+			Name:    "v2.0.0",
+			ID:      tagSHA,
+			Object:  commitSHA,
+			Type:    "commit",
+			Tagger:  tagger,
+			Message: "Lightweight tag\n",
+			// No Signature → unsigned tag
+		}
+
+		commitPayload := `tree e20aa0bcd2878f65a93de68a3eed9045d6efdd74
+parent 5cd9b9847563eb730d63d23c1f1b84868e52ae7d
+author user2 <user2+committer@example.com> 1759956520 -0600
+committer user2 <user2+committer@example.com> 1759956520 -0600
+
+Add content
+`
+		commitGPGSig := `-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCgAdFiEEdlqhn25IEoMmvK5vmDaXTfEZWRMFAmjmzigACgkQmDaXTfEZ
+WROC4ggAs8mD8csA6FV5e2v/4HcxuaZKCN+D8Gvku2JUigODQCA+NOX0FF2jDnCh
+tXylBPB4HJw1spKkDLtOpnCUSOniBdl9NcZjnBt6sP/OSnEfLznXFra+9fCHzsu0
+9uhDn3Wn1iHWXQ2ZglUwVS0ja6pNgEip8wNZBysv8+XbO1CEEW0m7zQA6tunzIwp
+yiPZDUJrKtpKAK0+v19EccT2VjYAa+Vo+p3/E0piaTYNbsTqtFRy63tdjDkf+mo+
+l/PaPhrMqdnbxv3/sd/63VCNdvPH3f0+OuydcC7mXyysmvap99EC+QKnpsrm7RAP
+uf51WIBywxztet6vi+jYJK1jFoY4iA==
+=Lnrt
+-----END PGP SIGNATURE-----`
+
+		commit := &git.Commit{
+			ID: commitSHA,
+			Committer: &git.Signature{
+				Email: "user2@example.com",
+			},
+			Signature: &git.ObjectSignature{
+				Payload:   commitPayload,
+				Signature: commitGPGSig,
+			},
+		}
+
+		result, err := ToAnnotatedTag(t.Context(), nil, headRepo, tag, commit)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Should fall back to commit verification (tag has no signature)
+		assert.Equal(t, commitGPGSig, result.Verification.Signature, "should use the commit GPG signature")
+		assert.Equal(t, commitPayload, result.Verification.Payload, "should use the commit payload")
+		assert.True(t, result.Verification.Verified, "commit signature should be verified")
+		assert.Equal(t, "v2.0.0", result.Tag)
+		assert.Equal(t, tagSHA.String(), result.SHA)
+		assert.Equal(t, util.URLJoin(headRepo.APIURL(), "git/tags", tagSHA.String()), result.URL)
+	})
+
+	t.Run("Unsigned tag, unsigned commit", func(t *testing.T) {
+		tag := &git.Tag{
+			Name:    "v3.0.0",
+			ID:      tagSHA,
+			Object:  commitSHA,
+			Type:    "commit",
+			Tagger:  tagger,
+			Message: "No signature\n",
+		}
+
+		commit := &git.Commit{
+			ID:        commitSHA,
+			Committer: &git.Signature{Email: "user2@example.com"},
+			// No Signature
+		}
+
+		result, err := ToAnnotatedTag(t.Context(), nil, headRepo, tag, commit)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.False(t, result.Verification.Verified, "should not be verified")
+		assert.Empty(t, result.Verification.Signature, "should have no signature")
+		assert.Equal(t, "v3.0.0", result.Tag)
 	})
 }
 

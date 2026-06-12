@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	repo_model "forgejo.org/models/repo"
+	unit_model "forgejo.org/models/unit"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
@@ -140,6 +141,10 @@ func ListReleaseAttachments(ctx *context.APIContext) {
 		return
 	}
 	if release.RepoID != ctx.Repo.Repository.ID {
+		ctx.NotFound()
+		return
+	}
+	if release.IsDraft && !ctx.Repo.CanWrite(unit_model.TypeReleases) {
 		ctx.NotFound()
 		return
 	}

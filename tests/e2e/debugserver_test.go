@@ -25,7 +25,7 @@ func TestDebugserver(t *testing.T) {
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
 	onForgejoRun(t, func(*testing.T, *url.URL) {
-		defer DeclareGitRepos(t)()
+		DeclareGitRepos(t)
 		fmt.Println(setting.AppURL)
 		<-done
 	})

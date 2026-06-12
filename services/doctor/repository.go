@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"forgejo.org/models/db"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/storage"
 	repo_service "forgejo.org/services/repository"
@@ -39,7 +38,6 @@ func deleteOrphanedRepos(ctx context.Context) (int64, error) {
 	batchSize := db.MaxBatchInsertSize("repository")
 	e := db.GetEngine(ctx)
 	var deleted int64
-	adminUser := &user_model.User{IsAdmin: true}
 
 	for {
 		select {
@@ -60,7 +58,7 @@ func deleteOrphanedRepos(ctx context.Context) (int64, error) {
 			}
 
 			for _, id := range ids {
-				if err := repo_service.DeleteRepositoryDirectly(ctx, adminUser, id, true); err != nil {
+				if err := repo_service.DeleteRepositoryDirectly(ctx, id, repo_service.DeleteRepositoryOpts{IgnoreOrgTeams: true}); err != nil {
 					return deleted, err
 				}
 				deleted++

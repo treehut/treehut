@@ -183,7 +183,7 @@ func BatchHandler(ctx *context.Context) {
 	}
 
 	if isUpload {
-		ok, err := quota_model.EvaluateForUser(ctx, ctx.Doer.ID, quota_model.LimitSubjectSizeGitLFS)
+		ok, err := quota_model.EvaluateForUser(ctx, repository.OwnerID, quota_model.LimitSubjectSizeGitLFS)
 		if err != nil {
 			log.Error("quota_model.EvaluateForUser: %v", err)
 			writeStatus(ctx, http.StatusInternalServerError)
@@ -191,6 +191,7 @@ func BatchHandler(ctx *context.Context) {
 		}
 		if !ok {
 			writeStatusMessage(ctx, http.StatusRequestEntityTooLarge, "quota exceeded")
+			return
 		}
 	}
 
@@ -317,8 +318,8 @@ func UploadHandler(ctx *context.Context) {
 		return
 	}
 
-	if exists {
-		ok, err := quota_model.EvaluateForUser(ctx, ctx.Doer.ID, quota_model.LimitSubjectSizeGitLFS)
+	if !exists {
+		ok, err := quota_model.EvaluateForUser(ctx, repository.OwnerID, quota_model.LimitSubjectSizeGitLFS)
 		if err != nil {
 			log.Error("quota_model.EvaluateForUser: %v", err)
 			writeStatus(ctx, http.StatusInternalServerError)
@@ -326,6 +327,7 @@ func UploadHandler(ctx *context.Context) {
 		}
 		if !ok {
 			writeStatusMessage(ctx, http.StatusRequestEntityTooLarge, "quota exceeded")
+			return
 		}
 	}
 
@@ -539,8 +541,7 @@ func authenticate(ctx *context.Context, repository *repo_model.Repository, autho
 		accessMode = perm.AccessModeWrite
 	}
 
-	if ctx.Data["IsActionsToken"] == true {
-		taskID := ctx.Data["ActionsTaskID"].(int64)
+	if hasTaskID, taskID := ctx.Authentication.ActionsTaskID().Get(); hasTaskID {
 		task, err := actions_model.GetTaskByID(ctx, taskID)
 		if err != nil {
 			log.Error("Unable to GetTaskByID for task[%d] Error: %v", taskID, err)
@@ -607,6 +608,20 @@ func handleLFSToken(ctx stdCtx.Context, tokenSHA string, target *repo_model.Repo
 		log.Error("Unable to GetUserById[%d]: Error: %v", claims.UserID, err)
 		return nil, err
 	}
+
+	if !u.IsAccessAllowed(ctx) {
+		return nil, errors.New("user access is blocked")
+	}
+
+	repoPerm, err := access_model.GetUserRepoPermission(ctx, target, u)
+	if err != nil {
+		log.Error("Unable to GetUserRepoPermission[%d]: Error: %v", claims.UserID, err)
+		return nil, err
+	}
+	if !repoPerm.CanAccess(mode, unit.TypeCode) {
+		return nil, errors.New("user does not have access to the repository")
+	}
+
 	return u, nil
 }
 

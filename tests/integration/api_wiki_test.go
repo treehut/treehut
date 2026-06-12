@@ -16,10 +16,10 @@ import (
 	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
-	"forgejo.org/modules/optional"
 	api "forgejo.org/modules/structs"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -342,11 +342,7 @@ func TestAPISetWikiGlobalEditability(t *testing.T) {
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
 
 	// Create a new repository for testing purposes
-	repo, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit_model.Type{
-		unit_model.TypeCode,
-		unit_model.TypeWiki,
-	}, nil, nil)
-	defer f()
+	repo := forgery.CreateRepository(t, user, nil)
 	urlStr := fmt.Sprintf("/api/v1/repos/%s", repo.FullName())
 
 	assertGlobalEditability := func(t *testing.T, editability bool) {
@@ -433,11 +429,8 @@ func TestAPIListPageRevisions(t *testing.T) {
 
 func TestAPIWikiNonMasterBranch(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, _ *url.URL) {
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-		repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-			WikiBranch: optional.Some("main"),
-		})
-		defer f()
+		repo := forgery.CreateRepository(t, nil, nil)
+		forgery.InitWiki(t, repo, "main")
 
 		uris := []string{
 			"revisions/Home",

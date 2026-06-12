@@ -529,5 +529,14 @@
 	"actions.runners.create_runner.title": "Criar novo executor",
 	"actions.runners.create_runner.name_label": "Noe",
 	"actions.runners.edit_runner.page_title": "Editar executor %s",
-	"actions.runners.edit_runner.title": "Editar executor %s"
+	"actions.runners.edit_runner.title": "Editar executor %s",
+	"repo.pulls.auto_merge.no_permission": "Você não tem permissão para cancelar a mesclagem automática deste pull request.",
+	"access_token.error.specified_repos_and_invalid_scope": "Tokens de acesso com repositórios especificados só podem ser usados com os escopos read:issue, write:issue, read:repository e write:repository.",
+	"actions.runners.uuid": "UUID",
+	"actions.runners.token": "Token",
+	"actions.runners.ephemeral": "Efêmero",
+	"actions.runners.version": "Versão",
+	"actions.runners.list_runners.edit_column": "Editar",
+	"actions.runners.list_runners.delete_column": "Remover",
+	"actions.runners.list_runners.delete_button": "Remover"
 }

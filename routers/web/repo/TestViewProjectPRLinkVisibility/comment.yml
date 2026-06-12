@@ -1,0 +1,9 @@
+-
+  id: 3000
+  type: 6 # pull reference
+  poster_id: 2
+  issue_id: 1 # issue in public repo_id 1
+  ref_repo_id: 2 # private repo
+  ref_issue_id: 100 # PR in private repo 2
+  ref_is_pull: true
+  created_unix: 946690100

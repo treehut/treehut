@@ -457,6 +457,11 @@ func SubmitReview(ctx context.Context, doer *user_model.User, issue *Issue, revi
 			if official, err = IsOfficialReviewer(ctx, issue, doer); err != nil {
 				return nil, nil, err
 			}
+			// delete previous review requests from the same user
+			reviewCond := builder.Eq{"reviewer_id": doer.ID, "issue_id": issue.ID}
+			if _, err := sess.Where(reviewCond.And(builder.Eq{"type": ReviewTypeRequest})).Delete(new(Review)); err != nil {
+				return nil, nil, err
+			}
 		}
 
 		review.Official = official
@@ -511,10 +516,14 @@ func SubmitReview(ctx context.Context, doer *user_model.User, issue *Issue, revi
 
 // GetReviewByIssueIDAndUserID get the latest review of reviewer for a pull request
 func GetReviewByIssueIDAndUserID(ctx context.Context, issueID, userID int64) (*Review, error) {
+	return GetReviewByIssueIDUserIDAndTypes(ctx, issueID, userID, []ReviewType{ReviewTypeApprove, ReviewTypeReject, ReviewTypeRequest})
+}
+
+func GetReviewByIssueIDUserIDAndTypes(ctx context.Context, issueID, userID int64, types []ReviewType) (*Review, error) {
 	review := new(Review)
 
 	has, err := db.GetEngine(ctx).Where(
-		builder.In("type", ReviewTypeApprove, ReviewTypeReject, ReviewTypeRequest).
+		builder.In("type", types).
 			And(builder.Eq{"issue_id": issueID, "reviewer_id": userID, "original_author_id": 0})).
 		Desc("id").
 		Get(review)
@@ -707,12 +716,12 @@ func RemoveReviewRequest(ctx context.Context, issue *Issue, reviewer, doer *user
 	}
 	defer committer.Close()
 
-	review, err := GetReviewByIssueIDAndUserID(ctx, issue.ID, reviewer.ID)
+	review, err := GetReviewByIssueIDUserIDAndTypes(ctx, issue.ID, reviewer.ID, []ReviewType{ReviewTypeRequest})
 	if err != nil && !IsErrReviewNotExist(err) {
 		return nil, err
 	}
 
-	if review == nil || review.Type != ReviewTypeRequest {
+	if review == nil {
 		return nil, nil
 	}
 

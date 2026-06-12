@@ -61,17 +61,15 @@ func checkJobsOfRun(ctx context.Context, runID int64, recursionCount int) error 
 		return fmt.Errorf("checkJobsOfRun for runID %d hit recursion limit %d", runID, recursionCount)
 	}
 
+	var jobs actions_model.ActionJobList
 	jobs, err := db.Find[actions_model.ActionRunJob](ctx, actions_model.FindRunJobOptions{RunID: runID})
 	if err != nil {
 		return err
 	}
-	if err := db.WithTx(ctx, func(ctx context.Context) error {
-		idToJobs := make(map[string][]*actions_model.ActionRunJob, len(jobs))
-		for _, job := range jobs {
-			idToJobs[job.JobID] = append(idToJobs[job.JobID], job)
-		}
 
-		updates := newJobStatusResolver(jobs).Resolve()
+	var updates map[int64]actions_model.Status
+	if err := db.WithTx(ctx, func(ctx context.Context) error {
+		updates = newJobStatusResolver(jobs).Resolve()
 		for _, job := range jobs {
 			if status, ok := updates[job.ID]; ok {
 				job.Status = status
@@ -115,15 +113,16 @@ func checkJobsOfRun(ctx context.Context, runID int64, recursionCount int) error 
 	}); err != nil {
 		return err
 	}
+
 	CreateCommitStatus(ctx, jobs...)
 
 	// tryHandleIncompleteMatrix can create new jobs in this run which may initially be persisted in the DB as blocked
 	// because they have non-empty `needs`. In that case, we need to recursively run the job emitter so that new jobs
 	// are recognized as having their `needs` completed and be set as unblocked. Check if any new jobs were created and
-	// rerun the job emitter if so.
+	// rerun the job emitter if so. The same is necessary if updates completed jobs that unblocked other jobs.
 	if hasNewJobs, err := actions_model.RunHasOtherJobs(ctx, runID, jobs); err != nil {
 		return fmt.Errorf("RunHasOtherJobs error: %w", err)
-	} else if hasNewJobs {
+	} else if hasNewJobs || len(updates) > 0 {
 		return checkJobsOfRun(ctx, runID, recursionCount+1)
 	}
 
@@ -173,26 +172,11 @@ func newJobStatusResolver(jobs actions_model.ActionJobList) *jobStatusResolver {
 
 func (r *jobStatusResolver) Resolve() map[int64]actions_model.Status {
 	ret := map[int64]actions_model.Status{}
-	for i := 0; i < len(r.statuses); i++ {
-		updated := r.resolve()
-		if len(updated) == 0 {
-			return ret
-		}
-		for k, v := range updated {
-			ret[k] = v
-			r.statuses[k] = v
-		}
-	}
-	return ret
-}
-
-func (r *jobStatusResolver) resolve() map[int64]actions_model.Status {
-	ret := map[int64]actions_model.Status{}
 	for id, status := range r.statuses {
 		if status != actions_model.StatusBlocked {
 			continue
 		}
-		allDone, allSucceed := true, true
+		allDone, allSucceed, allSucceedOrSkip := true, true, true
 		for _, need := range r.needs[id] {
 			needStatus := r.statuses[need]
 			if !needStatus.IsDone() {
@@ -201,13 +185,16 @@ func (r *jobStatusResolver) resolve() map[int64]actions_model.Status {
 			if needStatus.In(actions_model.StatusFailure, actions_model.StatusCancelled, actions_model.StatusSkipped) {
 				allSucceed = false
 			}
+			if needStatus.In(actions_model.StatusFailure, actions_model.StatusCancelled) {
+				allSucceedOrSkip = false
+			}
 		}
 		if allDone {
 			if isWorkflowCallOuterJob, _ := r.jobMap[id].IsWorkflowCallOuterJob(); isWorkflowCallOuterJob {
 				// If the dependent job was a workflow call outer job, then options aren't waiting/skipped, but rather
 				// success/failure.  checkJobsOfRun will do additional work in these cases to "finish" the workflow call
 				// job as well.
-				if allSucceed {
+				if allSucceedOrSkip {
 					isIncompleteMatrix, _, _ := r.jobMap[id].HasIncompleteMatrix()
 					isIncompleteWith, _, _, _ := r.jobMap[id].HasIncompleteWith()
 					if isIncompleteMatrix || isIncompleteWith {

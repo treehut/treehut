@@ -141,12 +141,31 @@ func (job *ActionRunJob) PrepareNextAttempt(initialStatus Status) error {
 }
 
 // CanBeRerun answers whether this ActionRunJob can be rerun. Returns true if it is done and the Run it belongs to
-// is runnable. Returns false in all other cases, including when Run is nil.
-func (job *ActionRunJob) CanBeRerun() bool {
-	if job.Run == nil || !job.Run.IsRunnable() {
-		return false
+// is valid. Returns false in all other cases.
+func (job *ActionRunJob) CanBeRerun(ctx context.Context) (bool, error) {
+	if err := job.LoadRun(ctx); err != nil {
+		return false, fmt.Errorf("cannot load run %d of job %d: %w", job.RunID, job.ID, err)
 	}
-	return job.Status.IsDone()
+
+	if !job.Run.IsValid() {
+		return false, nil
+	}
+	return job.Status.IsDone(), nil
+}
+
+// GetAllAttempts retrieve all the attempts of this job. Limited fields are queried to avoid loading the LogIndexes blob
+// when not needed.
+func (job *ActionRunJob) GetAllAttempts(ctx context.Context) ([]*ActionTask, error) {
+	var attempts []*ActionTask
+	err := db.GetEngine(ctx).
+		Cols("id", "attempt", "status", "started").
+		Where("job_id=?", job.ID).
+		Desc("attempt").
+		Find(&attempts)
+	if err != nil {
+		return nil, err
+	}
+	return attempts, nil
 }
 
 func GetRunJobByID(ctx context.Context, id int64) (*ActionRunJob, error) {

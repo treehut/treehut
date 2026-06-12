@@ -1,0 +1,298 @@
+# Jobs of completed workflow run.
+- id: 683880
+  run_id: 455620
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: caller
+  attempt: 1
+  handle: 7ecf26bd-408d-485f-b162-f349f5fe95bc
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      caller:
+        name: caller
+        runs-on: []
+        if: false
+    __metadata:
+      workflow_call_inputs:
+        greet_target: Mona the Octocat
+      workflow_call_id: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller
+  needs: ["caller.callee"]
+  runs_on: []
+  task_id: 0
+  status: 1 # success
+  started: 0
+  stopped: 0
+  created: 1776263479
+  updated: 1776279265
+- id: 683881
+  run_id: 455620
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: callee
+  attempt: 1
+  handle: 24920992-6701-48cc-872d-d017b33ee90e
+  workflow_payload: |
+    "on":
+      workflow_call:
+        inputs:
+          greet_target:
+            default: Mona the Octocat
+            type: string
+    jobs:
+      caller.callee:
+        name: callee
+        runs-on: ubuntu-latest
+        steps:
+          - run: |
+              echo "Hello ${{ inputs.greet_target }}"
+    __metadata:
+      workflow_call_parent: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller.callee
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 989
+  status: 1 # success
+  started: 1776279254
+  stopped: 1776279264
+  created: 1776263479
+  updated: 1776279264
+
+# Jobs of running workflow run.
+- id: 683590
+  run_id: 455630
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: lint
+  attempt: 1
+  handle: d114a733-b364-4c08-b15d-77b6cc21a616
+  workflow_payload: |
+    "on":
+        push:
+    jobs:
+        lint:
+            name: lint
+            runs-on: ubuntu-latest
+            steps:
+                - run: echo "Linting"
+  job_id: lint
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331495
+  stopped: 1776331523
+  created: 1776331495
+  updated: 1776331523
+- id: 683591
+  run_id: 455630
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: build
+  attempt: 1
+  handle: afd58a3e-76e9-467a-9a9d-9d6250fcc905
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      build:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Building"
+  job_id: build
+  needs: [lint]
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331693
+  stopped: 1776331721
+  created: 1776331495
+  updated: 1776331721
+- id: 683592
+  run_id: 455630
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: test
+  attempt: 1
+  handle: 2d9438cb-5067-4aff-9adb-9c1265fb42d5
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      test:
+        name: test
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Testing"
+  job_id: test
+  needs: [build]
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 6 # StatusRunning
+  started: 1776331665
+  stopped: 0
+  created: 1776331495
+  updated: 1776331693
+
+
+# Jobs of invalid workflow.
+- id: 683900
+  run_id: 455640
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 4055b3488bf960c9c9f5c1eb2d84e346faaad7dc
+  name: test
+  attempt: 1
+  handle: c60533ff-61b3-4f6f-9788-260911cda6ed
+  workflow_payload: ""
+  job_id:
+  needs: []
+  runs_on: []
+  task_id: 0
+  status: 2 # failure
+  started: 0
+  stopped: 0
+  created: 1776282729
+  updated: 1776282729
+
+# Jobs of successful workflow run with dependent jobs.
+- id: 683910
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: lint
+  attempt: 1
+  handle: 0a721b46-36d1-4540-b070-d559cf87515b
+  workflow_payload: |
+    "on":
+        push:
+    jobs:
+        lint:
+            name: lint
+            runs-on: ubuntu-latest
+            steps:
+                - run: echo "Linting"
+  job_id: lint
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331495
+  stopped: 1776331523
+  created: 1776331495
+  updated: 1776331523
+- id: 683911
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: build
+  attempt: 1
+  handle: eec6b880-b013-4426-9361-8a4ad491ae91
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      build:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Building"
+  job_id: build
+  needs: []
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331693
+  stopped: 1776331721
+  created: 1776331495
+  updated: 1776331721
+- id: 683912
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: test
+  attempt: 1
+  handle: b6398b81-f644-4f4b-9ed9-0c596c090b2f
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      test:
+        name: test
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Testing"
+  job_id: test
+  needs: [build]
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331665
+  stopped: 1776331693
+  created: 1776331495
+  updated: 1776331693
+
+# Jobs of workflow with independent jobs
+- id: 683920
+  run_id: 455660
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 68136fea3670c4e8abffe0d565732cee3ec34938
+  name: build
+  attempt: 1
+  handle: 51f4e33e-289c-44e7-8c73-bfc80724dfdc
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      build-amd64:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Building"
+  job_id: build-amd64
+  needs: []
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331635
+  stopped: 1776331721
+  created: 1776331635
+  updated: 1776331721
+- id: 683921
+  run_id: 455660
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 68136fea3670c4e8abffe0d565732cee3ec34938
+  name: build
+  attempt: 1
+  handle: 04572855-c14e-491e-9c06-8b5612e478d4
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      build-arm64:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Building"
+  job_id: build-arm64
+  needs: []
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 6 # running
+  started: 1776331635
+  stopped: 0
+  created: 1776331495
+  updated: 1776331693

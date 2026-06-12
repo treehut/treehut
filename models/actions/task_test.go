@@ -6,34 +6,11 @@ package actions
 import (
 	"testing"
 
-	"forgejo.org/models/db"
 	"forgejo.org/models/unittest"
-	"forgejo.org/modules/timeutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestActionTask_GetAllAttempts(t *testing.T) {
-	require.NoError(t, unittest.PrepareTestDatabase())
-
-	var task ActionTask
-	has, err := db.GetEngine(t.Context()).Where("id=?", 47).Get(&task)
-	require.NoError(t, err)
-	require.True(t, has, "load ActionTask from fixture")
-
-	allAttempts, err := task.GetAllAttempts(t.Context())
-	require.NoError(t, err)
-	require.Len(t, allAttempts, 3)
-	assert.EqualValues(t, 47, allAttempts[0].ID, "ordered by attempt, 1")
-	assert.EqualValues(t, 53, allAttempts[1].ID, "ordered by attempt, 2")
-	assert.EqualValues(t, 52, allAttempts[2].ID, "ordered by attempt, 3")
-
-	// GetAllAttempts doesn't populate all fields; so check expected fields from one of the records
-	assert.EqualValues(t, 3, allAttempts[0].Attempt, "read Attempt field")
-	assert.Equal(t, StatusRunning, allAttempts[0].Status, "read Status field")
-	assert.Equal(t, timeutil.TimeStamp(1683636528), allAttempts[0].Started, "read Started field")
-}
 
 func TestActionTask_GetTaskByJobAttempt(t *testing.T) {
 	require.NoError(t, unittest.PrepareTestDatabase())
@@ -58,7 +35,7 @@ func TestActionTask_CreatePlaceholderTask(t *testing.T) {
 
 	assert.NotEqualValues(t, 0, task.ID)
 	assert.Equal(t, job.ID, task.JobID)
-	assert.EqualValues(t, 0, task.Attempt)
+	assert.EqualValues(t, 1, task.Attempt)
 	assert.NotEqualValues(t, 0, task.Started)
 	assert.NotEqualValues(t, 0, task.Stopped)
 	assert.Equal(t, job.Status, task.Status)

@@ -49,6 +49,7 @@
 							</div>
 						{{end}}
 					</div>
+					{{template "base/paginate" .}}
 				</div>
 				{{if and .Invites $.IsOrganizationOwner}}
 				<h4 class="ui top attached header">{{ctx.Locale.Tr "org.teams.invite_team_member.list"}}</h4>

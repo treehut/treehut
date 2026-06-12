@@ -957,7 +957,7 @@ func TestAPIRepoTransfer(t *testing.T) {
 
 	// cleanup
 	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: apiRepo.ID})
-	_ = repo_service.DeleteRepositoryDirectly(db.DefaultContext, user, repo.ID)
+	require.NoError(t, repo_service.DeleteRepositoryDirectly(db.DefaultContext, repo.ID, repo_service.DeleteRepositoryOpts{}))
 }
 
 // This test verifies that a repo-specific access token with `write:repository` scope is not a sufficient to transfer a

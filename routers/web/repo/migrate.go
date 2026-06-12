@@ -269,7 +269,6 @@ func setMigrationContextData(ctx *context.Context, serviceType structs.GitServic
 func MigrateRetryPost(ctx *context.Context) {
 	ok, err := quota_model.EvaluateForUser(ctx, ctx.Repo.Repository.OwnerID, quota_model.LimitSubjectSizeReposAll)
 	if err != nil {
-		log.Error("quota_model.EvaluateForUser: %v", err)
 		ctx.ServerError("quota_model.EvaluateForUser", err)
 		return
 	}
@@ -287,7 +286,6 @@ func MigrateRetryPost(ctx *context.Context) {
 	}
 
 	if err := task.RetryMigrateTask(ctx, ctx.Repo.Repository.ID); err != nil {
-		log.Error("Retry task failed: %v", err)
 		ctx.ServerError("task.RetryMigrateTask", err)
 		return
 	}

@@ -1,0 +1,227 @@
+# Jobs of completed workflow run.
+- id: 683880
+  run_id: 455620
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: caller
+  attempt: 1
+  handle: 7ecf26bd-408d-485f-b162-f349f5fe95bc
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      caller:
+        name: caller
+        runs-on: []
+        if: false
+    __metadata:
+      workflow_call_inputs:
+        greet_target: Mona the Octocat
+      workflow_call_id: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller
+  needs: ["caller.callee"]
+  runs_on: []
+  task_id: 0
+  status: 1 # success
+  started: 0
+  stopped: 0
+  created: 1776263479
+  updated: 1776279265
+- id: 683881
+  run_id: 455620
+  repo_id: 62
+  owner_id: 2
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  name: callee
+  attempt: 1
+  handle: 24920992-6701-48cc-872d-d017b33ee90e
+  workflow_payload: |
+    "on":
+      workflow_call:
+        inputs:
+          greet_target:
+            default: Mona the Octocat
+            type: string
+    jobs:
+      caller.callee:
+        name: callee
+        runs-on: ubuntu-latest
+        steps:
+          - run: |
+              echo "Hello ${{ inputs.greet_target }}"
+    __metadata:
+      workflow_call_parent: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller.callee
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 989
+  status: 1 # success
+  started: 1776279254
+  stopped: 1776279264
+  created: 1776263479
+  updated: 1776279264
+
+# Jobs of running workflow run.
+- id: 683890
+  run_id: 455630
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 41569413fe943e3f4e8e9625e14c1e01d85581af
+  name: caller
+  attempt: 1
+  handle: 0185f661-3b6b-4f49-8a56-f6585c9c396e
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      caller:
+        name: caller
+        runs-on: []
+        if: false
+    __metadata:
+      workflow_call_inputs:
+        greet_target: Mona the Octocat
+      workflow_call_id: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller
+  needs: ["caller.callee"]
+  runs_on: []
+  task_id: 0
+  status: 7 # blocked
+  started: 0
+  stopped: 0
+  created: 1776281359
+  updated: 1776281359
+- id: 683891
+  run_id: 455630
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 41569413fe943e3f4e8e9625e14c1e01d85581af
+  name: callee
+  attempt: 1
+  handle: 4ee3bdf7-69f6-4174-9ffd-eb4a250188bc
+  workflow_payload: |
+    "on":
+      workflow_call:
+        inputs:
+          greet_target:
+            default: Mona the Octocat
+            type: string
+    jobs:
+      caller.callee:
+        name: callee
+        runs-on: ubuntu-latest
+        steps:
+          - run: |
+              echo "Hello ${{ inputs.greet_target }}"
+    __metadata:
+      workflow_call_parent: d4f799b5a5d27e303ab97a546708c2aca6c1672b3bbc5defa0d73b251bca7955
+  job_id: caller.callee
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 989
+  status: 6 # running
+  started: 1776281360
+  stopped: 0
+  created: 1776281359
+  updated: 1776281367
+
+# Jobs of invalid workflow.
+- id: 683900
+  run_id: 455640
+  repo_id: 62
+  owner_id: 2
+  commit_sha: 4055b3488bf960c9c9f5c1eb2d84e346faaad7dc
+  name: test
+  attempt: 1
+  handle: c60533ff-61b3-4f6f-9788-260911cda6ed
+  workflow_payload: ""
+  job_id:
+  needs: []
+  runs_on: []
+  task_id: 0
+  status: 2 # failure
+  started: 0
+  stopped: 0
+  created: 1776282729
+  updated: 1776282729
+
+# Jobs of workflow with dependent jobs.
+- id: 683910
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: lint
+  attempt: 1
+  handle: 0a721b46-36d1-4540-b070-d559cf87515b
+  workflow_payload: |
+    "on":
+        push:
+    jobs:
+        lint:
+            name: lint
+            runs-on: ubuntu-latest
+            steps:
+                - run: echo "Linting"
+  job_id: lint
+  needs: null
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331495
+  stopped: 1776331523
+  created: 1776331495
+  updated: 1776331523
+- id: 683911
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: build
+  attempt: 1
+  handle: eec6b880-b013-4426-9361-8a4ad491ae91
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      build:
+        name: build
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Building"
+  job_id: build
+  needs: [lint]
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331693
+  stopped: 1776331721
+  created: 1776331495
+  updated: 1776331721
+- id: 683912
+  run_id: 455650
+  repo_id: 62
+  owner_id: 2
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  name: test
+  attempt: 1
+  handle: b6398b81-f644-4f4b-9ed9-0c596c090b2f
+  workflow_payload: |
+    "on":
+      push:
+    jobs:
+      test:
+        name: test
+        runs-on: ubuntu-latest
+        steps:
+          - run: echo "Testing"
+  job_id: test
+  needs: [build]
+  runs_on: ["ubuntu-latest"]
+  task_id: 0
+  status: 1 # success
+  started: 1776331665
+  stopped: 1776331693
+  created: 1776331495
+  updated: 1776331693

@@ -28,6 +28,7 @@ import (
 	"forgejo.org/modules/web"
 	"forgejo.org/modules/web/middleware"
 	auth_service "forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/context"
 	"forgejo.org/services/externalaccount"
@@ -213,7 +214,7 @@ func SignInPost(ctx *context.Context) {
 		}
 	}
 
-	u, source, err := auth_service.UserSignIn(ctx, form.UserName, form.Password)
+	u, source, err := auth_method.UserSignIn(ctx, form.UserName, form.Password)
 	if err != nil {
 		if errors.Is(err, util.ErrNotExist) || errors.Is(err, util.ErrInvalidArgument) {
 			ctx.RenderWithErr(ctx.Tr("form.username_password_incorrect"), tplSignIn, &form)

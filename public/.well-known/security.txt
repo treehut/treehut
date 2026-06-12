@@ -1,3 +1,6 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
 # This site is running a Forgejo instance.
 # Forgejo-related security problems should be reported to the Forgejo security team.
 # Security problems related to this instance should be reported to its administration.
@@ -6,3 +9,11 @@ Contact: mailto:security@forgejo.org
 Encryption: https://keys.openpgp.org/vks/v1/by-fingerprint/1B638BDF10969D627926B8D9F585D0F99E1FB56F
 Preferred-Languages: en
 Expires: 2027-06-09T23:59:59.000Z
+
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQQbY4vfEJadYnkmuNn1hdD5nh+1bwUCaf/KYQAKCRD1hdD5nh+1
+b37sAPsF31EEYpvm21M88Kxjv/YOOJlP2xV94Q94JoYzh5iFqgD/X/1HHOBJHDvc
+YR0b3rrGDFxhSl32BOnHF0yuZO8Nugw=
+=sEiA
+-----END PGP SIGNATURE-----

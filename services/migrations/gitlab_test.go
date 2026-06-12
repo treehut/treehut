@@ -839,3 +839,73 @@ func TestCommentBodyParser(t *testing.T) {
 	assert.Equal(t, "!21 and !11 are simillar but !211 and !110 are not!", parsedBody6)
 	assert.Equal(t, "Simillar to #9, may be solved in !14", parsedBody7)
 }
+
+func TestGitlabConfidential(t *testing.T) {
+	// If a GitLab access token is provided, this test will make HTTP requests to the live gitlab.com instance.
+	// When doing so, the responses from gitlab.com will be saved as test data files.
+	// If no access token is available, those cached responses will be used instead.
+	gitlabPersonalAccessToken := os.Getenv("GITLAB_READ_TOKEN")
+	fixturePath := "./testdata/gitlab/confidential"
+	server := unittest.NewMockWebServer(t, "https://gitlab.com", fixturePath, gitlabPersonalAccessToken != "")
+	defer server.Close()
+
+	downloader, err := NewGitlabDownloader(t.Context(), server.URL, "forgejo/test_repo-confidential", "", "", gitlabPersonalAccessToken)
+	if err != nil {
+		t.Fatalf("NewGitlabDownloader is nil: %v", err)
+	}
+	repo, err := downloader.GetRepoInfo()
+	require.NoError(t, err)
+	// Repo Owner is blank in Gitlab Group repos
+	assertRepositoryEqual(t, &base.Repository{
+		Name:          "test_repo-confidential",
+		Owner:         "",
+		Description:   "",
+		CloneURL:      server.URL + "/forgejo/test_repo-confidential.git",
+		OriginalURL:   server.URL + "/forgejo/test_repo-confidential",
+		DefaultBranch: "main",
+	}, repo)
+
+	issues, isEnd, err := downloader.GetIssues(1, 10)
+	require.NoError(t, err)
+	assert.True(t, isEnd)
+
+	// the only issue in this repository has number 1, confidential issue with number 2 is skipped
+	assert.Len(t, issues, 1)
+	assert.EqualValues(t, 1, issues[0].Number)
+	assert.Equal(t, "Normal issue", issues[0].Title)
+
+	prs, _, err := downloader.GetPullRequests(1, 10)
+	require.NoError(t, err)
+	// the only merge request in this repository has number 1,
+	// but we offset it by the maximum issue number so it becomes
+	// pull request 2 in Forgejo
+	assert.Len(t, prs, 1)
+	assert.EqualValues(t, 3, prs[0].Number)
+
+	// Issue with number 1 has two comments, but one of them is an internal note and is skipped
+	comments, _, err := downloader.GetComments(&base.Issue{
+		Number:       1,
+		ForeignIndex: 1,
+		Context:      gitlabIssueContext{IsMergeRequest: false},
+	})
+	require.NoError(t, err)
+	assertCommentsEqual(t, []*base.Comment{
+		{
+			IssueIndex: 1,
+			PosterID:   3974632,
+			PosterName: "mahlzahn",
+			Created:    time.Date(2026, 5, 26, 9, 32, 49, 748000000, time.UTC),
+			Content:    "Normal comment",
+			Reactions:  nil,
+		},
+	}, comments)
+
+	// Pull request with number 1 has only one comment, but it is an internal note and is skipped
+	comments, _, err = downloader.GetComments(&base.Issue{
+		Number:       3,
+		ForeignIndex: 1,
+		Context:      gitlabIssueContext{IsMergeRequest: true},
+	})
+	require.NoError(t, err)
+	assert.Empty(t, comments)
+}

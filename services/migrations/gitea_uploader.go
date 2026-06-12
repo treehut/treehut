@@ -161,18 +161,18 @@ func (g *GiteaLocalUploader) Close() {
 
 // CreateTopics creates topics
 func (g *GiteaLocalUploader) CreateTopics(topics ...string) error {
-	// Ignore topics too long for the db
-	c := 0
-	for _, topic := range topics {
-		if len(topic) > 50 {
-			continue
-		}
-
-		topics[c] = topic
-		c++
+	validTopics, invalidTopics := repo_model.SanitizeAndValidateTopics(topics)
+	if len(invalidTopics) > 0 {
+		log.Warn("Invalid topics: %v in migration to %s/%s", invalidTopics, g.repoOwner, g.repoName)
 	}
-	topics = topics[:c]
-	return repo_model.SaveTopics(g.ctx, g.repo.ID, topics...)
+
+	// Truncate if it exceeds the maximum number of topics per repo.
+	if len(validTopics) > repo_model.MaxTopicsPerRepo {
+		validTopics = validTopics[:repo_model.MaxTopicsPerRepo]
+		log.Warn("More than %[0]d topics, truncated to first %[0]d topics in migration to %s/%s", repo_model.MaxTopicsPerRepo, g.repoOwner, g.repoName)
+	}
+
+	return repo_model.SaveTopics(g.ctx, g.repo.ID, validTopics...)
 }
 
 // CreateMilestones creates milestones
@@ -459,7 +459,7 @@ func (g *GiteaLocalUploader) CreateComments(comments ...*base.Comment) error {
 		var issue *issues_model.Issue
 		issue, ok := g.issues[comment.IssueIndex]
 		if !ok {
-			return fmt.Errorf("comment references non existent IssueIndex %d", comment.IssueIndex)
+			return fmt.Errorf("comment[index=%d,poster_id=%d] belongs to a issue[index=%d] that was not migrated", comment.Index, comment.PosterID, comment.IssueIndex)
 		}
 
 		if comment.Created.IsZero() {
@@ -566,7 +566,7 @@ func (g *GiteaLocalUploader) updateGitForPullRequest(pr *base.PullRequest) (head
 	// SECURITY: this pr must have been must have been ensured safe
 	if !pr.EnsuredSafe {
 		log.Error("PR #%d in %s/%s has not been checked for safety.", pr.Number, g.repoOwner, g.repoName)
-		return "", fmt.Errorf("the PR[%d] was not checked for safety", pr.Number)
+		return "", fmt.Errorf("pull request[index=%d] was not checked for safety", pr.Number)
 	}
 
 	// Anonymous function to download the patch file (allows us to use defer)
@@ -845,7 +845,7 @@ func (g *GiteaLocalUploader) CreateReviews(reviews ...*base.Review) error {
 		var issue *issues_model.Issue
 		issue, ok := g.issues[review.IssueIndex]
 		if !ok {
-			return fmt.Errorf("review references non existent IssueIndex %d", review.IssueIndex)
+			return fmt.Errorf("review[index=%d,reviewer_id=%d] belongs to a issue[index=%d] that was not migrated", review.ID, review.ReviewerID, review.IssueIndex)
 		}
 		if review.CreatedAt.IsZero() {
 			review.CreatedAt = time.Unix(int64(issue.CreatedUnix), 0)

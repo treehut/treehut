@@ -353,21 +353,6 @@ linters:
       - path: services/actions/trust.go
         linters:
           - nilnil
-      - path: services/auth/basic.go
-        linters:
-          - nilnil
-      - path: services/auth/httpsign.go
-        linters:
-          - nilnil
-      - path: services/auth/oauth2.go
-        linters:
-          - nilnil
-      - path: services/auth/reverseproxy.go
-        linters:
-          - nilnil
-      - path: services/auth/session.go
-        linters:
-          - nilnil
       - path: services/contexttest/context_tests.go
         linters:
           - nilnil

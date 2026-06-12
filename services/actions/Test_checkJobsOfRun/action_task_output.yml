@@ -3,3 +3,10 @@
   task_id: 100
   output_key: colors
   output_value: '["red", "blue", "green"]'
+
+-
+  id: 101
+  task_id: 101
+  output_key: argument
+  output_value: "something"
+

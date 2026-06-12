@@ -99,7 +99,7 @@ func DeployKeysPost(ctx *context.Context) {
 
 // DeleteDeployKey response for deleting a deploy key
 func DeleteDeployKey(ctx *context.Context) {
-	if err := asymkey_service.DeleteDeployKey(ctx, ctx.Doer, ctx.FormInt64("id")); err != nil {
+	if err := asymkey_service.DeleteDeployKey(ctx, ctx.FormInt64("id"), ctx.Repo.Repository.ID); err != nil {
 		ctx.Flash.Error("DeleteDeployKey: " + err.Error())
 	} else {
 		ctx.Flash.Success(ctx.Tr("repo.settings.deploy_key_deletion_success"))

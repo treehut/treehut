@@ -12,7 +12,6 @@ import (
 	"forgejo.org/models/db"
 	repo_model "forgejo.org/models/repo"
 	system_model "forgejo.org/models/system"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/log"
 	repo_module "forgejo.org/modules/repository"
@@ -146,7 +145,7 @@ func gatherMissingRepoRecords(ctx context.Context) (repo_model.RepositoryList, e
 }
 
 // DeleteMissingRepositories deletes all repository records that lost Git files.
-func DeleteMissingRepositories(ctx context.Context, doer *user_model.User) error {
+func DeleteMissingRepositories(ctx context.Context) error {
 	repos, err := gatherMissingRepoRecords(ctx)
 	if err != nil {
 		return err
@@ -163,7 +162,7 @@ func DeleteMissingRepositories(ctx context.Context, doer *user_model.User) error
 		default:
 		}
 		log.Trace("Deleting %d/%d...", repo.OwnerID, repo.ID)
-		if err := DeleteRepositoryDirectly(ctx, doer, repo.ID); err != nil {
+		if err := DeleteRepositoryDirectly(ctx, repo.ID, DeleteRepositoryOpts{}); err != nil {
 			log.Error("Failed to DeleteRepository %-v: Error: %v", repo, err)
 			if err2 := system_model.CreateRepositoryNotice("Failed to DeleteRepository %s [%d]: Error: %v", repo.FullName(), repo.ID, err); err2 != nil {
 				log.Error("CreateRepositoryNotice: %v", err)

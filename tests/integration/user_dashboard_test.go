@@ -7,18 +7,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 
 	"forgejo.org/models/issues"
-	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/gitrepo"
 	issue_service "forgejo.org/services/issue"
 	pull_service "forgejo.org/services/pull"
-	files_service "forgejo.org/services/repository/files"
-	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -46,28 +42,23 @@ func testUserDashboardFeedType(t *testing.T, page *HTMLDoc, isEmpty bool) {
 
 func TestDashboardTitleRendering(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user4 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
-		sess := loginUser(t, user4.Name)
+		user := forgery.CreateUser(t, nil)
+		sess := loginUser(t, user.Name)
 
-		repo, _, f := tests.CreateDeclarativeRepo(t, user4, "",
-			[]unit_model.Type{unit_model.TypePullRequests, unit_model.TypeIssues}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "test.txt",
-					ContentReader: strings.NewReader("Just some text here"),
-				},
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"README.md": forgery.MapFile("some readme to update via the pull request"),
+				"test.txt":  forgery.MapFile("Just some text here"),
 			},
-		)
-		defer f()
+		})
 
-		issue := createIssue(t, user4, repo, "`:exclamation:` not rendered", "Hi there!")
-		pr := createPullRequest(t, user4, repo, "testing", "`:exclamation:` not rendered")
+		issue := createIssue(t, user, repo, "`:exclamation:` not rendered", "Hi there!")
+		pr := createPullRequest(t, user, repo, "testing", "`:exclamation:` not rendered")
 
-		_, err := issue_service.CreateIssueComment(t.Context(), user4, repo, issue, "hi", nil)
+		_, err := issue_service.CreateIssueComment(t.Context(), user, repo, issue, "hi", nil)
 		require.NoError(t, err)
 
-		_, err = issue_service.CreateIssueComment(t.Context(), user4, repo, pr.Issue, "hi", nil)
+		_, err = issue_service.CreateIssueComment(t.Context(), user, repo, pr.Issue, "hi", nil)
 		require.NoError(t, err)
 
 		testIssueClose(t, sess, repo.OwnerName, repo.Name, strconv.Itoa(int(issue.Index)), false)
@@ -92,18 +83,16 @@ func TestDashboardTitleRendering(t *testing.T) {
 
 func TestDashboardActionEscaping(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user4 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
-		sess := loginUser(t, user4.Name)
+		user := forgery.CreateUser(t, nil)
+		sess := loginUser(t, user.Name)
 
-		repo, _, f := tests.CreateDeclarativeRepo(t, user4, "",
-			[]unit_model.Type{unit_model.TypePullRequests, unit_model.TypeIssues}, nil,
-			[]*files_service.ChangeRepoFile{},
-		)
-		defer f()
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 
-		issue := createIssue(t, user4, repo, "Issue with | in title", "Hey here's a | for you")
+		issue := createIssue(t, user, repo, "Issue with | in title", "Hey here's a | for you")
 
-		_, err := issue_service.CreateIssueComment(t.Context(), user4, repo, issue, "Comment with a | in it", nil)
+		_, err := issue_service.CreateIssueComment(t.Context(), user, repo, issue, "Comment with a | in it", nil)
 		require.NoError(t, err)
 
 		testIssueClose(t, sess, repo.OwnerName, repo.Name, strconv.Itoa(int(issue.Index)), false)
@@ -127,23 +116,22 @@ func TestDashboardActionEscaping(t *testing.T) {
 
 func TestDashboardReviewWorkflows(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user4 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
-		sess := loginUser(t, user4.Name)
+		user := forgery.CreateUser(t, nil)
+		sess := loginUser(t, user.Name)
 
-		repo, _, f := tests.CreateDeclarativeRepo(t, user4, "",
-			[]unit_model.Type{unit_model.TypePullRequests, unit_model.TypeIssues}, nil,
-			[]*files_service.ChangeRepoFile{},
-		)
-		defer f()
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
+
 		gitRepo, err := gitrepo.OpenRepository(t.Context(), repo)
 		require.NoError(t, err)
 
-		pr := createPullRequest(t, user4, repo, "testing", "My very first PR!")
+		pr := createPullRequest(t, user, repo, "testing", "My very first PR!")
 
-		review, _, err := pull_service.SubmitReview(t.Context(), user4, gitRepo, pr.Issue, issues.ReviewTypeReject, "This isn't good enough!", "HEAD", []string{})
+		review, _, err := pull_service.SubmitReview(t.Context(), user, gitRepo, pr.Issue, issues.ReviewTypeReject, "This isn't good enough!", "HEAD", []string{})
 		require.NoError(t, err)
 
-		_, err = pull_service.DismissReview(t.Context(), review.ID, repo.ID, "Come on, give the newbie a break!", user4, true, true)
+		_, err = pull_service.DismissReview(t.Context(), review.ID, repo.ID, "Come on, give the newbie a break!", user, true, true)
 		require.NoError(t, err)
 
 		response := sess.MakeRequest(t, NewRequest(t, "GET", "/"), http.StatusOK)

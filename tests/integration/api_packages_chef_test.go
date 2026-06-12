@@ -32,6 +32,7 @@ import (
 	chef_module "forgejo.org/modules/packages/chef"
 	"forgejo.org/modules/setting"
 	chef_router "forgejo.org/routers/api/packages/chef"
+	auth_service "forgejo.org/services/auth"
 	"forgejo.org/tests"
 
 	"github.com/stretchr/testify/assert"
@@ -94,9 +95,9 @@ nwIDAQAB
 			defer tests.PrintCurrentTest(t)()
 
 			req := NewRequest(t, "POST", "/dummy")
-			u, err := auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.NoError(t, err)
+			output := auth.Verify(req.Request, nil, nil)
+			_, authNotAttempted := output.(*auth_service.AuthenticationNotAttempted)
+			assert.True(t, authNotAttempted, "expected type AuthenticationNotAttempted, but was: %#v", output)
 		})
 
 		t.Run("NotExistingUser", func(t *testing.T) {
@@ -104,9 +105,11 @@ nwIDAQAB
 
 			req := NewRequest(t, "POST", "/dummy").
 				SetHeader("X-Ops-Userid", "not-existing-user")
-			u, err := auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+
+			output := auth.Verify(req.Request, nil, nil)
+			ar, authError := output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "user does not exist")
 		})
 
 		t.Run("Timestamp", func(t *testing.T) {
@@ -114,14 +117,16 @@ nwIDAQAB
 
 			req := NewRequest(t, "POST", "/dummy").
 				SetHeader("X-Ops-Userid", user.Name)
-			u, err := auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output := auth.Verify(req.Request, nil, nil)
+			ar, authError := output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "X-Ops-Timestamp header missing")
 
 			req.SetHeader("X-Ops-Timestamp", "2023-01-01T00:00:00Z")
-			u, err = auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output = auth.Verify(req.Request, nil, nil)
+			ar, authError = output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "time difference")
 		})
 
 		t.Run("SigningVersion", func(t *testing.T) {
@@ -130,29 +135,35 @@ nwIDAQAB
 			req := NewRequest(t, "POST", "/dummy").
 				SetHeader("X-Ops-Userid", user.Name).
 				SetHeader("X-Ops-Timestamp", time.Now().UTC().Format(time.RFC3339))
-			u, err := auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+
+			output := auth.Verify(req.Request, nil, nil)
+			ar, authError := output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "X-Ops-Sign header missing")
 
 			req.SetHeader("X-Ops-Sign", "version=none")
-			u, err = auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output = auth.Verify(req.Request, nil, nil)
+			ar, authError = output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "invalid X-Ops-Sign header")
 
 			req.SetHeader("X-Ops-Sign", "version=1.4")
-			u, err = auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output = auth.Verify(req.Request, nil, nil)
+			ar, authError = output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "unsupported version")
 
 			req.SetHeader("X-Ops-Sign", "version=1.0;algorithm=sha2")
-			u, err = auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output = auth.Verify(req.Request, nil, nil)
+			ar, authError = output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "unsupported algorithm")
 
 			req.SetHeader("X-Ops-Sign", "version=1.0;algorithm=sha256")
-			u, err = auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output = auth.Verify(req.Request, nil, nil)
+			ar, authError = output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "unsupported algorithm")
 		})
 
 		t.Run("SignedHeaders", func(t *testing.T) {
@@ -166,9 +177,10 @@ nwIDAQAB
 				SetHeader("X-Ops-Sign", "version=1.0;algorithm=sha1").
 				SetHeader("X-Ops-Content-Hash", "unused").
 				SetHeader("X-Ops-Authorization-4", "dummy")
-			u, err := auth.Verify(req.Request, nil, nil, nil)
-			assert.Nil(t, u)
-			require.Error(t, err)
+			output := auth.Verify(req.Request, nil, nil)
+			ar, authError := output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+			require.True(t, authError, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+			require.ErrorContains(t, ar.Error, "invalid X-Ops-Authorization headers")
 
 			signRequest := func(rw *RequestWrapper, version string) {
 				req := rw.Request
@@ -257,9 +269,12 @@ nwIDAQAB
 					defer tests.PrintCurrentTest(t)()
 
 					signRequest(req, v)
-					u, err = auth.Verify(req.Request, nil, nil, nil)
-					assert.NotNil(t, u)
-					require.NoError(t, err)
+					output := auth.Verify(req.Request, nil, nil)
+					ar, authSuccess := output.(*auth_service.AuthenticationSuccess)
+					require.True(t, authSuccess, "expected type AuthenticationSuccess, but was: %#v", output)
+					assert.NotNil(t, ar)
+					assert.NotNil(t, ar.Result)
+					assert.EqualValues(t, 2, ar.Result.User().ID)
 				})
 			}
 		})

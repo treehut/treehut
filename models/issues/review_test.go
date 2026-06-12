@@ -321,6 +321,82 @@ func TestAddReviewRequest(t *testing.T) {
 	assert.True(t, issues_model.IsErrReviewRequestOnClosedPR(err))
 }
 
+func TestSubmitPendingReviewDeletesReviewRequest(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	pull := unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{ID: 1})
+	require.NoError(t, pull.LoadIssue(db.DefaultContext))
+	issue := pull.Issue
+	require.NoError(t, issue.LoadRepo(db.DefaultContext))
+	reviewer := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
+	reviewRequest, err := issues_model.CreateReview(db.DefaultContext, issues_model.CreateReviewOptions{
+		Issue:    issue,
+		Reviewer: reviewer,
+		Type:     issues_model.ReviewTypeRequest,
+	})
+	require.NoError(t, err)
+
+	// creating a pending review should NOT remove review requests
+	reviewPending, err := issues_model.CreateReview(db.DefaultContext, issues_model.CreateReviewOptions{
+		Issue:    issue,
+		Reviewer: reviewer,
+		Type:     issues_model.ReviewTypePending,
+	})
+	require.NoError(t, err)
+	unittest.AssertExistsIf(t, true, &issues_model.Review{ID: reviewRequest.ID})
+	// submitting a pending review to finish it SHOULD remove review requests
+	_, _, err = issues_model.SubmitReview(
+		db.DefaultContext,
+		reviewer,
+		issue,
+		issues_model.ReviewTypeReject,
+		"test content",
+		reviewPending.CommitID,
+		false,
+		[]string{},
+	)
+	require.NoError(t, err)
+	unittest.AssertNotExistsBean(t, &issues_model.Review{ID: reviewRequest.ID})
+}
+
+// this test is for handling a state correctly that should never exist, but is representable and was
+// achievable thanks to #12243
+func TestReviewRequestDeletesReviewRequestsBeforeRejectedReviews(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+	sess := db.GetEngine(db.DefaultContext)
+
+	pull := unittest.AssertExistsAndLoadBean(t, &issues_model.PullRequest{ID: 1})
+	require.NoError(t, pull.LoadIssue(db.DefaultContext))
+	issue := pull.Issue
+	require.NoError(t, issue.LoadRepo(db.DefaultContext))
+	reviewer := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
+	doer := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
+
+	// this one will end up being a ReviewTypeRequest. We are initially creating it as
+	// ReviewTypeReject to avoid it being deleted on making the actual rejected review
+	reviewRequest, err := issues_model.CreateReview(db.DefaultContext, issues_model.CreateReviewOptions{
+		Issue:    issue,
+		Reviewer: reviewer,
+		Type:     issues_model.ReviewTypeReject,
+	})
+	require.NoError(t, err)
+	// this review is an actual rejected review that somehow managed to be saved without deleting
+	// reviewRequest. This is a state that is representable and is/was achievable thanks to #12243
+	_, err = issues_model.CreateReview(db.DefaultContext, issues_model.CreateReviewOptions{
+		Issue:    issue,
+		Reviewer: reviewer,
+		Type:     issues_model.ReviewTypeReject,
+	})
+	require.NoError(t, err)
+	reviewRequest.Type = issues_model.ReviewTypeRequest
+	_, err = sess.ID(reviewRequest.ID).Cols("type").Update(reviewRequest)
+	require.NoError(t, err)
+
+	_, err = issues_model.RemoveReviewRequest(db.DefaultContext, issue, reviewer, doer)
+	require.NoError(t, err)
+	unittest.AssertNotExistsBean(t, &issues_model.Review{ID: reviewRequest.ID})
+}
+
 func TestAddTeamReviewRequest(t *testing.T) {
 	defer unittest.OverrideFixtures("models/fixtures/TestAddTeamReviewRequest")()
 	require.NoError(t, unittest.PrepareTestDatabase())

@@ -9,22 +9,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
-	actions_model "forgejo.org/models/actions"
 	auth_model "forgejo.org/models/auth"
-	repo_model "forgejo.org/models/repo"
 	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/test"
 	"forgejo.org/routers"
 	"forgejo.org/services/release"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,34 +27,7 @@ import (
 
 func TestBadges(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		prep := func(t *testing.T) (*repo_model.Repository, func()) {
-			owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-
-			repo, _, f := tests.CreateDeclarativeRepo(t, owner, "",
-				[]unit_model.Type{unit_model.TypeActions, unit_model.TypeReleases},
-				[]unit_model.Type{unit_model.TypeIssues, unit_model.TypePullRequests},
-				[]*files_service.ChangeRepoFile{
-					{
-						Operation:     "create",
-						TreePath:      ".gitea/workflows/pr.yml",
-						ContentReader: strings.NewReader("name: pr\non:\n  push:\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
-					},
-					{
-						Operation:     "create",
-						TreePath:      ".gitea/workflows/self-test.yaml",
-						ContentReader: strings.NewReader("name: self-test\non:\n  push:\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
-					},
-					{
-						Operation:     "create",
-						TreePath:      ".gitea/workflows/tag-test.yaml",
-						ContentReader: strings.NewReader("name: tags\non:\n  push:\n    tags: '*'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
-					},
-				},
-			)
-			assert.Equal(t, 2, unittest.GetCount(t, &actions_model.ActionRun{RepoID: repo.ID}))
-
-			return repo, f
-		}
+		user := forgery.CreateUser(t, nil)
 
 		assertBadge := func(t *testing.T, resp *httptest.ResponseRecorder, badge string) {
 			t.Helper()
@@ -69,8 +37,6 @@ func TestBadges(t *testing.T) {
 
 		t.Run("Workflows", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			repo, f := prep(t)
-			defer f()
 
 			// Actions disabled
 			req := NewRequest(t, "GET", "/user2/repo1/badges/workflows/test.yaml/badge.svg")
@@ -82,41 +48,49 @@ func TestBadges(t *testing.T) {
 			assertBadge(t, resp, "test.yaml-Not%20found-crimson")
 
 			// Actions enabled
-			req = NewRequestf(t, "GET", "/user2/%s/badges/workflows/pr.yml/badge.svg", repo.Name)
+			repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+				Files: forgery.MapFS{
+					".gitea/workflows/pr.yml":         forgery.MapFile("name: pr\non:\n  push:\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
+					".gitea/workflows/self-test.yaml": forgery.MapFile("name: self-test\non:\n  push:\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
+					".gitea/workflows/tag-test.yaml":  forgery.MapFile("name: tags\non:\n  push:\n    tags: '*'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo helloworld\n"),
+				},
+			})
+			forgery.EnableRepoUnits(t, repo, unit_model.TypeActions)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/workflows/pr.yml/badge.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-waiting-lightgrey")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/workflows/pr.yml/badge.svg?branch=main", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/workflows/pr.yml/badge.svg?branch=main")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-waiting-lightgrey")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/workflows/pr.yml/badge.svg?branch=no-such-branch", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/workflows/pr.yml/badge.svg?branch=no-such-branch")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/workflows/pr.yml/badge.svg?event=cron", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/workflows/pr.yml/badge.svg?event=cron")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-Not%20found-crimson")
 
 			// Workflow with a dash in its name
-			req = NewRequestf(t, "GET", "/user2/%s/badges/workflows/self-test.yaml/badge.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/workflows/self-test.yaml/badge.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "self--test.yaml-waiting-lightgrey")
 
 			// GitHub compatibility
-			req = NewRequestf(t, "GET", "/user2/%s/actions/workflows/pr.yml/badge.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/pr.yml/badge.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-waiting-lightgrey")
 
-			req = NewRequestf(t, "GET", "/user2/%s/actions/workflows/pr.yml/badge.svg?branch=main", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/pr.yml/badge.svg?branch=main")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-waiting-lightgrey")
 
-			req = NewRequestf(t, "GET", "/user2/%s/actions/workflows/pr.yml/badge.svg?branch=no-such-branch", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/pr.yml/badge.svg?branch=no-such-branch")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/actions/workflows/pr.yml/badge.svg?event=cron", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/pr.yml/badge.svg?event=cron")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pr.yml-Not%20found-crimson")
 
@@ -124,17 +98,16 @@ func TestBadges(t *testing.T) {
 				defer tests.PrintCurrentTest(t)()
 
 				// With no tags, the workflow has no runs, and isn't found
-				req := NewRequestf(t, "GET", "/user2/%s/actions/workflows/tag-test.yaml/badge.svg", repo.Name)
+				req := NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/tag-test.yaml/badge.svg")
 				resp := MakeRequest(t, req, http.StatusSeeOther)
 				assertBadge(t, resp, "tag--test.yaml-Not%20found-crimson")
 
 				// Lets create a tag!
-				owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-				err := release.CreateNewTag(git.DefaultContext, owner, repo, "main", "v1", "message")
+				err := release.CreateNewTag(git.DefaultContext, repo.Owner, repo, "main", "v1", "message")
 				require.NoError(t, err)
 
 				// Now the workflow is waiting
-				req = NewRequestf(t, "GET", "/user2/%s/actions/workflows/tag-test.yaml/badge.svg", repo.Name)
+				req = NewRequest(t, "GET", repo.HTMLURL()+"/actions/workflows/tag-test.yaml/badge.svg")
 				resp = MakeRequest(t, req, http.StatusSeeOther)
 				assertBadge(t, resp, "tag--test.yaml-waiting-lightgrey")
 			})
@@ -143,7 +116,8 @@ func TestBadges(t *testing.T) {
 		t.Run("Stars", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
-			req := NewRequest(t, "GET", "/user2/repo1/badges/stars.svg")
+			repo := forgery.CreateRepository(t, user, nil)
+			req := NewRequest(t, "GET", repo.HTMLURL()+"/badges/stars.svg")
 			resp := MakeRequest(t, req, http.StatusSeeOther)
 
 			assertBadge(t, resp, "stars-0-blue")
@@ -159,8 +133,6 @@ func TestBadges(t *testing.T) {
 
 		t.Run("Issues", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			repo, f := prep(t)
-			defer f()
 
 			// Issues enabled
 			req := NewRequest(t, "GET", "/user2/repo1/badges/issues.svg")
@@ -176,23 +148,23 @@ func TestBadges(t *testing.T) {
 			assertBadge(t, resp, "issues-1%20closed-blue")
 
 			// Issues disabled
-			req = NewRequestf(t, "GET", "/user2/%s/badges/issues.svg", repo.Name)
+			repo := forgery.CreateRepository(t, user, nil)
+			forgery.DisableRepoUnits(t, repo, unit_model.TypeIssues)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/issues.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "issues-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/issues/open.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/issues/open.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "issues-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/issues/closed.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/issues/closed.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "issues-Not%20found-crimson")
 		})
 
 		t.Run("Pulls", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			repo, f := prep(t)
-			defer f()
 
 			// Pull requests enabled
 			req := NewRequest(t, "GET", "/user2/repo1/badges/pulls.svg")
@@ -208,29 +180,32 @@ func TestBadges(t *testing.T) {
 			assertBadge(t, resp, "pulls-0%20closed-blue")
 
 			// Pull requests disabled
-			req = NewRequestf(t, "GET", "/user2/%s/badges/pulls.svg", repo.Name)
+			repo := forgery.CreateRepository(t, user, nil)
+			forgery.DisableRepoUnits(t, repo, unit_model.TypePullRequests)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/pulls.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pulls-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/pulls/open.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/pulls/open.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pulls-Not%20found-crimson")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/pulls/closed.svg", repo.Name)
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/pulls/closed.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "pulls-Not%20found-crimson")
 		})
 
 		t.Run("Release", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			repo, f := prep(t)
-			defer f()
 
 			req := NewRequest(t, "GET", "/user2/repo1/badges/release.svg")
 			resp := MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "release-v1.1-blue")
 
-			req = NewRequestf(t, "GET", "/user2/%s/badges/release.svg", repo.Name)
+			repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+				Files: forgery.FilesInit{}, // a tag will be made later
+			})
+			req = NewRequest(t, "GET", repo.HTMLURL()+"/badges/release.svg")
 			resp = MakeRequest(t, req, http.StatusSeeOther)
 			assertBadge(t, resp, "release-Not%20found-crimson")
 
@@ -243,7 +218,7 @@ func TestBadges(t *testing.T) {
 				require.NoError(t, err)
 				createNewReleaseUsingAPI(t, token, repo.Owner, repo, "repo-name-2.0", "main", "dashed release", "dashed release")
 
-				req := NewRequestf(t, "GET", "/user2/%s/badges/release.svg", repo.Name)
+				req := NewRequest(t, "GET", repo.HTMLURL()+"/badges/release.svg")
 				resp := MakeRequest(t, req, http.StatusSeeOther)
 				assertBadge(t, resp, "release-repo--name--2.0-blue")
 			})

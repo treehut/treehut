@@ -43,5 +43,7 @@ func TestRepoStatsIndex(t *testing.T) {
 	assert.Equal(t, "65f1bf27bc3bf70f64657658635e66094edbcb4d", status.CommitSha)
 	langs, err := repo_model.GetTopLanguageStats(db.DefaultContext, repo, 5)
 	require.NoError(t, err)
-	assert.Empty(t, langs)
+	if assert.Len(t, langs, 1) {
+		assert.Equal(t, &repo_model.LanguageStat{ID: 1, RepoID: 1, CommitID: "65f1bf27bc3bf70f64657658635e66094edbcb4d", IsPrimary: true, Language: "Go", Percentage: 99.9, Size: 1023, Color: "#00ADD8", CreatedUnix: 1779733547}, langs[0])
+	}
 }

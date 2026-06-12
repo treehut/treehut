@@ -33,6 +33,11 @@ func init() {
 	db.RegisterModel(new(LanguageStat))
 }
 
+// LoadAttributes loads attributes
+func (stat *LanguageStat) LoadAttributes() {
+	stat.Color = enry.GetColor(stat.Language)
+}
+
 // LanguageStatList defines a list of language statistics
 type LanguageStatList []*LanguageStat
 
@@ -45,7 +50,7 @@ var languageColorOverrides map[string]string = map[string]string{
 func (stats LanguageStatList) LoadAttributes() {
 	for i := range stats {
 		lang := stats[i].Language
-		stats[i].Color = enry.GetColor(lang)
+		stats[i].LoadAttributes()
 		color, ok := languageColorOverrides[lang]
 		if ok {
 			stats[i].Color = color

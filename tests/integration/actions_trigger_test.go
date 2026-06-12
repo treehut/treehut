@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ import (
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1212,17 +1214,13 @@ jobs:
 				user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 
 				// create the repo
-				repo, sha, f := tests.CreateDeclarativeRepo(t, user2, "repo-workflow-dispatch",
-					[]unit_model.Type{unit_model.TypeActions}, nil,
-					[]*files_service.ChangeRepoFile{
-						{
-							Operation:     "create",
-							TreePath:      fmt.Sprintf("%s/%s", testCase.workflowDirectory, testCase.workflowID),
-							ContentReader: strings.NewReader(testCase.workflowContent),
-						},
+				var sha string
+				repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+					Files: forgery.MapFS{
+						fmt.Sprintf("%s/%s", testCase.workflowDirectory, testCase.workflowID): forgery.MapFile(testCase.workflowContent),
 					},
-				)
-				defer f()
+					LatestSha: &sha,
+				})
 
 				schedules, err := db.Find[actions_model.ActionSchedule](t.Context(), actions_model.FindScheduleOptions{RepoID: repo.ID})
 				require.NoError(t, err)
@@ -1251,6 +1249,110 @@ jobs:
 					assert.Equal(t, expected.cron, specs[i].Spec)
 					assert.Equal(t, expected.timeZone, specs[i].TimeZone)
 				}
+			})
+		}
+	})
+}
+
+func TestActionsPullRequestWithPathsFilter(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		session := loginUser(t, "user2")
+
+		testCases := []struct {
+			name     string
+			workflow string
+			runTitle string
+		}{
+			{
+				name: "paths",
+				workflow: `
+on:
+  pull_request:
+    types: [closed]
+    paths:
+      - test.txt
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo OK
+`,
+				runTitle: "Update test.txt",
+			},
+			{
+				name: "paths-ignore",
+				workflow: `
+on:
+  pull_request:
+    types: [closed]
+    paths-ignore:
+      - test.txt
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo OK
+`,
+				runTitle: "Update README.md",
+			},
+		}
+
+		for _, testCase := range testCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				// Prepare a repository.
+				files := []*files_service.ChangeRepoFile{
+					{
+						Operation:     "create",
+						TreePath:      ".forgejo/workflows/test.yaml",
+						ContentReader: strings.NewReader(testCase.workflow),
+					},
+					{
+						Operation:     "create",
+						TreePath:      "README.md",
+						ContentReader: strings.NewReader("Hello"),
+					},
+					{
+						Operation:     "create",
+						TreePath:      "test.txt",
+						ContentReader: strings.NewReader("one"),
+					},
+				}
+
+				baseRepo, _, f := tests.CreateDeclarativeRepo(t, user2, "repo-pull-request",
+					[]unit_model.Type{unit_model.TypeActions}, nil, files)
+				defer f()
+
+				baseGitRepo, err := gitrepo.OpenRepository(db.DefaultContext, baseRepo)
+				require.NoError(t, err)
+				defer baseGitRepo.Close()
+
+				// Create a pull request for README.md and merge it.
+				testEditFileToNewBranch(t, session, "user2", "repo-pull-request", "main", "change-readme", "README.md", "Hello there!")
+				testPullCreate(t, session, "user2", "repo-pull-request", true, "main", "change-readme", "Update README.md")
+
+				readmePR := unittest.AssertExistsAndLoadBean(t,
+					&issues_model.PullRequest{BaseRepoID: baseRepo.ID, HeadBranch: "change-readme"})
+
+				testPullMerge(t, session, "user2", "repo-pull-request", strconv.FormatInt(readmePR.Index, 10),
+					repo_model.MergeStyleFastForwardOnly, true)
+
+				// Create a pull request for test.txt and merge it.
+				testEditFileToNewBranch(t, session, "user2", "repo-pull-request", "main", "change-test", "test.txt", "two")
+				testPullCreate(t, session, "user2", "repo-pull-request", true, "main", "change-test", "Update test.txt")
+
+				testPR := unittest.AssertExistsAndLoadBean(t,
+					&issues_model.PullRequest{BaseRepoID: baseRepo.ID, HeadBranch: "change-test"})
+
+				testPullMerge(t, session, "user2", "repo-pull-request", strconv.FormatInt(testPR.Index, 10),
+					repo_model.MergeStyleFastForwardOnly, true)
+
+				unittest.AssertCount(t, &actions_model.ActionRun{RepoID: baseRepo.ID}, 1)
+
+				run := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRun{RepoID: baseRepo.ID})
+				assert.Equal(t, webhook_module.HookEventPullRequest, run.Event)
+				assert.Equal(t, actions_module.GithubEventPullRequest, run.TriggerEvent)
+				assert.Contains(t, run.Title, testCase.runTitle)
 			})
 		}
 	})

@@ -1,0 +1,11 @@
+- id: 59220
+  run_id: 455620
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  status: 2 # ArtifactStatusUploadConfirmed
+
+- id: 59230
+  run_id: 455630
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  status: 2 # ArtifactStatusUploadConfirmed

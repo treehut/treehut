@@ -116,8 +116,7 @@ func TestEphemeralRunnerDeletionOnRepositoryDeletion(t *testing.T) {
 		task := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionTask{ID: 10054})
 		assert.Equal(t, actions_model.StatusRunning, task.Status)
 
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 5})
-		err = repo_service.DeleteRepositoryDirectly(t.Context(), user, task.RepoID, true)
+		err = repo_service.DeleteRepositoryDirectly(t.Context(), task.RepoID, repo_service.DeleteRepositoryOpts{IgnoreOrgTeams: true})
 		require.NoError(t, err)
 
 		_, err = actions_model.GetRunnerByID(t.Context(), 10000008)

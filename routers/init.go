@@ -33,7 +33,7 @@ import (
 	"forgejo.org/routers/private"
 	web_routers "forgejo.org/routers/web"
 	actions_service "forgejo.org/services/actions"
-	"forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/automerge"
 	"forgejo.org/services/cron"
@@ -160,7 +160,7 @@ func InitWebInstalled(ctx context.Context) {
 
 	mustInitCtx(ctx, ssh.Init)
 
-	auth.Init()
+	auth_method.Init()
 	mustInit(svg.Init)
 
 	actions_service.Init()

@@ -40,6 +40,12 @@
 			<input class="enable-system" name="enable_packages" type="checkbox" {{if $isPackagesEnabled}}checked{{end}}>
 			<label>{{ctx.Locale.Tr "repo.settings.packages_desc"}}</label>
 		</div>
+		{{if (and .Repository.IsPrivate .Repository.Owner.Visibility.IsPublic)}}
+			<span class="ui yellow label warning">
+				{{svg "octicon-alert"}}
+				{{ctx.Locale.Tr "repo.packages.visibility_warning" .Repository.OwnerName}}
+			</span>
+		{{end}}
 	</div>
 
 	{{if .EnableActions}}

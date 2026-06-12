@@ -75,6 +75,13 @@ func TestOAuth2Application_ContainsRedirect_Slash(t *testing.T) {
 	assert.False(t, app.ContainsRedirectURI("http://127.0.0.1/other"))
 }
 
+func TestOAuth2Application_ContainsRedirect_Normalization(t *testing.T) {
+	app := &auth_model.OAuth2Application{RedirectURIs: []string{"https://website.com"}}
+	assert.True(t, app.ContainsRedirectURI("https://website.com"))
+	assert.True(t, app.ContainsRedirectURI("https://webSITE.com"))  // ascii uppercase I
+	assert.False(t, app.ContainsRedirectURI("https://websİte.com")) // U+0130 as I, Latin Capital Letter I with Dot Above
+}
+
 func TestOAuth2Application_ValidateClientSecret(t *testing.T) {
 	require.NoError(t, unittest.PrepareTestDatabase())
 	app := unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2Application{ID: 1})
@@ -147,8 +154,17 @@ func TestGetOAuth2GrantByID(t *testing.T) {
 func TestOAuth2Grant_IncreaseCounter(t *testing.T) {
 	require.NoError(t, unittest.PrepareTestDatabase())
 	grant := unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2Grant{ID: 1, Counter: 1})
+
+	// First increment succeeds
 	require.NoError(t, grant.IncreaseCounter(db.DefaultContext))
 	assert.Equal(t, int64(2), grant.Counter)
+	unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2Grant{ID: 1, Counter: 2})
+
+	// Simulate a stale grant (counter still 1): must fail (concurrent replay)
+	grant.Counter = 1
+	require.Error(t, grant.IncreaseCounter(db.DefaultContext), "stale counter must be rejected")
+
+	// Counter in DB should be unchanged
 	unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2Grant{ID: 1, Counter: 2})
 }
 
@@ -232,12 +248,33 @@ func TestOAuth2AuthorizationCode_ValidateCodeChallenge(t *testing.T) {
 	}
 	assert.False(t, code.ValidateCodeChallenge("foiwgjioriogeiogjerger"))
 
-	// test no code challenge
+	// test no PKCE at all (no challenge set, no verifier needed)
+	code = &auth_model.OAuth2AuthorizationCode{
+		CodeChallengeMethod: "",
+		CodeChallenge:       "",
+	}
+	assert.True(t, code.ValidateCodeChallenge(""))
+
+	// test PKCE required: challenge was set but verifier is empty
+	code = &auth_model.OAuth2AuthorizationCode{
+		CodeChallengeMethod: "S256",
+		CodeChallenge:       "CjvyTLSdR47G5zYenDA-eDWW4lRrO8yvjcWwbD_deOg",
+	}
+	assert.False(t, code.ValidateCodeChallenge(""), "PKCE required: S256 challenge set but empty verifier must be rejected")
+
+	code = &auth_model.OAuth2AuthorizationCode{
+		CodeChallengeMethod: "plain",
+		CodeChallenge:       "test123",
+	}
+	assert.False(t, code.ValidateCodeChallenge(""), "PKCE required: plain challenge set but empty verifier must be rejected")
+
+	// test challenge stored but method empty (malformed: should reject)
 	code = &auth_model.OAuth2AuthorizationCode{
 		CodeChallengeMethod: "",
 		CodeChallenge:       "foierjiogerogerg",
 	}
-	assert.True(t, code.ValidateCodeChallenge(""))
+	assert.False(t, code.ValidateCodeChallenge(""), "challenge present with empty method must be rejected")
+	assert.False(t, code.ValidateCodeChallenge("foierjiogerogerg"), "challenge present with empty method must be rejected even with matching verifier")
 }
 
 func TestOAuth2AuthorizationCode_GenerateRedirectURI(t *testing.T) {
@@ -260,6 +297,20 @@ func TestOAuth2AuthorizationCode_Invalidate(t *testing.T) {
 	code := unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2AuthorizationCode{Code: "authcode"})
 	require.NoError(t, code.Invalidate(db.DefaultContext))
 	unittest.AssertNotExistsBean(t, &auth_model.OAuth2AuthorizationCode{Code: "authcode"})
+}
+
+func TestOAuth2AuthorizationCode_Invalidate_DoubleUse(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+	code := unittest.AssertExistsAndLoadBean(t, &auth_model.OAuth2AuthorizationCode{Code: "authcode"})
+
+	// First invalidation should succeed
+	require.NoError(t, code.Invalidate(db.DefaultContext))
+	unittest.AssertNotExistsBean(t, &auth_model.OAuth2AuthorizationCode{Code: "authcode"})
+
+	// Second invalidation of the same code must fail (replay prevention)
+	err := code.Invalidate(db.DefaultContext)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "authorization code already used")
 }
 
 func TestOAuth2AuthorizationCode_TableName(t *testing.T) {

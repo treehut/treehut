@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strconv"
 
-	auth_model "forgejo.org/models/auth"
 	packages_model "forgejo.org/models/packages"
 	container_model "forgejo.org/models/packages/container"
 	user_model "forgejo.org/models/user"
@@ -158,7 +157,7 @@ func Authenticate(ctx *context.Context) {
 	}
 
 	// If there's an API scope, ensure it propagates.
-	scope, _ := ctx.Data["ApiTokenScope"].(auth_model.AccessTokenScope)
+	scope := ctx.Authentication.Scope().ValueOrZeroValue()
 
 	token, err := packages_service.CreateAuthorizationToken(u, scope)
 	if err != nil {

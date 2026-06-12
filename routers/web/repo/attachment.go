@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"forgejo.org/models/auth"
 	access_model "forgejo.org/models/perm/access"
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/modules/httpcache"
@@ -99,6 +100,30 @@ func ServeAttachment(ctx *context.Context, uuid string) {
 		return
 	}
 
+	// Some paths like `/attachment/{uuid}` can be accessed with API authentication mechanisms, which can have limited
+	// scopes (eg. user access tokens, OAuth grants).  There's no middleware on these routes that enforce API scopes
+	// because (a) they're not API endpoints, and (b) the scoped required is dependant on the attachment.
+	if hasScope, scope := ctx.Authentication.Scope().Get(); hasScope {
+		var requiredScope auth.AccessTokenScope
+		if attach.ReleaseID != 0 {
+			requiredScope = auth.AccessTokenScopeReadRepository
+		} else if attach.IssueID != 0 {
+			requiredScope = auth.AccessTokenScopeReadIssue
+		} else {
+			ctx.ServerError("UnidentifiedAttachmentResource", fmt.Errorf("unable to identify resource for attachment id=%d", attach.ID))
+			return
+		}
+		allow, err := scope.HasScope(requiredScope)
+		if err != nil {
+			ctx.ServerError("checking scope failed", err)
+			return
+		}
+		if !allow {
+			ctx.Error(http.StatusForbidden, "scopedAccessCheck", fmt.Sprintf("token does not have at least one of required scope(s): %v", requiredScope))
+			return
+		}
+	}
+
 	repository, unitType, err := repo_service.LinkedRepository(ctx, attach)
 	if err != nil {
 		ctx.ServerError("LinkedRepository", err)
@@ -111,7 +136,16 @@ func ServeAttachment(ctx *context.Context, uuid string) {
 			return
 		}
 	} else { // If we have the repository we check access
-		perm, err := access_model.GetUserRepoPermission(ctx, repository, ctx.Doer)
+		// Some paths like `/attachment/{uuid}` can be accessed with API authentication mechanisms, and therefore *may*
+		// have AuthorizationReducers that need to be enforced:
+		reducer := ctx.Authentication.Reducer()
+		var perm access_model.Permission
+		var err error
+		if reducer != nil {
+			perm, err = access_model.GetUserRepoPermissionWithReducer(ctx, repository, ctx.Doer, reducer)
+		} else {
+			perm, err = access_model.GetUserRepoPermission(ctx, repository, ctx.Doer)
+		}
 		if err != nil {
 			ctx.Error(http.StatusInternalServerError, "GetUserRepoPermission", err.Error())
 			return

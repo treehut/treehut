@@ -38,3 +38,107 @@
   task_id: 100
   status: 1 # success
   runs_on: '["fedora"]'
+
+# Jobs for run 901. For the test to be effective, it is important that the job with `job_id: c` has a lower `id` than
+# `job_id: b` because that reflects real-word ordering issues that need to be handled.
+- id: 674
+  run_id: 901
+  repo_id: 63
+  owner_id: 2
+  commit_sha: c29b3a4b23e21ea3261291d82bfb8e7af7797e26
+  attempt: 1
+  job_id: a
+  needs: null
+  runs_on: '["fedora"]'
+  status: 1 # success
+  task_id: 101
+  workflow_payload: |
+    "on":
+      workflow_dispatch:
+    jobs:
+      a:
+        name: a
+        runs-on: ubuntu-latest
+        steps:
+          - id: set
+            run: echo "argument=something" >> "$FORGEJO_OUTPUT"
+        outputs:
+          argument: ${{ steps.set.outputs.argument }}
+
+- id: 676
+  run_id: 901
+  repo_id: 63
+  owner_id: 2
+  commit_sha: c29b3a4b23e21ea3261291d82bfb8e7af7797e26
+  attempt: 1
+  job_id: c
+  needs: '["a","b"]'
+  runs_on: '["fedora"]'
+  status: 7 # blocked
+  workflow_payload: |
+    "on":
+      workflow_dispatch:
+    jobs:
+      c:
+        name: c
+        runs-on: []
+        uses: ./.forgejo/workflows/reusable.yaml
+        with:
+          argument: ${{ needs.a.outputs.argument }}
+    incomplete_with: true
+    incomplete_with_needs:
+      job: a
+      output: argument
+    __metadata:
+      workflow_call_id: e0c1155c1286a2f6e213ec7986500f7961418d1e11664de1409a2d8072d6845e
+
+- id: 677
+  run_id: 901
+  repo_id: 63
+  owner_id: 2
+  commit_sha: c29b3a4b23e21ea3261291d82bfb8e7af7797e26
+  attempt: 1
+  job_id: b
+  needs: '["b.reusable","a"]'
+  runs_on: '["fedora"]'
+  status: 7 # blocked
+  workflow_payload: |
+    "on":
+      workflow_dispatch:
+    jobs:
+      b:
+        name: b
+        runs-on: []
+        if: false
+    __metadata:
+      workflow_call_inputs:
+        argument: something
+      workflow_call_id: ec2c61f51535f715c1b7b3089c6b2d46578698a4c5d10f6dd4a4466b2f44f81c
+
+- id: 678
+  run_id: 901
+  repo_id: 63
+  owner_id: 2
+  commit_sha: c29b3a4b23e21ea3261291d82bfb8e7af7797e26
+  attempt: 1
+  job_id: b.reusable
+  needs: '["a"]'
+  runs_on: '["fedora"]'
+  status: 1 # success
+  workflow_payload: |
+    "on":
+      workflow_call:
+        inputs:
+          argument:
+            default: something
+            type: string
+    jobs:
+      b.reusable:
+        name: reusable
+        runs-on: ubuntu-latest
+        steps:
+          - run: |
+              echo "Argument: ${{ inputs.argument }}"
+    __metadata:
+      workflow_call_parent: ec2c61f51535f715c1b7b3089c6b2d46578698a4c5d10f6dd4a4466b2f44f81c
+

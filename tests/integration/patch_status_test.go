@@ -10,22 +10,19 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
-	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/test"
 	pull_service "forgejo.org/services/pull"
-	files_service "forgejo.org/services/repository/files"
 	shared_automerge "forgejo.org/services/shared/automerge"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,24 +33,17 @@ func TestPatchStatus(t *testing.T) {
 		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 		session := loginUser(t, user2.Name)
 
-		var objectFormat optional.Option[string]
+		var objectFormat git.ObjectFormat
 		if git.SupportHashSha256 {
-			objectFormat = optional.Some("sha256")
+			objectFormat = git.Sha256ObjectFormat
 		}
 
-		repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user2, tests.DeclarativeRepoOptions{
-			AutoInit:     optional.Some(true),
-			EnabledUnits: optional.Some([]unit_model.Type{unit_model.TypeCode}),
+		repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				".spokeperson": forgery.MapFile("n0toose"),
+			},
 			ObjectFormat: objectFormat,
-			Files: optional.Some([]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      ".spokeperson",
-					ContentReader: strings.NewReader("n0toose"),
-				},
-			}),
 		})
-		defer f()
 
 		testAutomergeQueued := func(t *testing.T, pr *issues_model.PullRequest, expected issues_model.PullRequestStatus) {
 			t.Helper()

@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCommentUpload(t *testing.T) {
+func TestUpload(t *testing.T) {
 	unittest.PrepareTestEnv(t)
 	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
 	var (
@@ -61,96 +61,116 @@ func TestCommentUpload(t *testing.T) {
 
 	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{OwnerID: user.ID, Name: repoName})
 
-	// Create and Test Issues Uploading
-	issueA := &base.Issue{
-		Title:        "First issue",
-		Number:       0,
-		PosterID:     37243484,
-		PosterName:   "PatDyn",
-		PosterEmail:  "",
-		Content:      "Mock Content",
-		Milestone:    "Mock Milestone",
-		State:        "open",
-		Created:      time.Date(2025, 8, 7, 12, 44, 7, 0, time.UTC),
-		Updated:      time.Date(2025, 8, 7, 12, 44, 47, 0, time.UTC),
-		Labels:       nil,
-		Reactions:    nil,
-		Closed:       nil,
-		IsLocked:     false,
-		Assignees:    nil,
-		ForeignIndex: 0,
-	}
+	t.Run("Topic", func(t *testing.T) {
+		logChecker, cleanup := test.NewLogChecker(log.DEFAULT, log.INFO)
+		logChecker.StopMark("Invalid topics: [verylongtopicthatistoolongforgejomigration a b c d e f] in migration to user1/test_repo")
+		defer cleanup()
 
-	issueB := &base.Issue{
-		Title:        "Second Issue",
-		Number:       1,
-		PosterID:     37243484,
-		PosterName:   "PatDyn",
-		PosterEmail:  "",
-		Content:      "Mock Content",
-		Milestone:    "Mock Milestone",
-		State:        "open",
-		Created:      time.Date(2025, 8, 7, 12, 45, 44, 0, time.UTC),
-		Updated:      time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
-		Labels:       nil,
-		Reactions:    nil,
-		Closed:       nil,
-		IsLocked:     false,
-		Assignees:    nil,
-		ForeignIndex: 1,
-	}
+		require.NoError(t, uploader.CreateTopics("verylongtopicthatistoolongforgejomigration", "go  ", " security", "a b c d e f"))
 
-	err := uploader.CreateIssues(issueA, issueB)
-	require.NoError(t, err)
+		_, logStopped := logChecker.Check(time.Second)
+		assert.True(t, logStopped)
 
-	issues, err := issues_model.Issues(db.DefaultContext, &issues_model.IssuesOptions{
-		RepoIDs:  []int64{repo.ID},
-		IsPull:   optional.Some(false),
-		SortType: "newest",
+		unittest.AssertExistsIf(t, false, &repo_model.Topic{Name: "verylongtopicthatistoolongforgejomigration"})
+		unittest.AssertExistsIf(t, true, &repo_model.Topic{Name: "go"})
+		unittest.AssertExistsIf(t, true, &repo_model.Topic{Name: "security"})
+		unittest.AssertExistsIf(t, false, &repo_model.Topic{Name: "a b c d e f"})
 	})
-	require.NoError(t, err)
-	assert.Len(t, issues, 2)
 
-	// Create and Test Comment Uploading
-	issueAComment := &base.Comment{
-		IssueIndex:  0,
-		Index:       0,
-		CommentType: "comment",
-		PosterID:    37243484,
-		PosterName:  "PatDyn",
-		PosterEmail: "",
-		Created:     time.Date(2025, 8, 7, 12, 44, 24, 0, time.UTC),
-		Updated:     time.Date(2025, 8, 7, 12, 44, 24, 0, time.UTC),
-		Content:     "First Mock Comment",
-		Reactions:   nil,
-		Meta:        nil,
-	}
-	issueBComment := &base.Comment{
-		IssueIndex:  1,
-		Index:       1,
-		CommentType: "comment",
-		PosterID:    37243484,
-		PosterName:  "PatDyn",
-		PosterEmail: "",
-		Created:     time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
-		Updated:     time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
-		Content:     "Second Mock Comment",
-		Reactions:   nil,
-		Meta:        nil,
-	}
-	require.NoError(t, uploader.CreateComments(issueBComment, issueAComment))
+	t.Run("Issue", func(t *testing.T) {
+		// Create and Test Issues Uploading
+		issueA := &base.Issue{
+			Title:        "First issue",
+			Number:       0,
+			PosterID:     37243484,
+			PosterName:   "PatDyn",
+			PosterEmail:  "",
+			Content:      "Mock Content",
+			Milestone:    "Mock Milestone",
+			State:        "open",
+			Created:      time.Date(2025, 8, 7, 12, 44, 7, 0, time.UTC),
+			Updated:      time.Date(2025, 8, 7, 12, 44, 47, 0, time.UTC),
+			Labels:       nil,
+			Reactions:    nil,
+			Closed:       nil,
+			IsLocked:     false,
+			Assignees:    nil,
+			ForeignIndex: 0,
+		}
 
-	issues, err = issues_model.Issues(db.DefaultContext, &issues_model.IssuesOptions{
-		RepoIDs:  []int64{repo.ID},
-		IsPull:   optional.Some(false),
-		SortType: "newest",
+		issueB := &base.Issue{
+			Title:        "Second Issue",
+			Number:       1,
+			PosterID:     37243484,
+			PosterName:   "PatDyn",
+			PosterEmail:  "",
+			Content:      "Mock Content",
+			Milestone:    "Mock Milestone",
+			State:        "open",
+			Created:      time.Date(2025, 8, 7, 12, 45, 44, 0, time.UTC),
+			Updated:      time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
+			Labels:       nil,
+			Reactions:    nil,
+			Closed:       nil,
+			IsLocked:     false,
+			Assignees:    nil,
+			ForeignIndex: 1,
+		}
+
+		err := uploader.CreateIssues(issueA, issueB)
+		require.NoError(t, err)
+
+		issues, err := issues_model.Issues(db.DefaultContext, &issues_model.IssuesOptions{
+			RepoIDs:  []int64{repo.ID},
+			IsPull:   optional.Some(false),
+			SortType: "newest",
+		})
+		require.NoError(t, err)
+		assert.Len(t, issues, 2)
 	})
-	require.NoError(t, err)
-	assert.Len(t, issues, 2)
-	require.NoError(t, issues[0].LoadDiscussComments(db.DefaultContext))
-	require.NoError(t, issues[1].LoadDiscussComments(db.DefaultContext))
-	assert.Len(t, issues[0].Comments, 1)
-	assert.Len(t, issues[1].Comments, 1)
+
+	t.Run("Comments", func(t *testing.T) {
+		// Create and Test Comment Uploading
+		issueAComment := &base.Comment{
+			IssueIndex:  0,
+			Index:       0,
+			CommentType: "comment",
+			PosterID:    37243484,
+			PosterName:  "PatDyn",
+			PosterEmail: "",
+			Created:     time.Date(2025, 8, 7, 12, 44, 24, 0, time.UTC),
+			Updated:     time.Date(2025, 8, 7, 12, 44, 24, 0, time.UTC),
+			Content:     "First Mock Comment",
+			Reactions:   nil,
+			Meta:        nil,
+		}
+		issueBComment := &base.Comment{
+			IssueIndex:  1,
+			Index:       1,
+			CommentType: "comment",
+			PosterID:    37243484,
+			PosterName:  "PatDyn",
+			PosterEmail: "",
+			Created:     time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
+			Updated:     time.Date(2025, 8, 7, 13, 7, 25, 0, time.UTC),
+			Content:     "Second Mock Comment",
+			Reactions:   nil,
+			Meta:        nil,
+		}
+		require.NoError(t, uploader.CreateComments(issueBComment, issueAComment))
+
+		issues, err := issues_model.Issues(db.DefaultContext, &issues_model.IssuesOptions{
+			RepoIDs:  []int64{repo.ID},
+			IsPull:   optional.Some(false),
+			SortType: "newest",
+		})
+		require.NoError(t, err)
+		assert.Len(t, issues, 2)
+		require.NoError(t, issues[0].LoadDiscussComments(db.DefaultContext))
+		require.NoError(t, issues[1].LoadDiscussComments(db.DefaultContext))
+		assert.Len(t, issues[0].Comments, 1)
+		assert.Len(t, issues[1].Comments, 1)
+	})
 }
 
 func TestGiteaUploadRepo(t *testing.T) {

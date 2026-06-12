@@ -288,6 +288,106 @@ func TestAPIReleaseGetDraftByTag(t *testing.T) {
 	assert.NotEmpty(t, err.Message)
 }
 
+func TestAPIReleaseGet(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
+
+	session := loginUser(t, "user2")
+	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeReadRepository)
+
+	t.Run("draft release, no permission", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "draft-release",
+		})
+		assert.True(t, rel.IsDraft)
+		assert.False(t, rel.IsTag) // wouldn't test the CanWrite(TypeReleases) check for the draft, if this were the case
+
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d", repo.OwnerName, repo.Name, rel.ID))
+		resp := MakeRequest(t, req, http.StatusNotFound)
+		var err *api.APIError
+		DecodeJSON(t, resp, &err)
+		assert.NotEmpty(t, err.Message)
+	})
+
+	t.Run("draft release, w/ permission", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "draft-release",
+		})
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d", repo.OwnerName, repo.Name, rel.ID)).
+			AddTokenAuth(token)
+		resp := MakeRequest(t, req, http.StatusOK)
+		var apiRelease *api.Release
+		DecodeJSON(t, resp, &apiRelease)
+		assert.Equal(t, rel.TagName, apiRelease.TagName)
+	})
+
+	t.Run("published release", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "v1.1",
+		})
+		assert.False(t, rel.IsDraft)
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d", repo.OwnerName, repo.Name, rel.ID))
+		resp := MakeRequest(t, req, http.StatusOK)
+		var apiRelease *api.Release
+		DecodeJSON(t, resp, &apiRelease)
+		assert.Equal(t, rel.TagName, apiRelease.TagName)
+	})
+}
+
+func TestAPIReleaseGetAssets(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
+
+	session := loginUser(t, "user2")
+	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeReadRepository)
+
+	t.Run("draft release, no permission", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "draft-release",
+		})
+		assert.True(t, rel.IsDraft)
+		assert.False(t, rel.IsTag) // wouldn't test the CanWrite(TypeReleases) check for the draft, if this were the case
+
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets", repo.OwnerName, repo.Name, rel.ID))
+		resp := MakeRequest(t, req, http.StatusNotFound)
+		var err *api.APIError
+		DecodeJSON(t, resp, &err)
+		assert.NotEmpty(t, err.Message)
+	})
+
+	t.Run("draft release, w/ permission", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "draft-release",
+		})
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets", repo.OwnerName, repo.Name, rel.ID)).
+			AddTokenAuth(token)
+		resp := MakeRequest(t, req, http.StatusOK)
+		var attach []*api.Attachment
+		DecodeJSON(t, resp, &attach)
+		assert.Empty(t, attach)
+	})
+
+	t.Run("published release", func(t *testing.T) {
+		rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+			RepoID:  repo.ID,
+			TagName: "v1.1",
+		})
+		assert.False(t, rel.IsDraft)
+		req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets", repo.OwnerName, repo.Name, rel.ID))
+		resp := MakeRequest(t, req, http.StatusOK)
+		var attach []*api.Attachment
+		DecodeJSON(t, resp, &attach)
+		assert.Len(t, attach, 1)
+	})
+}
+
 func TestAPIReleaseDeleteByTagName(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 

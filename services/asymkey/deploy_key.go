@@ -9,21 +9,13 @@ import (
 	"forgejo.org/models"
 	asymkey_model "forgejo.org/models/asymkey"
 	"forgejo.org/models/db"
-	user_model "forgejo.org/models/user"
 )
 
 // DeleteDeployKey deletes deploy key from its repository authorized_keys file if needed.
-func DeleteDeployKey(ctx context.Context, doer *user_model.User, id int64) error {
-	dbCtx, committer, err := db.TxContext(ctx)
-	if err != nil {
-		return err
-	}
-	defer committer.Close()
-
-	if err := models.DeleteDeployKey(dbCtx, doer, id); err != nil {
-		return err
-	}
-	if err := committer.Commit(); err != nil {
+func DeleteDeployKey(ctx context.Context, id, repoID int64) error {
+	if err := db.WithTx(ctx, func(ctx context.Context) error {
+		return models.DeleteDeployKey(ctx, id, repoID)
+	}); err != nil {
 		return err
 	}
 

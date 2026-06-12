@@ -160,8 +160,10 @@
 			</div>
 		</div>
 
-		{{template "repo/code/recently_pushed_new_branches" .}}
-		{{template "repo/code/fork_sync_message" .}}
+		{{if (not .Repository.IsArchived)}}
+			{{template "repo/code/recently_pushed_new_branches" .}}
+			{{template "repo/code/fork_sync_message" .}}
+		{{end}}
 
 		{{if .IsViewFile}}
 			{{template "repo/view_file" .}}

@@ -24,7 +24,6 @@ import (
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
@@ -32,6 +31,7 @@ import (
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -617,19 +617,15 @@ func TestRenamedFileHistory(t *testing.T) {
 
 		t.Run("Renamed file (with escaped name)", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+			user2 := forgery.CreateUser(t, nil)
 
-			repo, commitID, f := tests.CreateDeclarativeRepo(t, user2, "",
-				[]unit_model.Type{unit_model.TypeCode}, nil,
-				[]*files_service.ChangeRepoFile{
-					{
-						Operation:     "create",
-						TreePath:      "#beep",
-						ContentReader: strings.NewReader("ping pong"),
-					},
+			var commitID string
+			repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+				Files: forgery.MapFS{
+					"#beep": forgery.MapFile("ping pong"),
 				},
-			)
-			defer f()
+				LatestSha: &commitID,
+			})
 
 			files, err := files_service.ChangeRepoFiles(git.DefaultContext, repo, user2, &files_service.ChangeRepoFilesOptions{
 				Files: []*files_service.ChangeRepoFile{
@@ -794,7 +790,7 @@ func TestViewCommitSignature(t *testing.T) {
 		// Ensure the git config is updated with the new signing format.
 		require.NoError(t, git.InitFull(t.Context()))
 
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		user := forgery.CreateUser(t, nil)
 		testCtx := NewAPITestContext(t, user.Name, "commit-header-signed", auth_model.AccessTokenScopeWriteRepository, auth_model.AccessTokenScopeWriteUser)
 		u.Path = testCtx.GitPath()
 
@@ -993,47 +989,19 @@ func TestRepoFilesList(t *testing.T) {
 		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 
 		// create the repo
-		repo, _, f := tests.CreateDeclarativeRepo(t, user2, "",
-			[]unit_model.Type{unit_model.TypeCode}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "zEta",
-					ContentReader: strings.NewReader("zeta"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "licensa",
-					ContentReader: strings.NewReader("licensa"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "licensz",
-					ContentReader: strings.NewReader("licensz"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "delta",
-					ContentReader: strings.NewReader("delta"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "Charlie/aa.txt",
-					ContentReader: strings.NewReader("charlie"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "Beta",
-					ContentReader: strings.NewReader("beta"),
-				},
-				{
-					Operation:     "create",
-					TreePath:      "alpha",
-					ContentReader: strings.NewReader("alpha"),
-				},
+		repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"zEta":           forgery.MapFile("zeta"),
+				"licensa":        forgery.MapFile("licensa"),
+				"LICENSE":        forgery.MapFile("LICENSE"),
+				"licensz":        forgery.MapFile("licensz"),
+				"delta":          forgery.MapFile("delta"),
+				"Charlie/aa.txt": forgery.MapFile("charlie"),
+				"Beta":           forgery.MapFile("beta"),
+				"alpha":          forgery.MapFile("alpha"),
+				"README.md":      forgery.MapFile("README.md"),
 			},
-		)
-		defer f()
+		})
 
 		req := NewRequest(t, "GET", "/"+repo.FullName())
 		resp := MakeRequest(t, req, http.StatusOK)
@@ -1223,8 +1191,11 @@ func TestRepoSubmoduleView(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
 		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 		t.Run("FromGit", func(t *testing.T) {
-			repo, _, f := tests.CreateDeclarativeRepo(t, user2, "", []unit_model.Type{unit_model.TypeCode}, nil, nil)
-			defer f()
+			repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+				Files: forgery.MapFS{
+					"README.md": forgery.MapFile("some explanation"), // file is expected in doGitClone
+				},
+			})
 
 			// Clone the repository, add a submodule and push it.
 			dstPath := t.TempDir()
@@ -1262,24 +1233,15 @@ func TestRepoSubmoduleView(t *testing.T) {
 		})
 
 		t.Run("Declarative", func(t *testing.T) {
-			repo, _, f := tests.CreateDeclarativeRepo(t, user2, "", []unit_model.Type{unit_model.TypeCode}, nil, []*files_service.ChangeRepoFile{
-				{
-					Operation: "create",
-					TreePath:  ".gitmodules",
-					ContentReader: strings.NewReader(`[submodule "relative-module"]
+			repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+				Files: forgery.MapFS{
+					".gitmodules": forgery.MapFile(`[submodule "relative-module"]
   path = relative-module
   url = https://git.example.org/submodule.git
 `),
-				}, {
-					Operation:     "create",
-					TreePath:      "relative-module",
-					FromTreePath:  "",
-					ContentReader: nil,
-					SHA:           "95601d16476a",
-					Options:       files_service.RepoFileOptionMode(git.EntryModeCommit),
+					"relative-module": forgery.MapSubmodule("95601d16476a"),
 				},
 			})
-			defer f()
 
 			// Check that the submodule entry exist and the link is correct.
 			req := NewRequest(t, "GET", "/"+repo.FullName())
@@ -1300,26 +1262,17 @@ func TestRepoSubmoduleView(t *testing.T) {
 		})
 
 		t.Run("SubmodulesFileTooBig", func(t *testing.T) {
-			repo, _, f := tests.CreateDeclarativeRepo(t, user2, "", []unit_model.Type{unit_model.TypeCode}, nil, []*files_service.ChangeRepoFile{
-				{
-					Operation: "create",
-					TreePath:  ".gitmodules",
-					ContentReader: strings.NewReader(strings.Repeat("#", git.MaxGitmodulesFileSize-5) + // ensure that the partial read is invalid
+			repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+				Files: forgery.MapFS{
+					".gitmodules": forgery.MapFile(strings.Repeat("#", git.MaxGitmodulesFileSize-5) + // ensure that the partial read is invalid
 						`
 [submodule "relative-module"]
   path = relative-module
   url = https://git.example.org/submodule.git
 `),
-				}, {
-					Operation:     "create",
-					TreePath:      "relative-module",
-					FromTreePath:  "",
-					ContentReader: nil,
-					SHA:           "95601d16476a",
-					Options:       files_service.RepoFileOptionMode(git.EntryModeCommit),
+					"relative-module": forgery.MapSubmodule("95601d16476a"),
 				},
 			})
-			defer f()
 
 			// Check that the submodule entry exist and the link is correct.
 			req := NewRequest(t, "GET", "/"+repo.FullName())
@@ -1369,21 +1322,17 @@ func TestInitInstructions(t *testing.T) {
 
 	forEachObjectFormat(t, func(t *testing.T, objectFormat git.ObjectFormat) {
 		defer tests.PrintCurrentTest(t)()
-		name := objectFormat.Name()
+
 		var init string
-		if name == "sha1" {
+		if objectFormat == git.Sha1ObjectFormat {
 			init = "git init"
 		} else {
-			init = fmt.Sprintf("git init --object-format=%s", name)
+			init = fmt.Sprintf("git init --object-format=%s", objectFormat.Name())
 		}
 
-		repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-			Name:         optional.Some(name + "-instruction"),
-			AutoInit:     optional.Some(false),
-			EnabledUnits: optional.Some([]unit_model.Type{unit_model.TypeCode}),
-			ObjectFormat: optional.Some(name),
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			ObjectFormat: objectFormat,
 		})
-		defer f()
 
 		portMatcher := regexp.MustCompile(`localhost:\d+`)
 		resp := session.MakeRequest(t, NewRequest(t, "GET", "/"+repo.FullName()), http.StatusOK)
@@ -1394,7 +1343,7 @@ func TestInitInstructions(t *testing.T) {
 git switch -c main
 git add README.md
 git commit -m "first commit"
-git remote add origin http://localhost/user2/%s-instruction.git
-git push -u origin main`, init, name), portMatcher.ReplaceAllString(htmlDoc.Find(".empty-repo-guide code").First().Text(), "localhost"))
+git remote add origin http://localhost/user2/%s.git
+git push -u origin main`, init, repo.Name), portMatcher.ReplaceAllString(htmlDoc.Find(".empty-repo-guide code").First().Text(), "localhost"))
 	})
 }

@@ -105,7 +105,7 @@ func DeleteUserOpenID(ctx context.Context, openid *UserOpenID) (err error) {
 }
 
 // ToggleUserOpenIDVisibility toggles visibility of an openid address of given user.
-func ToggleUserOpenIDVisibility(ctx context.Context, id int64) (err error) {
-	_, err = db.GetEngine(ctx).Exec("update `user_open_id` set `show` = not `show` where `id` = ?", id)
+func ToggleUserOpenIDVisibility(ctx context.Context, userID, userOpenID int64) (err error) {
+	_, err = db.GetEngine(ctx).Exec("update `user_open_id` set `show` = not `show` where `uid` = ? and `id` = ?", userID, userOpenID)
 	return err
 }

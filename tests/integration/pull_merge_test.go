@@ -49,6 +49,7 @@ import (
 	commitstatus_service "forgejo.org/services/repository/commitstatus"
 	webhook_service "forgejo.org/services/webhook"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
@@ -1269,8 +1270,9 @@ func TestMergeConcurrency(t *testing.T) {
 		// been run up to 50 without errors.
 		concurrentCount := 5
 
-		repo, _, deferrer := tests.CreateDeclarativeRepo(t, user2, "concurrency-test", nil, nil, nil)
-		defer deferrer()
+		repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 
 		// Create labels for the PRs...
 		labelNames := []string{"bug", "super-important", "tricky", "deadlock"}
@@ -1395,8 +1397,9 @@ func TestMergeHTTPRequestCancellation(t *testing.T) {
 		measuredMergeTime := 283 * time.Millisecond                                   // time measured on a test system for one POST /%s/%s/pulls/%d/merge
 		cancellationDuration := measuredMergeTime / time.Duration(cancellationChecks) // cancel after (i+1) * cancellationDuration for each PR
 
-		repo, _, deferrer := tests.CreateDeclarativeRepo(t, user2, "concurrency-test", nil, nil, nil)
-		defer deferrer()
+		repo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 
 		bulkCreatePRs(t, cancellationChecks, repo, token, nil, 0)
 

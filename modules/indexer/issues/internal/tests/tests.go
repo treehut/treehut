@@ -172,6 +172,23 @@ var cases = []*testIndexerCase{
 		ExpectedTotal: 1,
 	},
 	{
+		Name: "Keyword Exclude Only",
+		ExtraData: []*internal.IndexerData{
+			{ID: 1000, Title: "hello"},
+			{ID: 1001, Content: "hello world"},
+			{ID: 1002, Comments: []string{"hi", "hello world"}},
+		},
+		Keyword: "-hello",
+		SearchOptions: &internal.SearchOptions{
+			SortBy: internal.SortByCreatedDesc,
+		},
+		Expected: func(t *testing.T, data map[int64]*internal.IndexerData, result *internal.SearchResult) {
+			for _, hit := range result.Hits {
+				assert.NotContains(t, []int64{1000, 1001, 1002}, hit.ID)
+			}
+		},
+	},
+	{
 		Name: "Keyword Fuzzy",
 		ExtraData: []*internal.IndexerData{
 			{ID: 1000, Title: "hi hello world"},

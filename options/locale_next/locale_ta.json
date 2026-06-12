@@ -260,7 +260,7 @@
 	"repo.issue_indexer.title": "வெளியீட்டு அட்டவணை",
 	"search.milestone_kind": "மைல்கற்களைத் தேடு…",
 	"repo.settings.push_mirror.branch_filter.label": "கிளை வடிகட்டி (விரும்பினால்)",
-	"repo.settings.push_mirror.branch_filter.description": "கிளைகள் பிரதிபலிக்க வேண்டும். அனைத்து கிளைகளையும் பிரதிபலிக்க காலியாக விடவும். தொடரியலுக்கு <a href=\"%[1]s\">%[2]s ஆவணத்தைப்</a> பார்க்கவும். எடுத்துக்காட்டுகள்: <code>main, release/*</code>",
+	"repo.settings.push_mirror.branch_filter.description": "கிளைகள் பிரதிபலிக்க வேண்டும். அனைத்து கிளைகளையும் பிரதிபலிக்கக் காலியாக விடவும். தொடரியலுக்கு <a href=\"%[1]s\">%[2]s ஆவணத்தைப்</a> பார்க்கவும். எடுத்துக்காட்டுகள்: <code>main, release/*</code>",
 	"incorrect_root_url": "இந்த Forgejo நிகழ்வு \"%s\" இல் வழங்குவதற்காக கட்டமைக்கப்பட்டுள்ளது. நீங்கள் தற்போது Forgejo ஐ வேறொரு முகவரி மூலம் பார்க்கிறீர்கள், இது பயன்பாட்டின் சில பகுதிகளை உடைக்கக்கூடும். app.ini இல் உள்ள ROOT_URL அமைப்பு வழியாக Forgejo நிர்வாகிகளால் நியமன முகவரி கட்டுப்படுத்தப்படுகிறது.",
 	"themes.names.forgejo-auto": "Forgejo (கணினி கருப்பொருள் பின்பற்றவும்)",
 	"themes.names.forgejo-light": "ஃபோர்சோ ஒளி",

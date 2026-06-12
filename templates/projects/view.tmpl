@@ -64,7 +64,7 @@
 </div>
 
 <div id="project-board">
-	<div class="board {{if .CanWriteProjects}}sortable{{end}}"{{if .CanWriteProjects}} data-url="{{$.Link}}/move"{{end}}>
+	<div class="board {{if $canWriteProject}}sortable{{end}}"{{if $canWriteProject}} data-url="{{$.Link}}/move"{{end}}>
 		{{range .Columns}}
 			<div class="project-column"{{if .Color}} style="background: {{.Color}} !important; color: {{ContrastColor .Color}} !important"{{end}} data-id="{{.ID}}" data-sorting="{{.Sorting}}" data-url="{{$.Link}}/{{.ID}}">
 				<div class="project-column-header{{if $canWriteProject}} tw-cursor-grab{{end}}">
@@ -166,7 +166,7 @@
 	</div>
 </div>
 
-{{if .CanWriteProjects}}
+{{if $canWriteProject}}
 	<div class="ui g-modal-confirm delete modal" id="delete-project">
 		<div class="header">
 			{{svg "octicon-trash"}}

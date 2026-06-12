@@ -430,6 +430,14 @@ func (g *GitlabDownloader) GetIssues(page, perPage int) ([]*base.Issue, bool, er
 		return nil, false, fmt.Errorf("error while listing issues: %w", err)
 	}
 	for _, issue := range issues {
+		// record the issue IID, to be used in GetPullRequests()
+		g.iidResolver.recordIssueIID(issue.IID)
+
+		// Do not include confidential issues as long as Forgejo does not support them, see https://codeberg.org/forgejo/design/issues/2
+		if issue.Confidential {
+			continue
+		}
+
 		labels := make([]*base.Label, 0, len(issue.Labels))
 		for _, l := range issue.Labels {
 			labels = append(labels, &base.Label{
@@ -458,9 +466,6 @@ func (g *GitlabDownloader) GetIssues(page, perPage int) ([]*base.Issue, bool, er
 
 			awardPage++
 		}
-
-		// record the issue IID, to be used in GetPullRequests()
-		g.iidResolver.recordIssueIID(issue.IID)
 
 		allIssues = append(allIssues, &base.Issue{
 			Title:        issue.Title,
@@ -517,6 +522,9 @@ func (g *GitlabDownloader) GetComments(commentable base.Commentable) ([]*base.Co
 		}
 		for _, comment := range comments {
 			for _, note := range comment.Notes {
+				if note.Internal {
+					continue
+				}
 				allComments = append(allComments, g.convertNoteToComment(commentable.GetLocalIndex(), note))
 			}
 		}

@@ -23,7 +23,7 @@ Template Attributes:
 				</form>
 			</div>
 		</div>
-	{{else if and .PullRequestPosterIsNotTrustedWithActions .SomePullRequestRunsNeedApproval}}
+	{{else if .SomePullRequestRunsNeedApproval}}
 		<div class="pull-request-trust-panel" id="pull-request-trust-panel">
 			<div class="divider"></div>
 			<div class="item item-section">

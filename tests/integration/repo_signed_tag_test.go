@@ -12,14 +12,13 @@ import (
 
 	auth_model "forgejo.org/models/auth"
 	"forgejo.org/models/db"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/gitrepo"
 	"forgejo.org/modules/graceful"
 	repo_module "forgejo.org/modules/repository"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/require"
 )
@@ -28,9 +27,10 @@ func TestRepoSSHSignedTags(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
 	// Preparations
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-	repo, _, f := tests.CreateDeclarativeRepo(t, user, "", nil, nil, nil)
-	defer f()
+	user := forgery.CreateUser(t, nil)
+	repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+		Files: forgery.FilesInit{}, // ensure that an initial commit is present (even though the git server is not listening)
+	})
 
 	// Set up an SSH key for the tagger
 	tmpDir := t.TempDir()

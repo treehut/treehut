@@ -21,12 +21,10 @@ import (
 	auth_model "forgejo.org/models/auth"
 	"forgejo.org/models/db"
 	repo_model "forgejo.org/models/repo"
-	"forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/gitrepo"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
@@ -37,6 +35,7 @@ import (
 	mirror_service "forgejo.org/services/mirror"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -228,12 +227,7 @@ func TestSSHPushMirror(t *testing.T) {
 		assert.False(t, srcRepo.HasWiki())
 		sess := loginUser(t, user.Name)
 
-		pushToRepo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-			Name:         optional.Some("push-mirror-misc-test"),
-			AutoInit:     optional.Some(false),
-			EnabledUnits: optional.Some([]unit.Type{unit.TypeCode}),
-		})
-		defer f()
+		pushToRepo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{})
 		sshURL := fmt.Sprintf("ssh://%s@%s/%s.git", setting.SSH.User, net.JoinHostPort(setting.SSH.ListenHost, strconv.Itoa(setting.SSH.ListenPort)), pushToRepo.FullName())
 
 		t.Run("Mutual exclusive", func(t *testing.T) {
@@ -286,12 +280,7 @@ func TestSSHPushMirror(t *testing.T) {
 		testMirrorPush := func(t *testing.T, srcRepo *repo_model.Repository, expectedSHA string) {
 			t.Helper()
 
-			pushToRepo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-				Name:         optional.Some("push-mirror-test"),
-				AutoInit:     optional.Some(false),
-				EnabledUnits: optional.Some([]unit.Type{unit.TypeCode}),
-			})
-			defer f()
+			pushToRepo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{})
 			sshURL := fmt.Sprintf("ssh://%s@%s/%s.git", setting.SSH.User, net.JoinHostPort(setting.SSH.ListenHost, strconv.Itoa(setting.SSH.ListenPort)), pushToRepo.FullName())
 
 			var pushMirror *repo_model.PushMirror
@@ -404,8 +393,7 @@ func TestPushMirrorBranchFilterWebUI(t *testing.T) {
 		srcRepo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
 		sess := loginUser(t, user.Name)
 
-		mirrorRepo, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit.Type{unit.TypeCode}, nil, nil)
-		defer f()
+		mirrorRepo := forgery.CreateRepository(t, user, nil)
 
 		ctx := NewAPITestContext(t, user.LowerName, srcRepo.Name, auth_model.AccessTokenScopeReadRepository)
 		ctx.Session = sess
@@ -595,12 +583,8 @@ func TestPushMirrorSettings(t *testing.T) {
 		srcRepo2 := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 3})
 		assert.False(t, srcRepo.HasWiki())
 		sess := loginUser(t, user.Name)
-		pushToRepo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-			Name:         optional.Some("push-mirror-test"),
-			AutoInit:     optional.Some(false),
-			EnabledUnits: optional.Some([]unit.Type{unit.TypeCode}),
-		})
-		defer f()
+
+		pushToRepo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{})
 
 		t.Run("Adding", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
@@ -904,8 +888,7 @@ func TestPushMirrorWebUIToAPIIntegration(t *testing.T) {
 		session := loginUser(t, user.Name)
 		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeAll)
 
-		mirrorRepo, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit.Type{unit.TypeCode}, nil, nil)
-		defer f()
+		mirrorRepo := forgery.CreateRepository(t, user, nil)
 
 		ctx := NewAPITestContext(t, user.LowerName, srcRepo.Name, auth_model.AccessTokenScopeReadRepository)
 		ctx.Session = session
@@ -941,8 +924,7 @@ func TestPushMirrorWebUIToAPIIntegration(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
 			// Create another mirror repo for this test
-			mirrorRepo2, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit.Type{unit.TypeCode}, nil, nil)
-			defer f()
+			mirrorRepo2 := forgery.CreateRepository(t, user, nil)
 			remoteAddress2 := fmt.Sprintf("%s%s/%s", u.String(), url.PathEscape(user.Name), url.PathEscape(mirrorRepo2.Name))
 
 			// Create push mirror with empty branch filter via web UI
@@ -967,8 +949,7 @@ func TestPushMirrorWebUIToAPIIntegration(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
 			// Create another mirror repo for this test
-			mirrorRepo3, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit.Type{unit.TypeCode}, nil, nil)
-			defer f()
+			mirrorRepo3 := forgery.CreateRepository(t, user, nil)
 			remoteAddress3 := fmt.Sprintf("%s%s/%s", u.String(), url.PathEscape(user.Name), url.PathEscape(mirrorRepo3.Name))
 
 			// Create push mirror with complex branch filter via web UI
@@ -994,8 +975,7 @@ func TestPushMirrorWebUIToAPIIntegration(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
 			// Create another mirror repo for this test
-			mirrorRepo4, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit.Type{unit.TypeCode}, nil, nil)
-			defer f()
+			mirrorRepo4 := forgery.CreateRepository(t, user, nil)
 			remoteAddress4 := fmt.Sprintf("%s%s/%s", u.String(), url.PathEscape(user.Name), url.PathEscape(mirrorRepo4.Name))
 
 			// First create a push mirror via API with initial branch filter

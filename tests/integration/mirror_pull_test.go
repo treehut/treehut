@@ -22,7 +22,6 @@ import (
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/gitrepo"
 	"forgejo.org/modules/migration"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/process"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/structs"
@@ -34,6 +33,7 @@ import (
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/google/uuid"
@@ -183,19 +183,14 @@ func TestMirrorPull(t *testing.T) {
 					user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 
 					// Create the source repository that will be mirrored.
-					sourceRepo, sourceRepoSha, cleanupSource := tests.CreateDeclarativeRepoWithOptions(t, user2,
-						tests.DeclarativeRepoOptions{
-							IsPrivate: optional.Some(mc.privateSource),
-							Files: optional.Some([]*files_service.ChangeRepoFile{
-								{
-									Operation:     "create",
-									TreePath:      "docs.md",
-									ContentReader: strings.NewReader("hello, world"),
-								},
-							}),
+					var sourceRepoSha string
+					sourceRepo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+						IsPrivate: mc.privateSource,
+						Files: forgery.MapFS{
+							"docs.md": forgery.MapFile("hello, world"),
 						},
-					)
-					defer cleanupSource()
+						LatestSha: &sourceRepoSha,
+					})
 					require.NotEmpty(t, sourceRepoSha)
 
 					// Create pull mirror
@@ -239,10 +234,7 @@ func TestMirrorPull(t *testing.T) {
 
 		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 
-		mirrorRepo, _, cleanupMirror := tests.CreateDeclarativeRepoWithOptions(t, user2,
-			tests.DeclarativeRepoOptions{},
-		)
-		defer cleanupMirror()
+		mirrorRepo := forgery.CreateRepository(t, user2, nil)
 
 		// Write to the repo a config file that would have plausibly existed before EncryptedRemoteAddress was
 		// introduced:
@@ -343,8 +335,8 @@ func createPullMirrorViaWeb(t *testing.T, sourceRepo *repo_model.Repository, aut
 			body := resp.Body.String()
 			lastBody = body
 			// Looking for the repo page to be fully populated indicating that the migration is complete:
-			// Check that the first commit message is present:
-			if !strings.Contains(body, "Initial commit") {
+			// Check that the committed file is present:
+			if !strings.Contains(body, "docs.md") {
 				return false
 			}
 			// Check that the fork button is present:

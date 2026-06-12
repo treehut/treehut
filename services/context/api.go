@@ -25,6 +25,7 @@ import (
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/web"
 	web_types "forgejo.org/modules/web/types"
+	"forgejo.org/services/auth"
 	"forgejo.org/services/authz"
 
 	"code.forgejo.org/go-chi/cache"
@@ -36,9 +37,9 @@ type APIContext struct {
 
 	Cache cache.Cache
 
-	Doer        *user_model.User // current signed-in user
-	IsSigned    bool
-	IsBasicAuth bool
+	Doer           *user_model.User // current signed-in user
+	IsSigned       bool
+	Authentication auth.AuthenticationResult
 
 	ContextUser *user_model.User // the user which is being visited, in most cases it differs from Doer
 

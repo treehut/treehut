@@ -20,13 +20,13 @@ import (
 	"forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
 	"forgejo.org/modules/translation"
 	"forgejo.org/services/migrations"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -196,11 +196,9 @@ func TestMigrateWithWiki(t *testing.T) {
 		defer test.MockVariableValue(&setting.AppVer, "1.16.0")()
 		require.NoError(t, migrations.Init())
 
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-		repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-			WikiBranch: optional.Some("obscure-name"),
-		})
-		defer f()
+		repo := forgery.CreateRepository(t, nil, nil)
+		forgery.InitWiki(t, repo, "obscure-name")
+		user := repo.Owner
 
 		session := loginUser(t, user.Name)
 		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository, auth_model.AccessTokenScopeReadMisc)

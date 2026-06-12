@@ -40,29 +40,32 @@ func TestToggleUserOpenIDVisibility(t *testing.T) {
 	require.NoError(t, unittest.PrepareTestDatabase())
 	oids, err := user_model.GetUserOpenIDs(db.DefaultContext, int64(2))
 	require.NoError(t, err)
+	require.Len(t, oids, 1)
 
-	if !assert.Len(t, oids, 1) {
-		return
-	}
 	assert.True(t, oids[0].Show)
 
-	err = user_model.ToggleUserOpenIDVisibility(db.DefaultContext, oids[0].ID)
+	err = user_model.ToggleUserOpenIDVisibility(db.DefaultContext, oids[0].UID, oids[0].ID)
 	require.NoError(t, err)
 
 	oids, err = user_model.GetUserOpenIDs(db.DefaultContext, int64(2))
 	require.NoError(t, err)
+	require.Len(t, oids, 1)
 
-	if !assert.Len(t, oids, 1) {
-		return
-	}
 	assert.False(t, oids[0].Show)
-	err = user_model.ToggleUserOpenIDVisibility(db.DefaultContext, oids[0].ID)
+	err = user_model.ToggleUserOpenIDVisibility(db.DefaultContext, oids[0].UID, oids[0].ID)
 	require.NoError(t, err)
 
 	oids, err = user_model.GetUserOpenIDs(db.DefaultContext, int64(2))
 	require.NoError(t, err)
+	require.Len(t, oids, 1)
 
-	if assert.Len(t, oids, 1) {
-		assert.True(t, oids[0].Show)
-	}
+	assert.True(t, oids[0].Show)
+
+	// mismatched UID ineffective
+	err = user_model.ToggleUserOpenIDVisibility(db.DefaultContext, 999, oids[0].ID)
+	require.NoError(t, err)
+	oids, err = user_model.GetUserOpenIDs(db.DefaultContext, int64(2))
+	require.NoError(t, err)
+	require.Len(t, oids, 1)
+	assert.True(t, oids[0].Show)
 }

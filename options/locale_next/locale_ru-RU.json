@@ -583,5 +583,11 @@
 	"actions.runners.runner_details.page_title": "Исполнитель %s",
 	"actions.runners.runner_setup.instruction_advanced_configurations": "Для настройки исполнителя Forgejo Действий в контейнерах и др. расширенных настроек, обратитесь к <a href=\"%s\">документации</a>.",
 	"actions.workflow.rerun_impossible": "Раб. поток невозможно выполнить повторно.",
-	"actions.workflow.job_rerun_impossible": "Задание невозможно выполнить повторно."
+	"actions.workflow.job_rerun_impossible": "Задание невозможно выполнить повторно.",
+	"actions.runners.runner_setup.title": "Настройка исполнителя %s",
+	"actions.runners.runner_setup.page_title": "Настройка исполнителя %s",
+	"actions.runs.on_push_description": "Коммит <a href=\"%[1]s\">%[2]s</a>, отправленный <a href=\"%[3]s\">%[4]s</a>",
+	"actions.secrets.edit_button": "Изменить секрет «%s»",
+	"actions.secrets.mutation.success_message": "Секрет «%s» был изменён.",
+	"actions.secrets.mutation.name_description": "Название секрета может содержать только буквы, цифры и нижние подчёркивания. Оно не может начинаться на FORGEJO_, GITEA_, GITHUB_, или на цифру. Оно будет сохранено в верхнем регистре."
 }

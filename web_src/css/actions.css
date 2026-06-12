@@ -177,8 +177,8 @@
   white-space: nowrap;
 }
 #workflow_dispatch_dropdown .menu {
+  /* FIXME: max-height is ineffective without `overflow:`, but clipping overflow breaks dropdown menus */
   max-height: 500px;
-  overflow-x: auto;
 }
 @media (max-width: 640px) or (767.98px < width < 854px) {
   #workflow_dispatch_dropdown .menu {

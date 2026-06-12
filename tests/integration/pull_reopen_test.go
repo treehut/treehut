@@ -26,6 +26,7 @@ import (
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,11 +37,11 @@ func TestPullrequestReopen(t *testing.T) {
 		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 		org26 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 26})
 
-		// Create an base repository.
-		baseRepo, _, f := tests.CreateDeclarativeRepo(t, user2, "reopen-base",
-			[]unit_model.Type{unit_model.TypePullRequests}, nil, nil,
-		)
-		defer f()
+		// Create an base repository with an initial commit.
+		baseRepo := forgery.CreateRepository(t, user2, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
+		forgery.EnableRepoUnits(t, baseRepo, unit_model.TypePullRequests)
 
 		// Create a new branch on the base branch, so it can be deleted later.
 		_, err := files_service.ChangeRepoFiles(git.DefaultContext, baseRepo, user2, &files_service.ChangeRepoFilesOptions{

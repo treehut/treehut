@@ -161,10 +161,16 @@ func (t *Team) LoadRepositories(ctx context.Context) (err error) {
 	return err
 }
 
-// LoadMembers returns paginated members in team of organization.
+// LoadMembers loads the members of the team in t.Members.
 func (t *Team) LoadMembers(ctx context.Context) (err error) {
+	return t.LoadPaginatedMembers(ctx, db.ListOptionsAll)
+}
+
+// LoadPaginatedMembers loads paginated members of the team in t.Members.
+func (t *Team) LoadPaginatedMembers(ctx context.Context, listOptions db.ListOptions) (err error) {
 	t.Members, err = GetTeamMembers(ctx, &SearchMembersOptions{
-		TeamID: t.ID,
+		ListOptions: listOptions,
+		TeamID:      t.ID,
 	})
 	return err
 }

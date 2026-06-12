@@ -9,17 +9,15 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
 	issues_model "forgejo.org/models/issues"
 	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -70,28 +68,21 @@ func doTestPRDiff(t *testing.T, prDiffURL string, expectedFilenames []string, ed
 
 func TestPullDiff_AGitNotEditable(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-		session := loginUser(t, user2.Name)
-
 		// Create temporary repository.
-		repo, _, f := tests.CreateDeclarativeRepo(t, user2, "myrepo",
-			[]unit_model.Type{unit_model.TypePullRequests}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "FUNFACT",
-					ContentReader: strings.NewReader("Smithy was the runner up to be Forgejo's name"),
-				},
-			},
-		)
-		defer f()
+		repo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
+		forgery.EnableRepoUnits(t, repo, unit_model.TypePullRequests)
+
+		user := repo.Owner
+		session := loginUser(t, user.Name)
 
 		clone := func(t *testing.T, clone string) string {
 			t.Helper()
 
 			dstPath := t.TempDir()
 			cloneURL, _ := url.Parse(clone)
-			cloneURL.User = url.UserPassword("user2", userPassword)
+			cloneURL.User = url.UserPassword(user.Name, userPassword)
 			require.NoError(t, git.CloneWithArgs(t.Context(), nil, cloneURL.String(), dstPath, git.CloneRepoOptions{}))
 			doGitSetRemoteURL(dstPath, "origin", cloneURL)(t)
 
@@ -117,7 +108,7 @@ func TestPullDiff_AGitNotEditable(t *testing.T) {
 				Message: "Add README.",
 			}))
 		}
-		dstPath := clone(t, fmt.Sprintf("%suser2/%s.git", u.String(), repo.Name))
+		dstPath := clone(t, fmt.Sprintf("%s%s.git", u.String(), repo.FullName()))
 
 		// Create first commit.
 		firstCommit(t, dstPath)

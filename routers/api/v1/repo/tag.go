@@ -122,7 +122,7 @@ func GetAnnotatedTag(ctx *context.APIContext) {
 			ctx.Error(http.StatusBadRequest, "GetAnnotatedTag", err)
 		}
 
-		convertedAnnotatedTag, err := convert.ToAnnotatedTag(ctx, ctx.Repo.Repository, tag, commit)
+		convertedAnnotatedTag, err := convert.ToAnnotatedTag(ctx, ctx.Repo.GitRepo, ctx.Repo.Repository, tag, commit)
 		if err != nil {
 			ctx.Error(http.StatusInternalServerError, "ToAnnotatedTag", err)
 			return

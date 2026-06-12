@@ -257,12 +257,18 @@ func TestSecretValidateName(t *testing.T) {
 		valid bool
 	}{
 		{"FORGEJO_", false},
+		{"PRE_FORGEJO_", true},
+		{"PRE_FORGEJO_SUF", true},
 		{"FORGEJO_123", false},
 		{"FORGEJO_ABC", false},
 		{"GITEA_", false},
+		{"PRE_GITEA_", true},
+		{"PRE_GITEA_SUF", true},
 		{"GITEA_123", false},
 		{"GITEA_ABC", false},
 		{"GITHUB_", false},
+		{"PRE_GITHUB_", true},
+		{"PRE_GITHUB_SUF", true},
 		{"GITHUB_123", false},
 		{"GITHUB_ABC", false},
 		{"123_TEST", false},

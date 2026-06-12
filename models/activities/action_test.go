@@ -371,3 +371,28 @@ func TestGetIssueInfos(t *testing.T) {
 		assert.Equal(t, test.field3, issueInfos[2])
 	}
 }
+
+func TestIsPrivate(t *testing.T) {
+	defer unittest.OverrideFixtures("models/activities/fixtures/TestIsPrivate")()
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	tt := []struct {
+		activityID int64
+		private    bool
+	}{
+		{1, true},  // private repo
+		{3, false}, // public activities, public repo
+		{11, true}, // private activities
+	}
+
+	for _, test := range tt {
+		ctx := t.Context()
+		action, err := activities_model.GetActivityByID(ctx, test.activityID)
+		require.NoError(t, err)
+
+		private, err := action.IsActionPrivate(ctx)
+		require.NoError(t, err)
+
+		assert.Equal(t, test.private, private, "action ID: %d", test.activityID)
+	}
+}

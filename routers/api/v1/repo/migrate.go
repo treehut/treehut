@@ -205,7 +205,7 @@ func Migrate(ctx *context.APIContext) {
 		}
 
 		if repo != nil {
-			if errDelete := repo_service.DeleteRepositoryDirectly(ctx, ctx.Doer, repo.ID); errDelete != nil {
+			if errDelete := repo_service.DeleteRepositoryDirectly(ctx, repo.ID, repo_service.DeleteRepositoryOpts{}); errDelete != nil {
 				log.Error("DeleteRepository: %v", errDelete)
 			}
 		}

@@ -1,0 +1,27 @@
+Cache-Control: max-age=0, private, must-revalidate
+Cf-Cache-Status: MISS
+Content-Security-Policy: default-src 'none'
+Content-Type: application/json
+Etag: W/"2fbd24efd95ba4bff096d7176a06f03c"
+Gitlab-Lb: haproxy-main-13-lb-gprd
+Gitlab-Sv: api-gke-us-east1-b
+Link: <https://gitlab.com/api/v4/projects/82554980/issues/1/discussions?id=82554980&noteable_id=1&page=1&per_page=100>; rel="first", <https://gitlab.com/api/v4/projects/82554980/issues/1/discussions?id=82554980&noteable_id=1&page=1&per_page=100>; rel="last"
+Ratelimit-Limit: 2000
+Ratelimit-Name: throttle_authenticated_api
+Ratelimit-Observed: 9
+Ratelimit-Remaining: 1991
+Ratelimit-Reset: 1779789300
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000
+Vary: Origin, Accept-Encoding
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Next-Page: 
+X-Page: 1
+X-Per-Page: 100
+X-Prev-Page: 
+X-Runtime: 0.142777
+X-Total: 2
+X-Total-Pages: 1
+
+[{"id":"e3fd72a0a026c57218994979ba686d7ebdc32ce4","individual_note":true,"resolvable":false,"notes":[{"id":3384409453,"type":null,"body":"Internal note","author":{"id":3974632,"username":"mahlzahn","public_email":"","name":"mahlzahn","state":"active","locked":false,"avatar_url":"https://gitlab.com/uploads/-/system/user/avatar/3974632/avatar.png","web_url":"https://gitlab.com/mahlzahn"},"created_at":"2026-05-26T08:58:52.374Z","updated_at":"2026-05-26T08:58:52.374Z","system":false,"noteable_id":191028598,"noteable_type":"Issue","project_id":82554980,"resolvable":false,"confidential":true,"internal":true,"imported":false,"imported_from":"none","noteable_iid":1,"commands_changes":{}}]},{"id":"06234a3146c02649facca69551660ea0c058176e","individual_note":true,"resolvable":false,"notes":[{"id":3384552626,"type":null,"body":"Normal comment","author":{"id":3974632,"username":"mahlzahn","public_email":"","name":"mahlzahn","state":"active","locked":false,"avatar_url":"https://gitlab.com/uploads/-/system/user/avatar/3974632/avatar.png","web_url":"https://gitlab.com/mahlzahn"},"created_at":"2026-05-26T09:32:49.748Z","updated_at":"2026-05-26T09:32:49.748Z","system":false,"noteable_id":191028598,"noteable_type":"Issue","project_id":82554980,"resolvable":false,"confidential":false,"internal":false,"imported":false,"imported_from":"none","noteable_iid":1,"commands_changes":{}}]}]

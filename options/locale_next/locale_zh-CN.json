@@ -270,7 +270,7 @@
 	"admin.auths.allow_username_change.description": "允许用户在个人设置中更改用户名",
 	"admin.moderation.moderation_reports": "举报",
 	"admin.moderation.reports": "举报",
-	"admin.moderation.no_open_reports": "目前没有打开的举报。",
+	"admin.moderation.no_open_reports": "暂无开启中的举报。",
 	"admin.moderation.deleted_content_ref": "类型为%[1]v、ID为%[2]d的举报不存在",
 	"repo.commit.load_tags_failed": "由于内部错误，无法加载标签",
 	"admin.auths.allow_username_change": "允许更改用户名",
@@ -534,5 +534,9 @@
 	"actions.secrets.mutation.success_message": "机密“%s”已更新。",
 	"actions.secrets.mutation.failure_message": "无法更新机密“%s”。",
 	"actions.secrets.mutation.name_description": "机密的名字只能包含字母、数字和下划线，不能以FORGEJO_、GITEA_、GITHUB_或数字开头，会自动转换为大写格式。",
-	"actions.secrets.mutation.value_description": "现有值不会显示，留空以保留现有值。特殊字符会被保留，CRLF（Windows式换行符）会被转换为LF；要保留换行符，请使用Base64编码。"
+	"actions.secrets.mutation.value_description": "现有值不会显示，留空以保留现有值。特殊字符会被保留，CRLF（Windows式换行符）会被转换为LF；要保留换行符，请使用Base64编码。",
+	"actions.runners.version": "版本",
+	"actions.workflow.unknown_job_in_needs": "ID为“%[1]s”的任务在`needs`中引用了未知任务“%[2]s”。",
+	"actions.workflow.rerun_impossible": "工作流无法重新运行。",
+	"actions.workflow.job_rerun_impossible": "任务无法重新运行。"
 }

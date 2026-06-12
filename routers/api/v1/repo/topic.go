@@ -104,7 +104,7 @@ func UpdateTopics(ctx *context.APIContext) {
 	topicNames := form.Topics
 	validTopics, invalidTopics := repo_model.SanitizeAndValidateTopics(topicNames)
 
-	if len(validTopics) > 25 {
+	if len(validTopics) > repo_model.MaxTopicsPerRepo {
 		ctx.JSON(http.StatusUnprocessableEntity, map[string]any{
 			"invalidTopics": nil,
 			"message":       "Exceeding maximum number of topics per repo",

@@ -82,7 +82,7 @@ func CreateToken(ht HandlerType, user *user_model.User, data []byte) (string, er
 
 // ExtractToken extracts the action/user tuple from the token and verifies the content
 func ExtractToken(ctx context.Context, token string) (HandlerType, *user_model.User, []byte, error) {
-	data, err := encodingWithoutPadding.DecodeString(token)
+	data, err := encodingWithoutPadding.DecodeString(util.ToUpperASCII(token))
 	if err != nil {
 		return UnknownHandlerType, nil, nil, err
 	}

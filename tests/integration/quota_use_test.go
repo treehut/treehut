@@ -16,12 +16,13 @@ import (
 	"testing"
 
 	"forgejo.org/models/db"
+	git_model "forgejo.org/models/git"
 	org_model "forgejo.org/models/organization"
 	quota_model "forgejo.org/models/quota"
 	repo_model "forgejo.org/models/repo"
-	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
+	"forgejo.org/modules/lfs"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
@@ -29,8 +30,8 @@ import (
 	app_context "forgejo.org/services/context"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
-	gouuid "github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -366,7 +367,7 @@ func TestWebQuotaEnforcementRepoTransfer(t *testing.T) {
 	})
 }
 
-func TestGitQuotaEnforcement(t *testing.T) {
+func TestQuotaGitEnforcement(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
 		env := createQuotaWebEnv(t)
 		defer env.Cleanup()
@@ -545,6 +546,55 @@ func TestGitQuotaEnforcement(t *testing.T) {
 					require.NoError(t, err)
 				})
 			})
+		})
+	})
+}
+
+func TestQuotaGitLfsEnforcement(t *testing.T) {
+	defer test.MockVariableValue(&setting.LFS.StartServer, true)()
+
+	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		env := createQuotaWebEnv(t)
+		defer env.Cleanup()
+
+		t.Run("UploadHandler", func(t *testing.T) {
+			// Uploading to our repo => 413
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Users.Limited.Repo}).
+				PushLFSObject().
+				ExpectStatus(http.StatusRequestEntityTooLarge)
+
+			// Uploading to the limited org repo => 413
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Orgs.Limited.Repo}).
+				PushLFSObject().
+				ExpectStatus(http.StatusRequestEntityTooLarge)
+
+			// Uploading to the unlimited org repo => 200
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Orgs.Unlimited.Repo}).
+				PushLFSObject().
+				ExpectStatus(http.StatusOK)
+		})
+
+		t.Run("BatchHandler", func(t *testing.T) {
+			// Uploading to our repo => 413
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Users.Limited.Repo}).
+				BatchPushLFSObject().
+				ExpectStatus(http.StatusRequestEntityTooLarge)
+
+			// Uploading to the limited org repo => 413
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Orgs.Limited.Repo}).
+				BatchPushLFSObject().
+				ExpectStatus(http.StatusRequestEntityTooLarge)
+
+			// Uploading to the unlimited org repo => 200
+			env.As(t, env.Users.Limited).
+				With(Context{Repo: env.Orgs.Unlimited.Repo}).
+				BatchPushLFSObject().
+				ExpectStatus(http.StatusOK)
 		})
 	})
 }
@@ -794,6 +844,42 @@ func (ctx *quotaWebEnvAsContext) CreateReleaseAttachment(filename string) *quota
 	return ctx.CreateAttachment(filename, "releases")
 }
 
+func (ctx *quotaWebEnvAsContext) PushLFSObject() *quotaWebEnvAsContext {
+	ctx.t.Helper()
+
+	p := lfs.Pointer{Oid: "6ccce4863b70f258d691f59609d31b4502e1ba5199942d3bc5d35d17a4ce771d", Size: 5}
+	ctx.request = NewRequestWithBody(ctx.t, "PUT",
+		fmt.Sprintf("%s.git/info/lfs/objects/%s/%d",
+			ctx.Repo.Link(), p.Oid, p.Size), strings.NewReader("gitea"))
+
+	ctx.t.Cleanup(func() {
+		git_model.RemoveLFSMetaObjectByOid(db.DefaultContext, ctx.Repo.ID, p.Oid)
+	})
+
+	return ctx
+}
+
+func (ctx *quotaWebEnvAsContext) BatchPushLFSObject() *quotaWebEnvAsContext {
+	ctx.t.Helper()
+
+	batch := &lfs.BatchRequest{
+		Operation: "upload",
+		Objects: []lfs.Pointer{
+			{Oid: "d6f175817f886ec6fbbc1515326465fa96c3bfd54a4ea06cfd6dbbd8340e0153", Size: 1},
+		},
+	}
+	ctx.request = NewRequestWithJSON(ctx.t, "POST",
+		fmt.Sprintf("%s.git/info/lfs/objects/batch", ctx.Repo.Link()), batch).
+		SetHeader("Accept", lfs.AcceptHeader).
+		SetHeader("Content-Type", lfs.MediaType)
+
+	ctx.t.Cleanup(func() {
+		git_model.RemoveLFSMetaObjectByOid(db.DefaultContext, ctx.Repo.ID, batch.Objects[0].Oid)
+	})
+
+	return ctx
+}
+
 func (ctx *quotaWebEnvAsContext) WithoutQuota(task func(ctx *quotaWebEnvAsContext)) *quotaWebEnvAsContext {
 	ctx.t.Helper()
 
@@ -1025,13 +1111,13 @@ func createQuotaWebEnv(t *testing.T) *quotaWebEnv {
 		user := quotaWebEnvUser{}
 
 		// Create the user
-		userName := gouuid.NewString()
-		apiCreateUser(t, userName)
-		user.User = unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: userName})
-		user.Session = loginUser(t, userName)
+		user.User = forgery.CreateUser(t, nil)
+		user.Session = loginUser(t, user.User.Name)
 
 		// Create a repository for the user
-		repo, _, _ := tests.CreateDeclarativeRepoWithOptions(t, user.User, tests.DeclarativeRepoOptions{})
+		repo := forgery.CreateRepository(t, user.User, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 		user.Repo = repo
 
 		return user
@@ -1072,25 +1158,21 @@ func createQuotaWebEnv(t *testing.T) *quotaWebEnv {
 		org := quotaWebEnvOrg{}
 
 		// Create the org
-		userName := gouuid.NewString()
-		org.Org = &org_model.Organization{
-			Name: userName,
-		}
-		err := org_model.CreateOrganization(db.DefaultContext, org.Org, owner)
-		require.NoError(t, err)
+		org.Org = forgery.CreateOrganisation(t, owner)
 
 		// Create a repository for the org
-		orgUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: org.Org.ID})
-		repo, _, _ := tests.CreateDeclarativeRepoWithOptions(t, orgUser, tests.DeclarativeRepoOptions{})
+		repo := forgery.CreateRepository(t, org.Org.AsUser(), &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 		org.Repo = repo
 
 		// Create a quota group for them
-		group, err := quota_model.CreateGroup(db.DefaultContext, userName)
+		group, err := quota_model.CreateGroup(db.DefaultContext, org.Org.Name)
 		require.NoError(t, err)
 		org.QuotaGroup = group
 
 		// Create a rule
-		rule, err := quota_model.CreateRule(db.DefaultContext, userName, limit, quota_model.LimitSubjects{quota_model.LimitSubjectSizeAll})
+		rule, err := quota_model.CreateRule(db.DefaultContext, org.Org.Name, limit, quota_model.LimitSubjects{quota_model.LimitSubjectSizeAll})
 		require.NoError(t, err)
 		org.QuotaRule = rule
 

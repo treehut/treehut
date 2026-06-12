@@ -6,6 +6,7 @@ package web
 
 import (
 	gocontext "context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -48,6 +49,7 @@ import (
 	user_setting "forgejo.org/routers/web/user/setting"
 	"forgejo.org/routers/web/user/setting/security"
 	auth_service "forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/context"
 	"forgejo.org/services/forms"
 	"forgejo.org/services/lfs"
@@ -104,30 +106,48 @@ func optionsCorsHandler() func(next http.Handler) http.Handler {
 //
 // The Session plugin is expected to be executed second, in order to skip authentication
 // for users that have already signed in.
-func buildAuthGroup() *auth_service.Group {
-	group := auth_service.NewGroup()
-	group.Add(&auth_service.OAuth2{}) // FIXME: this should be removed and only applied in download and oauth related routers
-	group.Add(&auth_service.Basic{})  // FIXME: this should be removed and only applied in download and git/lfs routers
+func buildAuthGroup() *auth_method.Group {
+	group := auth_method.NewGroup()
+	group.Add(&auth_method.OAuth2{}) // FIXME: this should be removed and only applied in download and oauth related routers
+	group.Add(&auth_method.Basic{})  // FIXME: this should be removed and only applied in download and git/lfs routers
 
 	if setting.Service.EnableReverseProxyAuth {
-		group.Add(&auth_service.ReverseProxy{}) // reverseproxy should before Session, otherwise the header will be ignored if user has login
+		group.Add(&auth_method.ReverseProxy{}) // reverseproxy should before Session, otherwise the header will be ignored if user has login
 	}
-	group.Add(&auth_service.Session{})
+	group.Add(&auth_method.Session{})
 
 	return group
 }
 
 func webAuth(authMethod auth_service.Method) func(*context.Context) {
 	return func(ctx *context.Context) {
-		ar, err := common.AuthShared(ctx.Base, ctx.Session, authMethod)
-		if err != nil {
-			log.Info("Failed to verify user: %v", err)
+		output := common.AuthShared(ctx.Base, ctx.Session, authMethod)
+		var ar auth_service.AuthenticationResult
+		switch v := output.(type) {
+		case *auth_service.AuthenticationSuccess:
+			ar = v.Result
+		case *auth_service.AuthenticationNotAttempted:
+			ar = &auth_service.UnauthenticatedResult{}
+		case *auth_service.AuthenticationAttemptedIncorrectCredential:
 			ctx.Error(http.StatusUnauthorized, ctx.Locale.TrString("auth.unauthorized_credentials", "https://codeberg.org/forgejo/forgejo/issues/2809"))
 			return
+		case *auth_service.AuthenticationError:
+			// Don't reveal the internal server error details to the user as they may contain sensitive details -- log
+			// the details, return a generic error.
+			log.Error("internal error during authentication: %v", v.Error)
+			ctx.ServerError("authentication error", errors.New("internal server error in authentication"))
+			return
+		default:
+			ctx.ServerError("authentication error", errors.New("unexpected result from common.AuthShared"))
+			return
 		}
-		ctx.Doer = ar.Doer
-		ctx.IsSigned = ar.Doer != nil
-		ctx.IsBasicAuth = ar.IsBasicAuth
+		if ar == nil {
+			ctx.ServerError("nil authentication result", errors.New("nil authentication result"))
+			return
+		}
+		ctx.Doer = ar.User()
+		ctx.IsSigned = ar.User() != nil
+		ctx.Authentication = ar
 		if ctx.Doer == nil {
 			// ensure the session uid is deleted
 			_ = ctx.Session.Delete("uid")

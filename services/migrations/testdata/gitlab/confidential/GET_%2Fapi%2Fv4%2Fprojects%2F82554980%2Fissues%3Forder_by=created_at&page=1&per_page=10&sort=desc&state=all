@@ -1,0 +1,27 @@
+Cache-Control: max-age=0, private, must-revalidate
+Cf-Cache-Status: MISS
+Content-Security-Policy: default-src 'none'
+Content-Type: application/json
+Etag: W/"79478b7d2ca6de15cebecfdde62e7dec"
+Gitlab-Lb: haproxy-main-55-lb-gprd
+Gitlab-Sv: api-gke-us-east1-b
+Link: <https://gitlab.com/api/v4/projects/82554980/issues?id=82554980&order_by=created_at&page=1&per_page=10&sort=desc&state=all&with_labels_details=false>; rel="first", <https://gitlab.com/api/v4/projects/82554980/issues?id=82554980&order_by=created_at&page=1&per_page=10&sort=desc&state=all&with_labels_details=false>; rel="last"
+Ratelimit-Limit: 2000
+Ratelimit-Name: throttle_authenticated_api
+Ratelimit-Observed: 4
+Ratelimit-Remaining: 1996
+Ratelimit-Reset: 1779789300
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000
+Vary: Origin, Accept-Encoding
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Next-Page: 
+X-Page: 1
+X-Per-Page: 10
+X-Prev-Page: 
+X-Runtime: 0.177626
+X-Total: 2
+X-Total-Pages: 1
+
+[{"id":191028619,"iid":2,"project_id":82554980,"title":"Confidential issue","description":"","state":"opened","created_at":"2026-05-26T08:55:44.918Z","updated_at":"2026-05-26T08:55:44.918Z","closed_at":null,"closed_by":null,"labels":[],"milestone":null,"assignees":[],"author":{"id":3974632,"username":"mahlzahn","public_email":"","name":"mahlzahn","state":"active","locked":false,"avatar_url":"https://gitlab.com/uploads/-/system/user/avatar/3974632/avatar.png","web_url":"https://gitlab.com/mahlzahn"},"type":"ISSUE","assignee":null,"user_notes_count":0,"merge_requests_count":0,"upvotes":0,"downvotes":0,"start_date":null,"due_date":null,"confidential":true,"discussion_locked":null,"issue_type":"issue","web_url":"https://gitlab.com/forgejo/test_repo-confidential/-/work_items/2","time_stats":{"time_estimate":0,"total_time_spent":0,"human_time_estimate":null,"human_total_time_spent":null},"task_completion_status":{"count":0,"completed_count":0},"blocking_issues_count":0,"has_tasks":true,"task_status":"","_links":{"self":"https://gitlab.com/api/v4/projects/82554980/issues/2","notes":"https://gitlab.com/api/v4/projects/82554980/issues/2/notes","award_emoji":"https://gitlab.com/api/v4/projects/82554980/issues/2/award_emoji","project":"https://gitlab.com/api/v4/projects/82554980","closed_as_duplicate_of":null},"references":{"short":"#2","relative":"#2","full":"forgejo/test_repo-confidential#2"},"severity":"UNKNOWN","moved_to_id":null,"imported":false,"imported_from":"none","service_desk_reply_to":null},{"id":191028598,"iid":1,"project_id":82554980,"title":"Normal issue","description":"","state":"opened","created_at":"2026-05-26T08:55:25.760Z","updated_at":"2026-05-26T09:32:49.776Z","closed_at":null,"closed_by":null,"labels":[],"milestone":null,"assignees":[],"author":{"id":3974632,"username":"mahlzahn","public_email":"","name":"mahlzahn","state":"active","locked":false,"avatar_url":"https://gitlab.com/uploads/-/system/user/avatar/3974632/avatar.png","web_url":"https://gitlab.com/mahlzahn"},"type":"ISSUE","assignee":null,"user_notes_count":2,"merge_requests_count":0,"upvotes":0,"downvotes":0,"start_date":null,"due_date":null,"confidential":false,"discussion_locked":null,"issue_type":"issue","web_url":"https://gitlab.com/forgejo/test_repo-confidential/-/work_items/1","time_stats":{"time_estimate":0,"total_time_spent":0,"human_time_estimate":null,"human_total_time_spent":null},"task_completion_status":{"count":0,"completed_count":0},"blocking_issues_count":0,"has_tasks":true,"task_status":"","_links":{"self":"https://gitlab.com/api/v4/projects/82554980/issues/1","notes":"https://gitlab.com/api/v4/projects/82554980/issues/1/notes","award_emoji":"https://gitlab.com/api/v4/projects/82554980/issues/1/award_emoji","project":"https://gitlab.com/api/v4/projects/82554980","closed_as_duplicate_of":null},"references":{"short":"#1","relative":"#1","full":"forgejo/test_repo-confidential#1"},"severity":"UNKNOWN","moved_to_id":null,"imported":false,"imported_from":"none","service_desk_reply_to":null}]

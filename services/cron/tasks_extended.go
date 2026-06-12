@@ -111,8 +111,8 @@ func registerDeleteMissingRepositories() {
 		Enabled:    false,
 		RunAtStart: false,
 		Schedule:   "@every 72h",
-	}, func(ctx context.Context, user *user_model.User, _ Config) error {
-		return repo_service.DeleteMissingRepositories(ctx, user)
+	}, func(ctx context.Context, _ *user_model.User, _ Config) error {
+		return repo_service.DeleteMissingRepositories(ctx)
 	})
 }
 

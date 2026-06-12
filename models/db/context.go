@@ -510,31 +510,57 @@ type RetryConfig struct {
 	AttemptCount int
 }
 
+var ErrNestedRetryTxFailure = errors.New("(nested)")
+
+type nestedRetryTxState int
+
+var nestedRetryTx nestedRetryTxState
+
 // Execute the given function in a transaction. RetryConfig will retry the function on an error, if it matches the
 // ErrorIs parameter, up to the total of AttemptCount number of tries. RetryTx cannot be invoked when already within a
 // transaction and will return an error immediately.
+//
+// ErrNestedRetryTxFailure is an error type that will occur when RetryTx is nested within each other, and indicates that
+// an inner RetryTx encountered an error that matched its error list.
 func RetryTx(ctx context.Context, config RetryConfig, f func(ctx context.Context) error) error {
-	if InTransaction(ctx) {
+	matchError := func(err error) bool {
+		for _, possibleError := range config.ErrorIs {
+			if errors.Is(err, possibleError) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Accept `ErrNestedRetryTxFailure` as error to retry on, means that a nested
+	// RetryTx indicated to retry the whole transaction.
+	config.ErrorIs = append(config.ErrorIs, ErrNestedRetryTxFailure)
+
+	withinRetryTx, present := ctx.Value(nestedRetryTx).(bool)
+	if present && withinRetryTx {
+		// If a caller already started `RetryTx`, then we assume we don't have to actually perform retries here -- we
+		// can attempt the requested function once, and if an error is returned that matches the configured error list,
+		// we'll return that error + ErrNestedRetryTxFailure wrapping.
+		err := f(ctx)
+		if err == nil {
+			return nil
+		} else if matchError(err) {
+			return fmt.Errorf("nested RetryTx; internal Tx failed with error that won't be retried: %w %w", err, ErrNestedRetryTxFailure)
+		}
+		return err
+	} else if InTransaction(ctx) {
 		return errors.New("unsupported operation: attempted to use RetryTx while already within a transaction")
 	} else if config.AttemptCount == 0 {
 		return errors.New("unsupported operation: attempted to use RetryTx with 0 attempts")
 	}
 
+	innerCtx := context.WithValue(ctx, nestedRetryTx, true)
 	var lastError error
 	for range config.AttemptCount {
-		err := WithTx(ctx, f)
+		err := WithTx(innerCtx, f)
 		if err == nil {
 			return nil
-		}
-
-		foundMatch := false
-		for _, possibleError := range config.ErrorIs {
-			if errors.Is(err, possibleError) {
-				foundMatch = true
-				break
-			}
-		}
-		if !foundMatch {
+		} else if !matchError(err) {
 			return err
 		}
 

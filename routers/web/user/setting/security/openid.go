@@ -117,7 +117,7 @@ func DeleteOpenID(ctx *context.Context) {
 
 // ToggleOpenIDVisibility response for toggle visibility of user's openid
 func ToggleOpenIDVisibility(ctx *context.Context) {
-	if err := user_model.ToggleUserOpenIDVisibility(ctx, ctx.FormInt64("id")); err != nil {
+	if err := user_model.ToggleUserOpenIDVisibility(ctx, ctx.Doer.ID, ctx.FormInt64("id")); err != nil {
 		ctx.ServerError("ToggleUserOpenIDVisibility", err)
 		return
 	}

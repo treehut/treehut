@@ -153,6 +153,7 @@ type PagurePRResponse struct {
 	Requests []struct {
 		Branch         string     `json:"branch"`
 		BranchFrom     string     `json:"branch_from"`
+		CommitStart    string     `json:"commit_start"`
 		CommitStop     string     `json:"commit_stop"`
 		DateCreated    string     `json:"date_created"`
 		FullURL        string     `json:"full_url"`
@@ -560,7 +561,7 @@ func (d *PagureDownloader) GetPullRequests(page, perPage int) ([]*base.PullReque
 		}
 		mergedtime := processDate(&pr.ClosedAt)
 
-		err = d.callAPI("/api/0/"+d.repoName+"/c/"+pr.CommitStop+"/info", nil, &commit)
+		err = d.callAPI("/api/0/"+d.repoName+"/c/"+pr.CommitStart+"/info", nil, &commit)
 		if err != nil {
 			return nil, false, err
 		}

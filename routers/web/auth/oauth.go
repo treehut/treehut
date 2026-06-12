@@ -33,7 +33,7 @@ import (
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/web"
 	"forgejo.org/modules/web/middleware"
-	auth_service "forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	source_service "forgejo.org/services/auth/source"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/context"
@@ -294,7 +294,7 @@ func ifOnlyPublicGroups(scopes string) bool {
 
 // InfoOAuth manages request for userinfo endpoint
 func InfoOAuth(ctx *context.Context) {
-	if ctx.Doer == nil || ctx.Data["AuthedMethod"] != (&auth_service.OAuth2{}).Name() {
+	if ctx.Doer == nil || !ctx.Authentication.IsOAuth2JWTAuthentication() {
 		ctx.Resp.Header().Set("WWW-Authenticate", `Bearer realm=""`)
 		ctx.PlainText(http.StatusUnauthorized, "no valid authorization")
 		return
@@ -316,7 +316,7 @@ func InfoOAuth(ctx *context.Context) {
 		}
 	}
 
-	_, grantScopes := auth_service.CheckOAuthAccessToken(ctx, token)
+	_, grantScopes := auth_method.CheckOAuthAccessToken(ctx, token)
 	onlyPublicGroups := ifOnlyPublicGroups(grantScopes)
 
 	groups, err := getOAuthGroupsForUser(ctx, ctx.Doer, onlyPublicGroups)
@@ -792,12 +792,32 @@ func handleRefreshToken(ctx *context.Context, form forms.AccessTokenForm, server
 		})
 		return
 	}
+
+	// Reject tokens that are not refresh tokens (e.g. access tokens submitted as refresh tokens)
+	if token.Type != oauth2.TypeRefreshToken {
+		handleAccessTokenError(ctx, AccessTokenErrorResponse{
+			ErrorCode:        AccessTokenErrorCodeUnauthorizedClient,
+			ErrorDescription: "token is not a refresh token",
+		})
+		return
+	}
+
 	// get grant before increasing counter
 	grant, err := auth.GetOAuth2GrantByID(ctx, token.GrantID)
 	if err != nil || grant == nil {
 		handleAccessTokenError(ctx, AccessTokenErrorResponse{
 			ErrorCode:        AccessTokenErrorCodeInvalidGrant,
 			ErrorDescription: "grant does not exist",
+		})
+		return
+	}
+
+	// Ensure the refresh token's grant belongs to the requesting client.
+	// This prevents cross-client token usage (RFC 6749 Section 10.4).
+	if grant.ApplicationID != app.ID {
+		handleAccessTokenError(ctx, AccessTokenErrorResponse{
+			ErrorCode:        AccessTokenErrorCodeInvalidGrant,
+			ErrorDescription: "refresh token was not issued to this client",
 		})
 		return
 	}
@@ -862,6 +882,15 @@ func handleAuthorizationCode(ctx *context.Context, form forms.AccessTokenForm, s
 		})
 		return
 	}
+	// Per RFC 6749 §4.1.3, if redirect_uri was included in the authorization request,
+	// it MUST be identical to the value included in the token request.
+	if authorizationCode.RedirectURI != "" && form.RedirectURI != authorizationCode.RedirectURI {
+		handleAccessTokenError(ctx, AccessTokenErrorResponse{
+			ErrorCode:        AccessTokenErrorCodeUnauthorizedClient,
+			ErrorDescription: "redirect_uri does not match the authorization request",
+		})
+		return
+	}
 	// check if granted for this application
 	if authorizationCode.Grant.ApplicationID != app.ID {
 		handleAccessTokenError(ctx, AccessTokenErrorResponse{
@@ -876,6 +905,7 @@ func handleAuthorizationCode(ctx *context.Context, form forms.AccessTokenForm, s
 			ErrorCode:        AccessTokenErrorCodeInvalidRequest,
 			ErrorDescription: "cannot proceed your request",
 		})
+		return
 	}
 	resp, tokenErr := newAccessTokenResponse(ctx, authorizationCode.Grant, serverKey, clientKey)
 	if tokenErr != nil {

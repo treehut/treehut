@@ -4,11 +4,13 @@
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"forgejo.org/models/db"
 	git_model "forgejo.org/models/git"
+	"forgejo.org/modules/git"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/web"
 	"forgejo.org/routers/api/v1/utils"
@@ -65,7 +67,13 @@ func NewCommitStatus(ctx *context.APIContext) {
 		Context:     form.Context,
 	}
 	if err := commitstatus_service.CreateCommitStatus(ctx, ctx.Repo.Repository, ctx.Doer, sha, status); err != nil {
-		ctx.Error(http.StatusInternalServerError, "CreateCommitStatus", err)
+		// TODO: replace with git.IsErrNotExist(err) once #12583 is resolved
+		var errNotExist git.ErrNotExist
+		if errors.As(err, &errNotExist) {
+			ctx.NotFound("sha", sha)
+		} else {
+			ctx.Error(http.StatusInternalServerError, "CreateCommitStatus", err)
+		}
 		return
 	}
 

@@ -74,7 +74,7 @@
 						<div class="field">
 							<label for="token">{{ctx.Locale.Tr "settings.ssh_token"}}</label>
 							<input readonly="" value="{{$.TokenToSign}}">
-							<span class="help">{{ctx.Locale.Tr "keys.verify.token.hint" (printf "?verify_ssh=%s" .Fingerprint)}}</span>
+							<span class="help">{{ctx.Locale.Tr "keys.verify.token.hint" (printf "?verify_ssh=%s" (QueryEscape .Fingerprint))}}</span>
 							<div class="help">
 								<br>
 								<p>{{ctx.Locale.Tr "settings.ssh_token_help"}}</p>

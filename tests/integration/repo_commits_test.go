@@ -204,3 +204,17 @@ func TestRepoCommitsStatusMultiple(t *testing.T) {
 	sel := doc.doc.Find("#commits-table tbody tr td.message [data-tippy=\"commit-statuses\"] .commit-status")
 	assert.Equal(t, 1, sel.Length())
 }
+
+func TestCreateCommitStatusNonExistingSHA(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	ctx := NewAPITestContext(t, "user2", "repo1", auth_model.AccessTokenScopeWriteRepository)
+	ctx.ExpectedCode = http.StatusNotFound
+
+	t.Run("NonExistingSHA", doAPICreateCommitStatus(ctx, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", api.CreateStatusOption{
+		State:       api.CommitStatusPending,
+		TargetURL:   "http://test.ci/",
+		Description: "",
+		Context:     "testci",
+	}))
+}

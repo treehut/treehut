@@ -63,6 +63,7 @@ func TestAPIStar(t *testing.T) {
 		DecodeJSON(t, resp, &repos)
 		assert.Len(t, repos, 1)
 		assert.Equal(t, repo, repos[0].FullName)
+		assert.Equal(t, "Go", repos[0].Language)
 
 		t.Run("disabled stars", func(t *testing.T) {
 			assertDisabledStarsNotFound(t, req)
@@ -82,6 +83,7 @@ func TestAPIStar(t *testing.T) {
 		DecodeJSON(t, resp, &repos)
 		assert.Len(t, repos, 1)
 		assert.Equal(t, repo, repos[0].FullName)
+		assert.Equal(t, "Go", repos[0].Language)
 
 		t.Run("disabled stars", func(t *testing.T) {
 			assertDisabledStarsNotFound(t, req)

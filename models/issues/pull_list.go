@@ -63,7 +63,7 @@ func GetUnmergedPullRequestsByHeadInfoMax(ctx context.Context, repoID, olderThan
 }
 
 // GetUnmergedPullRequestsByHeadInfo returns all pull requests that are open and has not been merged
-func GetUnmergedPullRequestsByHeadInfo(ctx context.Context, repoID int64, branch string) ([]*PullRequest, error) {
+func GetUnmergedPullRequestsByHeadInfo(ctx context.Context, repoID int64, branch string) (PullRequestList, error) {
 	prs := make([]*PullRequest, 0, 2)
 	sess := db.GetEngine(ctx).
 		Join("INNER", "issue", "issue.id = pull_request.issue_id").
@@ -82,18 +82,44 @@ func CanMaintainerWriteToBranch(ctx context.Context, p access_model.Permission, 
 	}
 
 	prs, err := GetUnmergedPullRequestsByHeadInfo(ctx, p.Units[0].RepoID, branch)
+	// All these error cases return `false` to defer to the safer choice of not allowing write access on an error.
 	if err != nil {
+		log.Error("GetUnmergedPullRequestsByHeadInfo failed: %s", err)
+		return false
+	} else if issues, err := prs.LoadIssues(ctx); err != nil {
+		log.Error("LoadIssues failed: %s", err)
+		return false
+	} else if err := issues.LoadPosters(ctx); err != nil {
+		log.Error("LoadPosters failed: %s", err)
+		return false
+	} else if err := prs.LoadHeadRepos(ctx); err != nil {
+		log.Error("LoadHeadRepos failed: %s", err)
 		return false
 	}
 
 	for _, pr := range prs {
 		if pr.AllowMaintainerEdit {
+			// PR Poster must have write access to the head, so that when they turned on "AllowMaintainerEdit" they
+			// delegated that write access to the maintainers of the PR base.  If they don't currently have write
+			// access, they can't delegate that access.
+			poster := pr.Issue.Poster
+			posterHeadPerm, err := access_model.GetUserRepoPermission(ctx, pr.HeadRepo, poster)
+			if err != nil {
+				log.Error("GetUserRepoPermission failed: %s", err)
+				continue
+			}
+			if !posterHeadPerm.CanWrite(unit.TypeCode) {
+				continue
+			}
+
 			err = pr.LoadBaseRepo(ctx)
 			if err != nil {
+				log.Error("LoadBaseRepo failed: %s", err)
 				continue
 			}
 			prPerm, err := access_model.GetUserRepoPermission(ctx, pr.BaseRepo, user)
 			if err != nil {
+				log.Error("GetUserRepoPermission failed: %s", err)
 				continue
 			}
 			if prPerm.CanWrite(unit.TypeCode) {
@@ -238,6 +264,25 @@ func (prs PullRequestList) LoadIssues(ctx context.Context) (IssueList, error) {
 		issueList = append(issueList, pr.Issue)
 	}
 	return issueList, nil
+}
+
+func (prs PullRequestList) LoadHeadRepos(ctx context.Context) error {
+	repoIDs := []int64{}
+	for _, pr := range prs {
+		repoIDs = append(repoIDs, pr.HeadRepoID)
+	}
+	repos, err := db.GetByIDs(ctx, "id", repoIDs, &repo_model.Repository{})
+	if err != nil {
+		return err
+	}
+	for _, pr := range prs {
+		repo, ok := repos[pr.HeadRepoID]
+		if !ok {
+			return fmt.Errorf("unable to find repo %d", pr.HeadRepoID)
+		}
+		pr.HeadRepo = repo
+	}
+	return nil
 }
 
 // GetIssueIDs returns all issue ids

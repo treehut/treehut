@@ -9,17 +9,14 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
 	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	app_context "forgejo.org/services/context"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,26 +24,17 @@ import (
 
 func TestPullRemoveAutomerge(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user5 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 5})
-		user5Session := loginUser(t, user5.Name)
-		user2Session := loginUser(t, "user2")
+		repo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
+		forgery.EnableRepoUnits(t, repo, unit_model.TypeCode, unit_model.TypePullRequests)
 
-		repo, _, f := tests.CreateDeclarativeRepo(t, user5, "",
-			[]unit_model.Type{unit_model.TypeCode, unit_model.TypePullRequests}, nil,
-			[]*files_service.ChangeRepoFile{
-				{
-					Operation: "create",
-					TreePath:  "FUNFACT",
-					ContentReader: strings.NewReader(
-						"The Netherlands got its first openly gay prime minister today."),
-				},
-			},
-		)
-		defer f()
+		owner := repo.Owner
+		ownerSession := loginUser(t, owner.Name)
 
 		dstPath := t.TempDir()
-		cloneURL, _ := url.Parse(fmt.Sprintf("%suser5/%s.git", u.String(), repo.Name))
-		cloneURL.User = url.UserPassword("user5", userPassword)
+		cloneURL, _ := url.Parse(fmt.Sprintf("%s%s.git", u.String(), repo.FullName()))
+		cloneURL.User = url.UserPassword(owner.Name, userPassword)
 		require.NoError(t, git.CloneWithArgs(t.Context(), nil, cloneURL.String(), dstPath, git.CloneRepoOptions{}))
 		doGitSetRemoteURL(dstPath, "origin", cloneURL)(t)
 
@@ -71,13 +59,13 @@ func TestPullRemoveAutomerge(t *testing.T) {
 		require.NoError(t, git.NewCommand(t.Context(), "push", "origin", "HEAD:refs/for/main", "-o", "topic=new-fun-fact").Run(&git.RunOpts{Dir: dstPath}))
 
 		// Create a protected branch rule for automerge.
-		user5Session.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/settings/branches/edit", repo.FullName()), map[string]string{
+		ownerSession.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/settings/branches/edit", repo.FullName()), map[string]string{
 			"rule_name":          "main",
 			"required_approvals": "1",
 		}), http.StatusSeeOther)
 
 		// Start a automerge for new pull request.
-		user5Session.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/merge", repo.FullName()), map[string]string{
+		ownerSession.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/merge", repo.FullName()), map[string]string{
 			"merge_message_field":       "I love automation when it works",
 			"do":                        "merge",
 			"merge_when_checks_succeed": "true",
@@ -86,9 +74,12 @@ func TestPullRemoveAutomerge(t *testing.T) {
 		t.Run("No permission", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
-			user2Session.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/cancel_auto_merge", repo.FullName()), nil), http.StatusSeeOther)
+			otherUser := forgery.CreateUser(t, nil)
+			otherSession := loginUser(t, otherUser.Name)
 
-			flashCookie := user2Session.GetCookie(app_context.CookieNameFlash)
+			otherSession.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/cancel_auto_merge", repo.FullName()), nil), http.StatusSeeOther)
+
+			flashCookie := otherSession.GetCookie(app_context.CookieNameFlash)
 			assert.NotNil(t, flashCookie)
 			assert.Equal(t, "error%3DYou%2Bdo%2Bnot%2Bhave%2Bpermission%2Bto%2Bcancel%2Bthis%2Bpull%2Brequest%2527s%2Bauto%2Bmerge.", flashCookie.Value)
 		})
@@ -96,9 +87,9 @@ func TestPullRemoveAutomerge(t *testing.T) {
 		t.Run("Normal", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
 
-			user5Session.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/cancel_auto_merge", repo.FullName()), nil), http.StatusSeeOther)
+			ownerSession.MakeRequest(t, NewRequestWithValues(t, "POST", fmt.Sprintf("/%s/pulls/1/cancel_auto_merge", repo.FullName()), nil), http.StatusSeeOther)
 
-			flashCookie := user5Session.GetCookie(app_context.CookieNameFlash)
+			flashCookie := ownerSession.GetCookie(app_context.CookieNameFlash)
 			assert.NotNil(t, flashCookie)
 			assert.Equal(t, "success%3DThe%2Bauto%2Bmerge%2Bwas%2Bcanceled%2Bfor%2Bthis%2Bpull%2Brequest.", flashCookie.Value)
 		})

@@ -6,6 +6,7 @@ package auth
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base32"
 	"encoding/base64"
 	"errors"
@@ -151,9 +152,9 @@ func (app *OAuth2Application) ContainsRedirectURI(redirectURI string) bool {
 	// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 	// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics-12#section-3.1
 	contains := func(s string) bool {
-		s = strings.TrimSuffix(strings.ToLower(s), "/")
+		s = strings.TrimSuffix(util.ToUpperASCII(s), "/")
 		for _, u := range app.RedirectURIs {
-			if strings.TrimSuffix(strings.ToLower(u), "/") == s {
+			if strings.TrimSuffix(util.ToUpperASCII(u), "/") == s {
 				return true
 			}
 		}
@@ -408,26 +409,41 @@ func (code *OAuth2AuthorizationCode) GenerateRedirectURI(state string) (*url.URL
 	return redirect, err
 }
 
-// Invalidate deletes the auth code from the database to invalidate this code
+// Invalidate deletes the auth code from the database to invalidate this code.
+// It returns an error if the code was already invalidated (i.e., no rows were deleted),
+// which prevents authorization code replay attacks.
 func (code *OAuth2AuthorizationCode) Invalidate(ctx context.Context) error {
-	_, err := db.GetEngine(ctx).ID(code.ID).NoAutoCondition().Delete(code)
-	return err
+	affected, err := db.GetEngine(ctx).ID(code.ID).NoAutoCondition().Delete(code)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("authorization code already used or does not exist")
+	}
+	return nil
 }
 
-// ValidateCodeChallenge validates the given verifier against the saved code challenge. This is part of the PKCE implementation.
+// ValidateCodeChallenge validates the given verifier against the saved code challenge. This is part of the PKCE
+// implementation. If a code challenge was set during authorization, a valid verifier MUST be provided.
 func (code *OAuth2AuthorizationCode) ValidateCodeChallenge(verifier string) bool {
+	// If no PKCE was used during authorization, no verifier is needed.
+	if code.CodeChallengeMethod == "" && code.CodeChallenge == "" {
+		return true
+	}
+	// A challenge was set but no verifier provided: reject outright, no comparison or hashing is required.
+	if verifier == "" {
+		return false
+	}
 	switch code.CodeChallengeMethod {
 	case "S256":
 		// base64url(SHA256(verifier)) see https://tools.ietf.org/html/rfc7636#section-4.6
 		h := sha256.Sum256([]byte(verifier))
 		hashedVerifier := base64.RawURLEncoding.EncodeToString(h[:])
-		return hashedVerifier == code.CodeChallenge
+		return subtle.ConstantTimeCompare([]byte(hashedVerifier), []byte(code.CodeChallenge)) == 1
 	case "plain":
-		return verifier == code.CodeChallenge
-	case "":
-		return true
+		return subtle.ConstantTimeCompare([]byte(verifier), []byte(code.CodeChallenge)) == 1
 	default:
-		// unsupported method -> return false
+		// unsupported or empty method with a non-empty challenge -> reject
 		return false
 	}
 }
@@ -490,16 +506,19 @@ func (grant *OAuth2Grant) GenerateNewAuthorizationCode(ctx context.Context, redi
 }
 
 // IncreaseCounter increases the counter and updates the grant
+// IncreaseCounter atomically increments the counter only if it still matches
+// the value loaded into this grant. Returns an error if the counter was already
+// changed by a concurrent request (refresh token replay).
 func (grant *OAuth2Grant) IncreaseCounter(ctx context.Context) error {
-	_, err := db.GetEngine(ctx).ID(grant.ID).Incr("counter").Update(new(OAuth2Grant))
+	affected, err := db.GetEngine(ctx).Where("id = ? AND counter = ?", grant.ID, grant.Counter).
+		Incr("counter").Update(new(OAuth2Grant))
 	if err != nil {
 		return err
 	}
-	updatedGrant, err := GetOAuth2GrantByID(ctx, grant.ID)
-	if err != nil {
-		return err
+	if affected == 0 {
+		return fmt.Errorf("grant counter changed unexpectedly (possible replay)")
 	}
-	grant.Counter = updatedGrant.Counter
+	grant.Counter++
 	return nil
 }
 

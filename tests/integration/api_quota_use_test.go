@@ -22,7 +22,6 @@ import (
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/migration"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
@@ -31,6 +30,7 @@ import (
 	"forgejo.org/services/forms"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -281,9 +281,10 @@ func prepareQuotaEnv(t *testing.T, username string) *quotaEnv {
 	env.cleanups = append(env.cleanups, userCleanup)
 
 	// Create a repository
-	repo, _, repoCleanup := tests.CreateDeclarativeRepoWithOptions(t, env.User.User, tests.DeclarativeRepoOptions{})
+	repo := forgery.CreateRepository(t, env.User.User, &forgery.CreateRepositoryOptions{
+		Files: forgery.FilesInit{}, // some tests will fail with 404 if the repository is empty
+	})
 	env.Repo = repo
-	env.cleanups = append(env.cleanups, repoCleanup)
 
 	return &env
 }
@@ -476,10 +477,9 @@ func testAPIQuotaEnforcement(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 
 		// Create a template repository
-		template, _, cleanup := tests.CreateDeclarativeRepoWithOptions(t, env.User.User, tests.DeclarativeRepoOptions{
-			IsTemplate: optional.Some(true),
+		template := forgery.CreateRepository(t, env.User.User, &forgery.CreateRepositoryOptions{
+			IsTemplate: true,
 		})
-		defer cleanup()
 
 		// Drop the quota to 0
 		defer env.SetRuleLimit(t, "all", 0)()
@@ -513,8 +513,7 @@ func testAPIQuotaEnforcement(t *testing.T) {
 
 	t.Run("#/repos/{username}/{reponame}", func(t *testing.T) {
 		// Lets create a new repo to play with.
-		repo, _, repoCleanup := tests.CreateDeclarativeRepoWithOptions(t, env.User.User, tests.DeclarativeRepoOptions{})
-		defer repoCleanup()
+		repo := forgery.CreateRepository(t, env.User.User, nil)
 
 		// Drop the quota to 0
 		defer env.SetRuleLimit(t, "all", 0)()
@@ -1198,8 +1197,7 @@ func testAPIQuotaEnforcement(t *testing.T) {
 				defer tests.PrintCurrentTest(t)()
 
 				// Create a repository to transfer
-				repo, _, cleanup := tests.CreateDeclarativeRepoWithOptions(t, env.User.User, tests.DeclarativeRepoOptions{})
-				defer cleanup()
+				repo := forgery.CreateRepository(t, env.User.User, nil)
 
 				// Initiate repo transfer
 				req := NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/transfer", env.User.User.Name, repo.Name), api.TransferRepoOption{
@@ -1233,8 +1231,7 @@ func testAPIQuotaEnforcement(t *testing.T) {
 				defer env.SetRuleLimit(t, "deny-all", -1)()
 
 				// Create a repository to transfer
-				repo, _, cleanup := tests.CreateDeclarativeRepoWithOptions(t, env.User.User, tests.DeclarativeRepoOptions{})
-				defer cleanup()
+				repo := forgery.CreateRepository(t, env.User.User, nil)
 
 				// Initiate repo transfer
 				req := NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/transfer", env.User.User.Name, repo.Name), api.TransferRepoOption{

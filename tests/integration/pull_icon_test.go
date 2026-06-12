@@ -16,13 +16,13 @@ import (
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
 	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	issue_service "forgejo.org/services/issue"
 	pull_service "forgejo.org/services/pull"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -31,11 +31,13 @@ import (
 
 func TestPullRequestIcons(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-		repo, _, f := tests.CreateDeclarativeRepo(t, user, "pr-icons", []unit_model.Type{unit_model.TypeCode, unit_model.TypePullRequests}, nil, nil)
-		defer f()
+		repo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
+		forgery.EnableRepoUnits(t, repo, unit_model.TypeCode, unit_model.TypePullRequests)
 
-		session := loginUser(t, user.LoginName)
+		user := repo.Owner
+		session := loginUser(t, user.Name)
 
 		// Individual PRs
 		t.Run("Open", func(t *testing.T) {

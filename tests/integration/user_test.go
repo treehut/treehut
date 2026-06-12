@@ -29,6 +29,7 @@ import (
 	app_context "forgejo.org/services/context"
 	"forgejo.org/services/mailer"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pquerna/otp/totp"
@@ -409,17 +410,16 @@ func TestUserHints(t *testing.T) {
 	token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteUser)
 
 	// Create a known-good repo, with only one unit enabled
-	repo, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit_model.Type{
-		unit_model.TypeCode,
-	}, []unit_model.Type{
+	repo := forgery.CreateRepository(t, user, nil)
+	forgery.EnableRepoUnits(t, repo, unit_model.TypeCode)
+	forgery.DisableRepoUnits(t, repo,
 		unit_model.TypePullRequests,
 		unit_model.TypeProjects,
 		unit_model.TypePackages,
 		unit_model.TypeActions,
 		unit_model.TypeIssues,
 		unit_model.TypeWiki,
-	}, nil)
-	defer f()
+	)
 
 	ensureRepoUnitHints := func(t *testing.T, hints bool) {
 		t.Helper()

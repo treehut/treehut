@@ -3,7 +3,7 @@
 	"gpg.error.extract_sign": "Die Signatur konnte nicht extrahiert werden",
 	"gpg.error.generate_hash": "Es konnte kein Hash vom Commit generiert werden",
 	"gpg.error.no_committer_account": "Es ist kein Account mit der E-Mail-Adresse des Committers verbunden",
-	"gpg.error.no_gpg_keys_found": "Es konnte kein GPG-Schlüssel zu dieser Signatur gefunden werden",
+	"gpg.error.no_gpg_keys_found": "Es konnte kein bekannter Schlüssel zu dieser Signatur in der Datenbank gefunden werden",
 	"gpg.error.not_signed_commit": "Kein signierter Commit",
 	"gpg.error.failed_retrieval_gpg_keys": "Fehler beim Abrufen eines Schlüssels des Committer-Kontos",
 	"gpg.error.probable_bad_signature": "WARNHINWEIS! Obwohl ein Schlüssel mit dieser ID in der Datenbank existiert, verifiziert er nicht diesen Commit! Dieser Commit ist VERDÄCHTIG.",

@@ -188,7 +188,7 @@
   -moz-appearance: none;
   appearance: none;
   position: relative;
-  border: 1px solid var(--color-secondary);
+  border: 1px solid var(--color-secondary-dark-4);
   border-radius: var(--border-radius);
   background: var(--color-input-background);
   height: 14px;

@@ -4,6 +4,7 @@
 package shared
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -12,6 +13,7 @@ import (
 	"forgejo.org/modules/setting"
 	"forgejo.org/routers/common"
 	"forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/authz"
 	"forgejo.org/services/context"
 
@@ -43,14 +45,14 @@ func Middlewares() (stack []any) {
 	)
 }
 
-func buildAuthGroup() *auth.Group {
-	group := auth.NewGroup(
-		&auth.OAuth2{},
-		&auth.HTTPSign{},
-		&auth.Basic{}, // FIXME: this should be removed once we don't allow basic auth in API
+func buildAuthGroup() *auth_method.Group {
+	group := auth_method.NewGroup(
+		&auth_method.OAuth2{},
+		&auth_method.HTTPSign{},
+		&auth_method.Basic{}, // FIXME: this should be removed once we don't allow basic auth in API
 	)
 	if setting.Service.EnableReverseProxyAuthAPI {
-		group.Add(&auth.ReverseProxy{})
+		group.Add(&auth_method.ReverseProxy{})
 	}
 
 	return group
@@ -58,20 +60,35 @@ func buildAuthGroup() *auth.Group {
 
 func apiAuthentication(authMethod auth.Method) func(*context.APIContext) {
 	return func(ctx *context.APIContext) {
-		ar, err := common.AuthShared(ctx.Base, nil, authMethod)
-		if err != nil {
-			ctx.Error(http.StatusUnauthorized, "APIAuth", err)
+		output := common.AuthShared(ctx.Base, nil, authMethod)
+		var ar auth.AuthenticationResult
+		switch v := output.(type) {
+		case *auth.AuthenticationSuccess:
+			ar = v.Result
+		case *auth.AuthenticationNotAttempted:
+			ar = &auth.UnauthenticatedResult{}
+		case *auth.AuthenticationAttemptedIncorrectCredential:
+			ctx.Error(http.StatusUnauthorized, "APIAuth", v.Error)
+			return
+		case *auth.AuthenticationError:
+			ctx.ServerError("authentication error", v.Error)
+			return
+		default:
+			ctx.ServerError("authentication error", errors.New("unexpected result from common.AuthShared"))
 			return
 		}
-		ctx.Doer = ar.Doer
-		ctx.IsSigned = ar.Doer != nil
-		ctx.IsBasicAuth = ar.IsBasicAuth
+		if ar == nil {
+			ctx.ServerError("nil authentication result", errors.New("nil authentication result"))
+			return
+		}
+		ctx.Doer = ar.User()
+		ctx.IsSigned = ctx.Doer != nil
+		ctx.Authentication = ar
 	}
 }
 
 func apiAuthorization(ctx *context.APIContext) {
-	scope, scopeExists := ctx.Data["ApiTokenScope"].(auth_model.AccessTokenScope)
-	if scopeExists {
+	if hasScope, scope := ctx.Authentication.Scope().Get(); hasScope {
 		publicOnly, err := scope.PublicOnly()
 		if err != nil {
 			ctx.Error(http.StatusForbidden, "tokenRequiresScope", "parsing public resource scope failed: "+err.Error())
@@ -80,13 +97,13 @@ func apiAuthorization(ctx *context.APIContext) {
 		ctx.PublicOnly = publicOnly
 	}
 
-	reducer, reducerExists := ctx.Data["ApiTokenReducer"].(authz.AuthorizationReducer)
-	if reducerExists {
+	reducer := ctx.Authentication.Reducer()
+	if reducer != nil {
 		ctx.Reducer = reducer
 	} else {
-		// No "ApiTokenReducer" will be populated if the auth method wasn't an PAT.  In this case, we populate
-		// `ctx.Reducer` so no nil checks are needed, and we respect the scope `PublicOnly()` so that it it's safe to
-		// just rely on `ctx.Reducer` to account for public-only access:
+		// No Reducer will be populated if the auth method wasn't an PAT.  In this case, we populate `ctx.Reducer` so no
+		// nil checks are needed, and we respect the scope `PublicOnly()` so that it it's safe to just rely on
+		// `ctx.Reducer` to account for public-only access:
 		if ctx.PublicOnly {
 			ctx.Reducer = &authz.PublicReposAuthorizationReducer{}
 		} else {

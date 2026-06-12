@@ -4,6 +4,7 @@
 package packages
 
 import (
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
@@ -38,48 +39,46 @@ import (
 	"forgejo.org/routers/api/packages/swift"
 	"forgejo.org/routers/api/packages/vagrant"
 	"forgejo.org/services/auth"
+	auth_method "forgejo.org/services/auth/method"
 	"forgejo.org/services/context"
 )
 
 func reqPackageAccess(accessMode perm.AccessMode) func(ctx *context.Context) {
 	return func(ctx *context.Context) {
-		if ctx.Data["IsApiToken"] == true {
-			scope, ok := ctx.Data["ApiTokenScope"].(auth_model.AccessTokenScope)
-			if ok { // it's a personal access token but not oauth2 token
-				scopeMatched := false
-				var err error
-				switch accessMode {
-				case perm.AccessModeRead:
-					scopeMatched, err = scope.HasScope(auth_model.AccessTokenScopeReadPackage)
-					if err != nil {
-						ctx.Error(http.StatusInternalServerError, "HasScope", err.Error())
-						return
-					}
-				case perm.AccessModeWrite:
-					scopeMatched, err = scope.HasScope(auth_model.AccessTokenScopeWritePackage)
-					if err != nil {
-						ctx.Error(http.StatusInternalServerError, "HasScope", err.Error())
-						return
-					}
-				}
-				if !scopeMatched {
-					ctx.Resp.Header().Set("WWW-Authenticate", `Basic realm="Gitea Package API"`)
-					ctx.Error(http.StatusUnauthorized, "reqPackageAccess", "user should have specific permission or be a site admin")
-					return
-				}
-
-				// check if scope only applies to public resources
-				publicOnly, err := scope.PublicOnly()
+		if hasScope, scope := ctx.Authentication.Scope().Get(); hasScope {
+			scopeMatched := false
+			var err error
+			switch accessMode {
+			case perm.AccessModeRead:
+				scopeMatched, err = scope.HasScope(auth_model.AccessTokenScopeReadPackage)
 				if err != nil {
-					ctx.Error(http.StatusForbidden, "tokenRequiresScope", "parsing public resource scope failed: "+err.Error())
+					ctx.Error(http.StatusInternalServerError, "HasScope", err.Error())
 					return
 				}
+			case perm.AccessModeWrite:
+				scopeMatched, err = scope.HasScope(auth_model.AccessTokenScopeWritePackage)
+				if err != nil {
+					ctx.Error(http.StatusInternalServerError, "HasScope", err.Error())
+					return
+				}
+			}
+			if !scopeMatched {
+				ctx.Resp.Header().Set("WWW-Authenticate", `Basic realm="Gitea Package API"`)
+				ctx.Error(http.StatusUnauthorized, "reqPackageAccess", "user should have specific permission or be a site admin")
+				return
+			}
 
-				if publicOnly {
-					if ctx.Package != nil && ctx.Package.Owner.Visibility.IsPrivate() {
-						ctx.Error(http.StatusForbidden, "reqToken", "token scope is limited to public packages")
-						return
-					}
+			// check if scope only applies to public resources
+			publicOnly, err := scope.PublicOnly()
+			if err != nil {
+				ctx.Error(http.StatusForbidden, "tokenRequiresScope", "parsing public resource scope failed: "+err.Error())
+				return
+			}
+
+			if publicOnly {
+				if ctx.Package != nil && ctx.Package.Owner.Visibility.IsPrivate() {
+					ctx.Error(http.StatusForbidden, "reqToken", "token scope is limited to public packages")
+					return
 				}
 			}
 		}
@@ -116,38 +115,71 @@ func enforcePackagesQuota() func(ctx *context.Context) {
 
 func verifyAuth(r *web.Route, authMethods []auth.Method) {
 	if setting.Service.EnableReverseProxyAuth {
-		authMethods = append(authMethods, &auth.ReverseProxy{})
+		authMethods = append(authMethods, &auth_method.ReverseProxy{})
 	}
-	authGroup := auth.NewGroup(authMethods...)
+	authGroup := auth_method.NewGroup(authMethods...)
 
 	r.Use(func(ctx *context.Context) {
-		var err error
-		ctx.Doer, err = authGroup.Verify(ctx.Req, ctx.Resp, ctx, ctx.Session)
-		if err != nil {
-			log.Info("Failed to verify user: %v", err)
+		output := authGroup.Verify(ctx.Req, ctx.Resp, ctx.Session)
+		var ar auth.AuthenticationResult
+		switch v := output.(type) {
+		case *auth.AuthenticationSuccess:
+			ar = v.Result
+		case *auth.AuthenticationNotAttempted:
+			ar = &auth.UnauthenticatedResult{}
+		case *auth.AuthenticationError:
+			ctx.ServerError("authentication error", v.Error)
+			return
+		case *auth.AuthenticationAttemptedIncorrectCredential:
 			ctx.Error(http.StatusUnauthorized, "authGroup.Verify")
 			return
+		default:
+			ctx.ServerError("Verify failed", errors.New("unexpected result from Method.Verify"))
+			return
 		}
+		if ar == nil {
+			ctx.ServerError("nil authentication result", errors.New("nil authentication result"))
+			return
+		}
+		ctx.Doer = ar.User()
 		ctx.IsSigned = ctx.Doer != nil
+		ctx.Authentication = ar
 	})
 }
 
 func verifyContainerAuth(r *web.Route, authMethods []auth.Method) {
 	if setting.Service.EnableReverseProxyAuth {
-		authMethods = append(authMethods, &auth.ReverseProxy{})
+		authMethods = append(authMethods, &auth_method.ReverseProxy{})
 	}
-	authGroup := auth.NewGroup(authMethods...)
+	authGroup := auth_method.NewGroup(authMethods...)
 
 	r.Use(func(ctx *context.Context) {
-		var err error
-		ctx.Doer, err = authGroup.Verify(ctx.Req, ctx.Resp, ctx, ctx.Session)
-		if err != nil {
-			log.Info("Failed to verify user: %v", err)
+		output := authGroup.Verify(ctx.Req, ctx.Resp, ctx.Session)
+		var ar auth.AuthenticationResult
+		switch v := output.(type) {
+		case *auth.AuthenticationSuccess:
+			ar = v.Result
+		case *auth.AuthenticationNotAttempted:
+			ar = &auth.UnauthenticatedResult{}
+		case *auth.AuthenticationError:
+			ctx.ServerError("authentication error", v.Error)
+			return
+		case *auth.AuthenticationAttemptedIncorrectCredential:
+			log.Info("Failed to verify user: %v", v.Error)
 			container.APIUnauthorizedError(ctx)
 			ctx.Error(http.StatusUnauthorized, "authGroup.Verify")
 			return
+		default:
+			ctx.ServerError("Verify failed", errors.New("unexpected result from Method.Verify"))
+			return
 		}
+		if ar == nil {
+			ctx.ServerError("nil authentication result", errors.New("nil authentication result"))
+			return
+		}
+		ctx.Doer = ar.User()
 		ctx.IsSigned = ctx.Doer != nil
+		ctx.Authentication = ar
 	})
 }
 
@@ -159,8 +191,8 @@ func CommonRoutes() *web.Route {
 	r.Use(context.PackageContexter())
 
 	verifyAuth(r, []auth.Method{
-		&auth.OAuth2{},
-		&auth.Basic{},
+		&auth_method.OAuth2{},
+		&auth_method.Basic{},
 		&nuget.Auth{},
 		&conan.Auth{},
 		&chef.Auth{},
@@ -804,7 +836,7 @@ func ContainerRoutes() *web.Route {
 
 	r.Use(context.PackageContexter())
 
-	verifyContainerAuth(r, []auth.Method{&auth.Basic{}, &container.Auth{}})
+	verifyContainerAuth(r, []auth.Method{&auth_method.Basic{}, &container.Auth{}})
 
 	r.Get("", container.ReqContainerAccess, container.DetermineSupport)
 	r.Group("/token", func() {

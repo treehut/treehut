@@ -1,7 +1,7 @@
 // Copyright 2024 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-package auth
+package method
 
 import (
 	"net/http"
@@ -11,8 +11,8 @@ import (
 	"forgejo.org/models/auth"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
-	"forgejo.org/modules/web/middleware"
 	"forgejo.org/services/actions"
+	auth_service "forgejo.org/services/auth"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,14 +33,15 @@ func TestUserIDFromToken(t *testing.T) {
 		token, err := actions.CreateAuthorizationToken(task, map[string]any{}, false)
 		require.NoError(t, err)
 
-		ds := make(middleware.ContextData)
-
 		o := OAuth2{}
-		uid, err := o.userIDFromToken(t.Context(), token, ds)
-		require.NoError(t, err)
-		assert.Equal(t, int64(user_model.ActionsUserID), uid)
-		assert.Equal(t, true, ds["IsActionsToken"])
-		assert.Equal(t, ds["ActionsTaskID"], int64(RunningTaskID))
+		output := o.userIDFromToken(t.Context(), token)
+		ar, authSuccess := output.(*auth_service.AuthenticationSuccess)
+		require.True(t, authSuccess, "expected type AuthenticationSuccess, but was: %#v", output)
+		authResult := ar.Result
+		assert.Equal(t, int64(user_model.ActionsUserID), authResult.User().ID)
+		isActionsToken, authTaskID := authResult.ActionsTaskID().Get()
+		assert.True(t, isActionsToken)
+		assert.Equal(t, int64(RunningTaskID), authTaskID)
 	})
 
 	t.Run("Actions error-JWT", func(t *testing.T) {
@@ -52,13 +53,16 @@ func TestUserIDFromToken(t *testing.T) {
 			"To short": {"abc", auth.ErrAccessTokenNotExist{Token: "abc"}},
 		}
 
-		ds := make(middleware.ContextData)
 		o := OAuth2{}
 		for name, c := range cases {
 			t.Run(name, func(t *testing.T) {
-				uid, err := o.userIDFromToken(t.Context(), c.Token, ds)
+				output := o.userIDFromToken(t.Context(), c.Token)
+
+				ar, authFailure := output.(*auth_service.AuthenticationAttemptedIncorrectCredential)
+				require.True(t, authFailure, "expected type AuthenticationAttemptedIncorrectCredential, but was: %#v", output)
+				err := ar.Error
+
 				require.ErrorIs(t, err, c.Error)
-				assert.Equal(t, int64(0), uid)
 			})
 		}
 	})

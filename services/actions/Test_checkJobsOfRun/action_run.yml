@@ -16,3 +16,23 @@
   updated: 1683636626
   need_approval: 0
   approved_by: 0
+
+# Test case with needs, only
+- id: 901
+  title: ".forgejo/workflows/test.yaml"
+  repo_id: 63
+  owner_id: 2
+  workflow_id: "test.yaml"
+  workflow_directory: ".forgejo/workflows"
+  index: 5
+  trigger_user_id: 2
+  ref: "refs/heads/main"
+  commit_sha: "c29b3a4b23e21ea3261291d82bfb8e7af7797e26"
+  trigger_event: "workflow_dispatch"
+  is_fork_pull_request: 0
+  status: 7 # running
+  started: 1779368408
+  created: 1779368408
+  updated: 1779368421
+  need_approval: 0
+  approved_by: 0

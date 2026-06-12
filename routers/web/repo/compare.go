@@ -231,13 +231,6 @@ func ParseCompareInfo(ctx *context.Context) *common.CompareInfo {
 	if infoPath == "" {
 		infos = []string{baseRepo.DefaultBranch, baseRepo.DefaultBranch}
 	} else {
-		infoPath, isDiff := strings.CutSuffix(infoPath, ".diff")
-		ctx.Data["ComparingDiff"] = isDiff
-		if !isDiff {
-			var isPatch bool
-			infoPath, isPatch = strings.CutSuffix(infoPath, ".patch")
-			ctx.Data["ComparingPatch"] = isPatch
-		}
 		infos = strings.SplitN(infoPath, "...", 2)
 		if len(infos) != 2 {
 			if infos = strings.SplitN(infoPath, "..", 2); len(infos) == 2 {
@@ -246,6 +239,14 @@ func ParseCompareInfo(ctx *context.Context) *common.CompareInfo {
 			} else {
 				infos = []string{baseRepo.DefaultBranch, infoPath}
 			}
+		}
+		var isDiff bool
+		infos[1], isDiff = strings.CutSuffix(infos[1], ".diff")
+		ctx.Data["ComparingDiff"] = isDiff
+		if !isDiff {
+			var isPatch bool
+			infos[1], isPatch = strings.CutSuffix(infos[1], ".patch")
+			ctx.Data["ComparingPatch"] = isPatch
 		}
 	}
 

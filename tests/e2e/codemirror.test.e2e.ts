@@ -21,15 +21,19 @@ async function enterFilename(page: Page, filename: string) {
 }
 
 async function pressEnter(page: Page) {
-  // eslint-disable-next-line playwright/no-wait-for-timeout
-  await page.waitForTimeout(5);
   await page.keyboard.press('Enter', {delay: 5});
-  // eslint-disable-next-line playwright/no-wait-for-timeout
-  await page.waitForTimeout(10);
 }
 
 async function type(page: Page, text: string) {
   await page.keyboard.type(text, {delay: 10});
+}
+
+async function validate(page: Page, expected: string) {
+  await expect(async () => {
+    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
+    expect(internal).toStrictEqual(expected);
+  }).toPass();
+  await expect(page.locator('#edit_area')).toHaveValue(expected);
 }
 
 test('New file editor', async ({page}) => {
@@ -39,21 +43,19 @@ test('New file editor', async ({page}) => {
   await enterFilename(page, `f.txt`);
 
   const editor = page.locator('.cm-content');
-  const backingTextArea = page.locator('#edit_area');
 
   await editor.click();
+
   await type(page, 'This');
   await pressEnter(page);
+  await validate(page, 'This\n');
+
   await type(page, 'is');
   await pressEnter(page);
-  await type(page, 'Frogejo!');
+  await validate(page, 'This\nis\n');
 
-  const expected = 'This\nis\nFrogejo!';
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual(expected);
-  }).toPass();
-  await expect(backingTextArea).toHaveValue(expected);
+  await type(page, 'Frogejo!');
+  await validate(page, 'This\nis\nFrogejo!');
 });
 
 test('New file with autocomplete and indent', async ({page}) => {
@@ -63,26 +65,20 @@ test('New file with autocomplete and indent', async ({page}) => {
   await enterFilename(page, 'f.html');
 
   const editor = page.locator('.cm-content');
-  const backingTextArea = page.locator('#edit_area');
 
   await expect(editor).toHaveAttribute('data-language', 'html', {timeout: 3000});
 
   await editor.click();
   await type(page, '<html>');
   await pressEnter(page);
-  await type(page, '<hea');
-  await page.locator('.cm-tooltip-autocomplete').waitFor({state: 'visible'});
-  await pressEnter(page);
-  await type(page, '>');
-  await pressEnter(page);
-  await type(page, '<title>Frogejo is the future');
+  await validate(page, '<html>\n  \n</html>');
 
-  const expected = '<html>\n  <head>\n    <title>Frogejo is the future</title>\n  </head>\n</html>';
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual(expected);
-  }).toPass();
-  await expect(backingTextArea).toHaveValue(expected);
+  await type(page, '<head>');
+  await pressEnter(page);
+  await validate(page, '<html>\n  <head>\n    \n  </head>\n</html>');
+
+  await type(page, '<title>Frogejo is the future');
+  await validate(page, '<html>\n  <head>\n    <title>Frogejo is the future</title>\n  </head>\n</html>');
 });
 
 test('Preview for markdown file', async ({page}) => {
@@ -105,10 +101,7 @@ test('Set from query', async ({page}) => {
   const response = await page.goto('/user2/repo1/_new/master?value=This\\nis\\\\nFrogejo!', {waitUntil: 'domcontentloaded'});
   expect(response?.status()).toBe(200);
 
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual('This\nis\\nFrogejo!');
-  }).toPass();
+  await validate(page, 'This\nis\\nFrogejo!');
 });
 
 test('Search in file', async ({page}) => {
@@ -122,10 +115,7 @@ test('Search in file', async ({page}) => {
   const toggleByWord = page.locator('label[for="search_by_word"]');
   const nextButton = page.locator('button[aria-label="Next find"]');
 
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual('This\nis\nFrogejo!\nthIs');
-  }).toPass();
+  await validate(page, 'This\nis\nFrogejo!\nthIs');
 
   await editor.click();
 
@@ -180,10 +170,7 @@ test('Replace in file', async ({page}) => {
   const searchField = page.locator('.fj-search input[name="search"]');
   const replaceField = page.locator('.fj-search input[name="replace"]');
 
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual('This\nis\nFrogejo!\nthIs');
-  }).toPass();
+  await validate(page, 'This\nis\nFrogejo!\nthIs');
 
   await editor.click();
 
@@ -196,10 +183,7 @@ test('Replace in file', async ({page}) => {
 
   await page.getByRole('button', {name: 'Replace all'}).click();
 
-  await expect(async () => {
-    const internal = await page.evaluate(() => Array.from(window.codeEditors)[0].state.doc.toString());
-    expect(internal).toStrictEqual('ThBlub\nBlub\nFrogejo!\nthBlub');
-  }).toPass();
+  await validate(page, 'ThBlub\nBlub\nFrogejo!\nthBlub');
 });
 
 test('Do not open search if search button not available', async ({page}) => {

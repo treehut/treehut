@@ -130,7 +130,7 @@ func TestIncludesAllRepositoriesTeams(t *testing.T) {
 	}
 
 	// Remove repo and check teams repositories.
-	require.NoError(t, DeleteRepositoryDirectly(db.DefaultContext, user, repoIDs[0]), "DeleteRepository")
+	require.NoError(t, DeleteRepositoryDirectly(db.DefaultContext, repoIDs[0], DeleteRepositoryOpts{}), "DeleteRepository")
 	teamRepos[0] = repoIDs[1:]
 	teamRepos[1] = repoIDs[1:]
 	teamRepos[3] = repoIDs[1:3]
@@ -142,7 +142,7 @@ func TestIncludesAllRepositoriesTeams(t *testing.T) {
 	// Wipe created items.
 	for i, rid := range repoIDs {
 		if i > 0 { // first repo already deleted.
-			require.NoError(t, DeleteRepositoryDirectly(db.DefaultContext, user, rid), "DeleteRepository %d", i)
+			require.NoError(t, DeleteRepositoryDirectly(db.DefaultContext, rid, DeleteRepositoryOpts{}), "DeleteRepository %d", i)
 		}
 	}
 	require.NoError(t, organization.DeleteOrganization(db.DefaultContext, org), "DeleteOrganization")

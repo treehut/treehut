@@ -148,6 +148,17 @@ func getActivity(ctx *context.APIContext, id int64) (*forgefed.ForgeUserActivity
 		return nil, err
 	}
 
+	private, err := action.IsActionPrivate(ctx)
+	if err != nil {
+		ctx.Error(http.StatusInternalServerError, "action.IsActionPrivate", err.Error())
+		return nil, err
+	}
+
+	if private {
+		ctx.NotFound()
+		return nil, activities.ErrActivityPrivate{}
+	}
+
 	actions := activities.ActionList{action}
 	if err := actions.LoadAttributes(ctx); err != nil {
 		ctx.Error(http.StatusInternalServerError, "action.LoadAttributes", err.Error())

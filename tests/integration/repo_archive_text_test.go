@@ -6,14 +6,11 @@ package integration
 import (
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"testing"
 
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/translation"
-	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -21,16 +18,11 @@ import (
 
 func TestArchiveText(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, giteaURL *url.URL) {
-		testUser := "user2"
-		user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: testUser})
-		session := loginUser(t, testUser)
-		testRepoName := "archived_repo"
 		tr := translation.NewLocale("en-US")
-		link := path.Join(testUser, testRepoName, "settings")
 
-		// Create test repo
-		_, _, f := tests.CreateDeclarativeRepo(t, user2, testRepoName, nil, nil, nil)
-		defer f()
+		repo := forgery.CreateRepository(t, nil, nil)
+		session := loginUser(t, repo.Owner.Name)
+		link := repo.HTMLURL() + "/settings"
 
 		// Test settings page
 		req := NewRequest(t, "GET", link)

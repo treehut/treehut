@@ -25,6 +25,7 @@ import (
 	"forgejo.org/modules/web"
 	"forgejo.org/modules/web/middleware"
 	web_types "forgejo.org/modules/web/types"
+	"forgejo.org/services/auth"
 
 	"code.forgejo.org/go-chi/cache"
 	"code.forgejo.org/go-chi/session"
@@ -51,9 +52,9 @@ type Context struct {
 
 	Link string // current request URL (without query string)
 
-	Doer        *user_model.User // current signed-in user
-	IsSigned    bool
-	IsBasicAuth bool
+	Doer           *user_model.User // current signed-in user
+	IsSigned       bool
+	Authentication auth.AuthenticationResult
 
 	ContextUser *user_model.User // the user which is being visited, in most cases it differs from Doer
 
@@ -112,6 +113,8 @@ func NewWebContext(base *Base, render Render, session session.Store) *Context {
 		Link:  setting.AppSubURL + strings.TrimSuffix(base.Req.URL.EscapedPath(), "/"),
 		Repo:  &Repository{PullRequest: &PullRequest{}},
 		Org:   &Organization{},
+
+		Authentication: &auth.UnauthenticatedResult{},
 	}
 	ctx.TemplateContext = NewTemplateContextForWeb(ctx)
 	ctx.Flash = &middleware.Flash{DataStore: ctx, Values: url.Values{}}

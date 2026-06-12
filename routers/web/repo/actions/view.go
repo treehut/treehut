@@ -7,9 +7,9 @@ package actions
 import (
 	"archive/zip"
 	"compress/gzip"
-	"context"
 	"errors"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"net/http"
@@ -31,15 +31,12 @@ import (
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/storage"
 	"forgejo.org/modules/templates"
-	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/translation"
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/web"
 	"forgejo.org/routers/common"
 	actions_service "forgejo.org/services/actions"
 	app_context "forgejo.org/services/context"
-
-	"xorm.io/builder"
 )
 
 func RedirectToLatestAttempt(ctx *app_context.Context) {
@@ -286,10 +283,10 @@ func getViewResponse(ctx *app_context.Context, req *ViewRequest, runIndex, jobIn
 			base.ShortSha(run.CommitSHA))
 	} else if run.IsDispatchedRun() {
 		runDescription = ctx.Locale.TrString("actions.runs.workflow_dispatch_description", run.CommitLink(),
-			base.ShortSha(run.CommitSHA), run.TriggerUser.HomeLink(), run.TriggerUser.GetDisplayName())
+			base.ShortSha(run.CommitSHA), run.TriggerUser.HomeLink(), html.EscapeString(run.TriggerUser.GetDisplayName()))
 	} else {
 		runDescription = ctx.Locale.TrString("actions.runs.on_push_description", run.CommitLink(),
-			base.ShortSha(run.CommitSHA), run.TriggerUser.HomeLink(), run.TriggerUser.GetDisplayName())
+			base.ShortSha(run.CommitSHA), run.TriggerUser.HomeLink(), html.EscapeString(run.TriggerUser.GetDisplayName()))
 	}
 
 	resp.State.Run.Title = run.Title
@@ -314,11 +311,16 @@ func getViewResponse(ctx *app_context.Context, req *ViewRequest, runIndex, jobIn
 			// Ah, another job is still running. Keep the frontend polling enabled then.
 			done = false
 		}
+		canBeRerun, err := v.CanBeRerun(ctx)
+		if err != nil {
+			ctx.Error(http.StatusInternalServerError, err.Error())
+			return nil
+		}
 		resp.State.Run.Jobs = append(resp.State.Run.Jobs, &ViewJob{
 			ID:       v.ID,
 			Name:     v.Name,
 			Status:   v.Status.String(),
-			CanRerun: v.CanBeRerun() && ctx.Repo.CanWrite(unit.TypeActions),
+			CanRerun: canBeRerun && ctx.Repo.CanWrite(unit.TypeActions),
 			Duration: v.Duration().String(),
 		})
 	}
@@ -352,6 +354,39 @@ func getViewResponse(ctx *app_context.Context, req *ViewRequest, runIndex, jobIn
 		Branch:         branch,
 	}
 
+	taskAttempts, err := current.GetAllAttempts(ctx)
+	if err != nil {
+		ctx.Error(http.StatusInternalServerError, err.Error())
+		return nil
+	}
+
+	var allAttempts []*TaskAttempt
+	// If the latest attempt has not been taken up yet by a runner, there is no task that could be displayed. As a
+	// stopgap, inject a phantom task that provides the necessary information until a real tasks is created, if ever.
+	if len(taskAttempts) == 0 || taskAttempts[0].Attempt != current.Attempt {
+		taskAttempt := &TaskAttempt{
+			Number:            current.Attempt,
+			Status:            current.Status.String(),
+			Started:           template.HTML(ctx.Locale.TrString("actions.jobs.not_started")),
+			StatusDiagnostics: statusDiagnostics(current.Status, current, ctx.Locale),
+		}
+		allAttempts = append(allAttempts, taskAttempt)
+	}
+	for _, actionTask := range taskAttempts {
+		taskAttempt := &TaskAttempt{
+			Number:            actionTask.Attempt,
+			Started:           templates.TimeSince(actionTask.Started),
+			Status:            actionTask.Status.String(),
+			StatusDiagnostics: statusDiagnostics(actionTask.Status, current, ctx.Locale),
+		}
+		allAttempts = append(allAttempts, taskAttempt)
+	}
+
+	resp.State.CurrentJob.Title = current.Name
+	resp.State.CurrentJob.Details = statusDiagnostics(current.Status, current, ctx.Locale)
+	resp.State.CurrentJob.Steps = make([]*ViewJobStep, 0) // marshal to '[]' instead of 'null' in json
+	resp.State.CurrentJob.AllAttempts = allAttempts
+
 	var task *actions_model.ActionTask
 	// TaskID will be set only when the ActionRunJob has been picked by a runner, resulting in an ActionTask being
 	// created representing the specific task.  If current.TaskID is not set, then the user is attempting to view a job
@@ -372,29 +407,9 @@ func getViewResponse(ctx *app_context.Context, req *ViewRequest, runIndex, jobIn
 		}
 	}
 
-	resp.State.CurrentJob.Title = current.Name
-	resp.State.CurrentJob.Details = statusDiagnostics(current.Status, current, ctx.Locale)
-
-	resp.State.CurrentJob.Steps = make([]*ViewJobStep, 0) // marshal to '[]' instead of 'null' in json
-	resp.Logs.StepsLog = make([]*ViewStepLog, 0)          // marshal to '[]' instead of 'null' in json
+	resp.Logs.StepsLog = make([]*ViewStepLog, 0) // marshal to '[]' instead of 'null' in json
 	// As noted above with TaskID; task will be nil when the job hasn't be picked yet...
 	if task != nil {
-		taskAttempts, err := task.GetAllAttempts(ctx)
-		if err != nil {
-			ctx.Error(http.StatusInternalServerError, err.Error())
-			return nil
-		}
-		allAttempts := make([]*TaskAttempt, len(taskAttempts))
-		for i, actionTask := range taskAttempts {
-			allAttempts[i] = &TaskAttempt{
-				Number:            actionTask.Attempt,
-				Started:           templates.TimeSince(actionTask.Started),
-				Status:            actionTask.Status.String(),
-				StatusDiagnostics: statusDiagnostics(actionTask.Status, task.Job, ctx.Locale),
-			}
-		}
-		resp.State.CurrentJob.AllAttempts = allAttempts
-
 		steps := actions.FullSteps(task)
 		for _, v := range steps {
 			resp.State.CurrentJob.Steps = append(resp.State.CurrentJob.Steps, &ViewJobStep{
@@ -495,120 +510,48 @@ func Rerun(ctx *app_context.Context) {
 		ctx.Error(http.StatusInternalServerError, err.Error())
 		return
 	}
-	if jobIndexStr == "" && !run.CanBeRerun() {
-		ctx.JSONError(ctx.Locale.Tr("actions.workflow.rerun_impossible"))
-		return
-	}
 
-	// can not rerun job when workflow is disabled
-	cfgUnit := ctx.Repo.Repository.MustGetUnit(ctx, unit.TypeActions)
-	cfg := cfgUnit.ActionsConfig()
-	if cfg.IsWorkflowDisabled(run.WorkflowID) {
-		ctx.JSONError(ctx.Locale.Tr("actions.workflow.disabled"))
-		return
-	}
-
-	// reset run's start and stop time when it is done
-	if run.Status.IsDone() {
-		run.PreviousDuration = run.Duration()
-		run.Started = 0
-		run.Stopped = 0
-		if err := actions_service.UpdateRun(ctx, run, "started", "stopped", "previous_duration"); err != nil {
-			ctx.Error(http.StatusInternalServerError, err.Error())
+	var rerunJobs []*actions_model.ActionRunJob
+	if jobIndexStr == "" { // Rerun the entire workflow.
+		rerunJobs, err = actions_service.RerunAllJobs(ctx, run)
+	} else { // Rerun a single job
+		job, _ := getRunJobs(ctx, runIndex, jobIndex)
+		if ctx.Written() {
 			return
 		}
+		rerunJobs, err = actions_service.RerunJob(ctx, job)
 	}
 
-	job, jobs := getRunJobs(ctx, runIndex, jobIndex)
-	if ctx.Written() {
-		return
-	}
-
-	if jobIndexStr == "" { // rerun all jobs
-		var redirectURL string
-		for _, j := range jobs {
-			if !j.CanBeRerun() {
-				ctx.JSONError(ctx.Locale.Tr("actions.workflow.job_rerun_impossible"))
-				return
-			}
-
-			// if the job has needs, it should be set to "blocked" status to wait for other jobs
-			shouldBlock := len(j.Needs) > 0
-			if err := rerunJob(ctx, j, shouldBlock); err != nil {
-				ctx.Error(http.StatusInternalServerError, err.Error())
-				return
-			}
-			if redirectURL == "" {
-				redirectURL, err = j.HTMLURL(ctx)
-				if err != nil {
-					ctx.Error(http.StatusInternalServerError, err.Error())
-					return
-				}
-			}
+	if err != nil {
+		if errors.Is(err, actions_service.ErrRerunWorkflowInvalid) ||
+			errors.Is(err, actions_service.ErrRerunWorkflowStillRunning) {
+			ctx.JSONError(ctx.Locale.Tr("actions.workflow.rerun_impossible"))
+			return
 		}
-
-		if redirectURL != "" {
-			ctx.JSON(http.StatusOK, &redirectObject{Redirect: redirectURL})
-		} else {
-			ctx.Error(http.StatusInternalServerError, "unable to determine redirectURL for job rerun")
+		if errors.Is(err, actions_service.ErrRerunWorkflowDisabled) {
+			ctx.JSONError(ctx.Locale.Tr("actions.workflow.disabled"))
+			return
 		}
-		return
-	}
-
-	rerunJobs := actions_service.GetAllRerunJobs(job, jobs)
-
-	var redirectURL string
-	for _, j := range rerunJobs {
-		if !j.CanBeRerun() {
+		if errors.Is(err, actions_service.ErrRerunJobStillRunning) {
 			ctx.JSONError(ctx.Locale.Tr("actions.workflow.job_rerun_impossible"))
 			return
 		}
-
-		// jobs other than the specified one should be set to "blocked" status
-		shouldBlock := j.JobID != job.JobID
-		if err := rerunJob(ctx, j, shouldBlock); err != nil {
-			ctx.Error(http.StatusInternalServerError, err.Error())
-			return
-		}
-		if j.JobID == job.JobID {
-			redirectURL, err = j.HTMLURL(ctx)
-			if err != nil {
-				ctx.Error(http.StatusInternalServerError, err.Error())
-				return
-			}
-		}
+		ctx.Error(http.StatusInternalServerError, err.Error())
+		return
 	}
 
-	if redirectURL != "" {
-		ctx.JSON(http.StatusOK, &redirectObject{Redirect: redirectURL})
-	} else {
-		ctx.Error(http.StatusInternalServerError, "unable to determine redirectURL for job rerun")
-	}
-}
-
-func rerunJob(ctx *app_context.Context, job *actions_model.ActionRunJob, shouldBlock bool) error {
-	status := job.Status
-	if !status.IsDone() {
-		return nil
+	if len(rerunJobs) == 0 {
+		ctx.Error(http.StatusInternalServerError, "no jobs were rerun")
+		return
 	}
 
-	initialStatus := actions_model.StatusWaiting
-	if shouldBlock {
-		initialStatus = actions_model.StatusBlocked
-	}
-	if err := job.PrepareNextAttempt(initialStatus); err != nil {
-		return err
+	redirectURL, err := rerunJobs[0].HTMLURL(ctx)
+	if err != nil {
+		ctx.Error(http.StatusInternalServerError, err.Error())
+		return
 	}
 
-	if err := db.WithTx(ctx, func(ctx context.Context) error {
-		_, err := actions_service.UpdateRunJob(ctx, job, builder.Eq{"status": status}, "handle", "attempt", "task_id", "status", "started", "stopped")
-		return err
-	}); err != nil {
-		return err
-	}
-
-	actions_service.CreateCommitStatus(ctx, job)
-	return nil
+	ctx.JSON(http.StatusOK, &redirectObject{Redirect: redirectURL})
 }
 
 func Logs(ctx *app_context.Context) {
@@ -664,40 +607,15 @@ func Logs(ctx *app_context.Context) {
 func Cancel(ctx *app_context.Context) {
 	runIndex := ctx.ParamsInt64("run")
 
-	_, jobs := getRunJobs(ctx, runIndex, -1)
-	if ctx.Written() {
-		return
-	}
-
-	if err := db.WithTx(ctx, func(ctx context.Context) error {
-		for _, job := range jobs {
-			status := job.Status
-			if status.IsDone() {
-				continue
-			}
-			if job.TaskID == 0 {
-				job.Status = actions_model.StatusCancelled
-				job.Stopped = timeutil.TimeStampNow()
-				n, err := actions_service.UpdateRunJob(ctx, job, builder.Eq{"task_id": 0}, "status", "stopped")
-				if err != nil {
-					return err
-				}
-				if n == 0 {
-					return errors.New("job has changed, try again")
-				}
-				continue
-			}
-			if err := actions_service.StopTask(ctx, job.TaskID, actions_model.StatusCancelled); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
+	run, err := actions_model.GetRunByIndex(ctx, ctx.Repo.Repository.ID, runIndex)
+	if err != nil {
 		ctx.Error(http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	actions_service.CreateCommitStatus(ctx, jobs...)
+	if err := actions_service.CancelRun(ctx, run); err != nil {
+		ctx.Error(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	ctx.JSON(http.StatusOK, struct{}{})
 }

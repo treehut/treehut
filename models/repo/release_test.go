@@ -20,11 +20,14 @@ func TestMigrate_InsertReleases(t *testing.T) {
 		UUID: "a0eebc91-9c0c-4ef7-bb6e-6bb9bd380a12",
 	}
 	r := &Release{
+		RepoID:      1001,
 		Attachments: []*Attachment{a},
 	}
 
 	err := InsertReleases(db.DefaultContext, r)
 	require.NoError(t, err)
+
+	assert.EqualValues(t, 1001, unittest.AssertExistsAndLoadBean(t, &Attachment{UUID: "a0eebc91-9c0c-4ef7-bb6e-6bb9bd380a12"}).RepoID)
 }
 
 func TestReleaseLoadRepo(t *testing.T) {

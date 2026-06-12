@@ -532,6 +532,11 @@ func PrepareMergedViewPullInfo(ctx *context.Context, issue *issues_model.Issue) 
 		}
 	}
 
+	PrepareViewPullInfoActions(ctx, pull)
+	if ctx.Written() {
+		return nil
+	}
+
 	return compareInfo
 }
 

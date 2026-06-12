@@ -2,7 +2,13 @@
 <div role="main" aria-label="{{.Title}}" class="page-content repository packages">
 	{{template "repo/header" .}}
 	<div class="ui container">
-	{{template "package/shared/list" .}}
+		{{if (and .Repository.IsPrivate .Repository.Owner.Visibility.IsPublic)}}
+			<div class="ui warning message flash-message flash-warning">
+				{{svg "octicon-alert"}}
+				{{ctx.Locale.Tr "repo.packages.visibility_warning" .Repository.OwnerName}}
+			</div>
+		{{end}}
+		{{template "package/shared/list" .}}
 	</div>
 </div>
 {{template "base/footer" .}}

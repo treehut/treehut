@@ -76,6 +76,22 @@ func TestIncomingEmail(t *testing.T) {
 		assert.Equal(t, payload, p)
 	})
 
+	t.Run("Lowercase token", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+
+		payload := []byte{1, 2, 3, 4, 5}
+
+		token, err := token_service.CreateToken(token_service.ReplyHandlerType, user, payload)
+		require.NoError(t, err)
+		assert.NotEmpty(t, token)
+
+		ht, u, p, err := token_service.ExtractToken(db.DefaultContext, strings.ToLower(token))
+		require.NoError(t, err)
+		assert.Equal(t, token_service.ReplyHandlerType, ht)
+		assert.Equal(t, user.ID, u.ID)
+		assert.Equal(t, payload, p)
+	})
+
 	tokenEncoding := base32.StdEncoding.WithPadding(base32.NoPadding)
 	t.Run("Deprecated token version", func(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()

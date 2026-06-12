@@ -201,7 +201,7 @@ func runTestGitPush(t *testing.T, u *url.URL, objectFormat git.ObjectFormat, git
 		assert.Equal(t, commitID, branch.CommitID)
 	}
 
-	require.NoError(t, repo_service.DeleteRepositoryDirectly(db.DefaultContext, user, repo.ID))
+	require.NoError(t, repo_service.DeleteRepositoryDirectly(db.DefaultContext, repo.ID, repo_service.DeleteRepositoryOpts{}))
 }
 
 func TestOptionsGitPush(t *testing.T) {
@@ -310,6 +310,6 @@ func testOptionsGitPush(t *testing.T, u *url.URL) {
 			assert.True(t, logFiltered[0])
 		})
 
-		require.NoError(t, repo_service.DeleteRepositoryDirectly(db.DefaultContext, user, repo.ID))
+		require.NoError(t, repo_service.DeleteRepositoryDirectly(db.DefaultContext, repo.ID, repo_service.DeleteRepositoryOpts{}))
 	})
 }

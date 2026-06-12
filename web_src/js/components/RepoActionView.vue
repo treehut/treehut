@@ -523,12 +523,17 @@ export default {
           </div>
           <ul class="job-artifacts-list">
             <li class="job-artifacts-item" v-for="artifact in artifacts" :key="artifact.name">
-              <a class="job-artifacts-link" target="_blank" :href="actionsURL+'/runs/'+runID+'/artifacts/'+artifact.name">
+              <div v-if="artifact.status === 'expired'">
                 <SvgIcon name="octicon-file" class="ui text black job-artifacts-icon"/>{{ artifact.name }}
-              </a>
-              <a v-if="run.canDeleteArtifact" @click="deleteArtifact(artifact.name)" class="job-artifacts-delete">
-                <SvgIcon name="octicon-trash" class="ui text black job-artifacts-icon"/>
-              </a>
+              </div>
+              <template v-if="artifact.status !== 'expired'">
+                <a class="job-artifacts-link" target="_blank" :href="actionsURL+'/runs/'+runID+'/artifacts/'+artifact.name">
+                  <SvgIcon name="octicon-file" class="ui text black job-artifacts-icon"/>{{ artifact.name }}
+                </a>
+                <a v-if="run.canDeleteArtifact" @click="deleteArtifact(artifact.name)" class="job-artifacts-delete">
+                  <SvgIcon name="octicon-trash" class="ui text black job-artifacts-icon"/>
+                </a>
+              </template>
             </li>
           </ul>
         </div>

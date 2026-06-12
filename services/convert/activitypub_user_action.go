@@ -13,6 +13,7 @@ import (
 
 	activities_model "forgejo.org/models/activities"
 	issues_model "forgejo.org/models/issues"
+	"forgejo.org/models/repo"
 	fm "forgejo.org/modules/forgefed"
 	"forgejo.org/modules/json"
 	"forgejo.org/modules/markup"
@@ -20,6 +21,10 @@ import (
 )
 
 func ActionToForgeUserActivity(ctx context.Context, action *activities_model.Action) (fm.ForgeUserActivity, error) {
+	if action.Repo == nil {
+		return fm.ForgeUserActivity{}, repo.ErrRepoNotExist{}
+	}
+
 	render := func(format string, args ...any) string {
 		return fmt.Sprintf(`<a href="%s" rel="nofollow">%s</a> %s`, action.ActUser.HTMLURL(), action.GetActDisplayName(ctx), fmt.Sprintf(format, args...))
 	}

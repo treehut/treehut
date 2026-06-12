@@ -375,7 +375,15 @@ func repoAssignment(ctx *Context, repo *repo_model.Repository) {
 		return
 	}
 
-	ctx.Repo.Permission, err = access_model.GetUserRepoPermission(ctx, repo, ctx.Doer)
+	// Typically checks for authorization reducers won't be relevant for non-API requests where this middleware is used;
+	// but, some paths like `/user/repo/raw/...` can be accessed with API authentication mechanisms.  In those edge
+	// cases, initialize `ctx.Repo.Permission` based upon the reduced permission set available.
+	authorizationReducer := ctx.Authentication.Reducer()
+	if authorizationReducer == nil {
+		ctx.Repo.Permission, err = access_model.GetUserRepoPermission(ctx, repo, ctx.Doer)
+	} else {
+		ctx.Repo.Permission, err = access_model.GetUserRepoPermissionWithReducer(ctx, repo, ctx.Doer, authorizationReducer)
+	}
 	if err != nil {
 		ctx.ServerError("GetUserRepoPermission", err)
 		return

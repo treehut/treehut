@@ -84,3 +84,13 @@
   sorting: 1
   created_unix: 1588117528
   updated_unix: 1588117528
+
+-
+  id: 10
+  project_id: 7
+  title: Default
+  creator_id: 2
+  default: true
+  sorting: 1
+  created_unix: 1588117528
+  updated_unix: 1588117528

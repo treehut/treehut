@@ -13,13 +13,13 @@ import (
 	"forgejo.org/models/db"
 	issues_model "forgejo.org/models/issues"
 	repo_model "forgejo.org/models/repo"
-	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/git"
 	issue_service "forgejo.org/services/issue"
 	pull_service "forgejo.org/services/pull"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,11 +27,12 @@ import (
 
 func TestIssueTitles(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-		repo, _, f := tests.CreateDeclarativeRepo(t, user, "issue-titles", nil, nil, nil)
-		defer f()
+		user := forgery.CreateUser(t, nil)
+		repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{},
+		})
 
-		session := loginUser(t, user.LoginName)
+		session := loginUser(t, user.Name)
 
 		title := "Title :+1: `code`"
 		issue1 := createIssue(t, user, repo, title, "Test issue")

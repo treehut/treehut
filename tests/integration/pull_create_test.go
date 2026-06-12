@@ -27,6 +27,7 @@ import (
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,21 +147,17 @@ func TestPullCreateWithPullTemplate(t *testing.T) {
 			"docs/PULL_REQUEST_TEMPLATE.md",
 		}
 
-		createBaseRepo := func(t *testing.T, templateFiles []string, message string) (*repo_model.Repository, func()) {
+		createBaseRepo := func(t *testing.T, templateFiles []string, message string) *repo_model.Repository {
 			t.Helper()
 
-			changeOps := make([]*files_service.ChangeRepoFile, len(templateFiles))
-			for i, template := range templateFiles {
-				changeOps[i] = &files_service.ChangeRepoFile{
-					Operation:     "create",
-					TreePath:      template,
-					ContentReader: strings.NewReader(message + " " + template),
-				}
+			files := make(forgery.MapFS, len(templateFiles))
+			for _, template := range templateFiles {
+				files[template] = forgery.MapFile(message + " " + template)
 			}
 
-			repo, _, deferrer := tests.CreateDeclarativeRepo(t, baseUser, "", nil, nil, changeOps)
-
-			return repo, deferrer
+			return forgery.CreateRepository(t, baseUser, &forgery.CreateRepositoryOptions{
+				Files: files,
+			})
 		}
 
 		testPullPreview := func(t *testing.T, session *TestSession, user, repo, message string) {
@@ -190,8 +187,7 @@ func TestPullCreateWithPullTemplate(t *testing.T) {
 
 				// Create the base repository, with the pull request template added.
 				message := fmt.Sprintf("TestPullCreateWithPullTemplate/%s", template)
-				baseRepo, deferrer := createBaseRepo(t, []string{template}, message)
-				defer deferrer()
+				baseRepo := createBaseRepo(t, []string{template}, message)
 
 				// Fork the repository
 				session := loginUser(t, forkUser.Name)
@@ -211,8 +207,7 @@ func TestPullCreateWithPullTemplate(t *testing.T) {
 
 			// Create the base repository, with the pull request template added.
 			message := "TestPullCreateWithPullTemplate/multiple"
-			baseRepo, deferrer := createBaseRepo(t, templateCandidates, message)
-			defer deferrer()
+			baseRepo := createBaseRepo(t, templateCandidates, message)
 
 			// Fork the repository
 			session := loginUser(t, forkUser.Name)

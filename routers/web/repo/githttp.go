@@ -158,7 +158,7 @@ func httpBase(ctx *context.Context) *serviceHandler {
 			return nil
 		}
 
-		if ctx.IsBasicAuth && ctx.Data["IsApiToken"] != true && ctx.Data["IsActionsToken"] != true {
+		if ctx.Authentication.IsPasswordAuthentication() {
 			_, err = auth_model.GetTwoFactorByUID(ctx, ctx.Doer.ID)
 			if err == nil {
 				// TODO: This response should be changed to "invalid credentials" for security reasons once the expectation behind it (creating an app token to authenticate) is properly documented
@@ -184,11 +184,12 @@ func httpBase(ctx *context.Context) *serviceHandler {
 		}
 
 		if repoExist {
-			// Because of special ref "refs/for" .. , need delay write permission check
-			accessMode = perm.AccessModeRead
+			if !isWiki {
+				// Because of special ref "refs/for" .. , need delay write permission check
+				accessMode = perm.AccessModeRead
+			}
 
-			if ctx.Data["IsActionsToken"] == true {
-				taskID := ctx.Data["ActionsTaskID"].(int64)
+			if hasTaskID, taskID := ctx.Authentication.ActionsTaskID().Get(); hasTaskID {
 				task, err := actions_model.GetTaskByID(ctx, taskID)
 				if err != nil {
 					ctx.ServerError("GetTaskByID", err)

@@ -151,28 +151,33 @@ func (b *Indexer) Delete(_ context.Context, ids ...int64) error {
 	return batch.Flush()
 }
 
-// Search searches for issues by given conditions.
-// Returns the matching issue IDs
-func (b *Indexer) Search(ctx context.Context, options *internal.SearchOptions) (*internal.SearchResult, error) {
+func termQuery(token internal.Token) query.Query {
+	innerQ := bleve.NewDisjunctionQuery(
+		inner_bleve.MatchPhraseQuery(token.Term, "title", issueIndexerAnalyzer, token.Fuzzy, 2.0),
+		inner_bleve.MatchPhraseQuery(token.Term, "content", issueIndexerAnalyzer, token.Fuzzy, 1.0),
+		inner_bleve.MatchPhraseQuery(token.Term, "comments", issueIndexerAnalyzer, token.Fuzzy, 1.0))
+
+	if issueID, err := token.ParseIssueReference(); err == nil {
+		idQuery := inner_bleve.NumericEqualityQuery(issueID, "index")
+		idQuery.SetBoost(20.0)
+		innerQ.AddQuery(idQuery)
+	}
+	return innerQ
+}
+
+// Create a boolean query with the provided tokens (if any)
+func keywordQuery(tokens []internal.Token) *query.BooleanQuery {
 	q := bleve.NewBooleanQuery()
 
-	for _, token := range options.Tokens {
-		innerQ := bleve.NewDisjunctionQuery(
-			inner_bleve.MatchPhraseQuery(token.Term, "title", issueIndexerAnalyzer, token.Fuzzy, 2.0),
-			inner_bleve.MatchPhraseQuery(token.Term, "content", issueIndexerAnalyzer, token.Fuzzy, 1.0),
-			inner_bleve.MatchPhraseQuery(token.Term, "comments", issueIndexerAnalyzer, token.Fuzzy, 1.0))
+	// If there is only a single term the user is likely looking for
+	// a MUST rather than a SHOULD
+	if len(tokens) == 1 && tokens[0].Kind != internal.BoolOptNot {
+		q.AddMust(termQuery(tokens[0]))
+		return q
+	}
 
-		if issueID, err := token.ParseIssueReference(); err == nil {
-			idQuery := inner_bleve.NumericEqualityQuery(issueID, "index")
-			idQuery.SetBoost(20.0)
-			innerQ.AddQuery(idQuery)
-		}
-
-		if len(options.Tokens) == 1 {
-			q.AddMust(innerQ)
-			break
-		}
-
+	for _, token := range tokens {
+		innerQ := termQuery(token)
 		switch token.Kind {
 		case internal.BoolOptMust:
 			q.AddMust(innerQ)
@@ -182,6 +187,14 @@ func (b *Indexer) Search(ctx context.Context, options *internal.SearchOptions) (
 			q.AddMustNot(innerQ)
 		}
 	}
+
+	return q
+}
+
+// Search searches for issues by given conditions.
+// Returns the matching issue IDs
+func (b *Indexer) Search(ctx context.Context, options *internal.SearchOptions) (*internal.SearchResult, error) {
+	q := keywordQuery(options.Tokens)
 
 	var filters []query.Query
 	if len(options.RepoIDs) > 0 || options.AllPublic {

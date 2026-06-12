@@ -85,7 +85,6 @@ import (
 	"forgejo.org/routers/api/v1/settings"
 	"forgejo.org/routers/api/v1/user"
 	"forgejo.org/services/actions"
-	"forgejo.org/services/auth"
 	"forgejo.org/services/context"
 	"forgejo.org/services/forms"
 	redirect_service "forgejo.org/services/redirect"
@@ -180,8 +179,8 @@ func repoAssignment() func(ctx *context.APIContext) {
 		repo.Owner = owner
 		ctx.Repo.Repository = repo
 
-		if ctx.Doer != nil && ctx.Doer.ID == user_model.ActionsUserID {
-			taskID := ctx.Data["ActionsTaskID"].(int64)
+		if ctx.Doer != nil && ctx.Doer.ID == user_model.ActionsUserID && ctx.Authentication.ActionsTaskID().Has() {
+			_, taskID := ctx.Authentication.ActionsTaskID().Get()
 			task, err := actions_model.GetTaskByID(ctx, taskID)
 			if err != nil {
 				ctx.Error(http.StatusInternalServerError, "actions_model.GetTaskByID", err)
@@ -330,8 +329,8 @@ func tokenRequiresScopes(requiredScopeCategories ...auth_model.AccessTokenScopeC
 		}
 
 		// Need OAuth2 token to be present.
-		scope, scopeExists := ctx.Data["ApiTokenScope"].(auth_model.AccessTokenScope)
-		if ctx.Data["IsApiToken"] != true || !scopeExists {
+		hasScope, scope := ctx.Authentication.Scope().Get()
+		if !hasScope {
 			return
 		}
 
@@ -372,7 +371,7 @@ func tokenRequiresRepoOwnerScope(ctx *context.APIContext) {
 func reqToken() func(ctx *context.APIContext) {
 	return func(ctx *context.APIContext) {
 		// If actions token is present
-		if true == ctx.Data["IsActionsToken"] {
+		if ctx.Authentication.ActionsTaskID().Has() {
 			return
 		}
 
@@ -401,13 +400,13 @@ func reqUsersExploreEnabled() func(ctx *context.APIContext) {
 
 func reqBasicOrRevProxyAuth() func(ctx *context.APIContext) {
 	return func(ctx *context.APIContext) {
-		if ctx.IsSigned && setting.Service.EnableReverseProxyAuthAPI && ctx.Data["AuthedMethod"].(string) == auth.ReverseProxyMethodName {
+		if ctx.IsSigned && setting.Service.EnableReverseProxyAuthAPI && ctx.Authentication.IsReverseProxyAuthentication() {
 			return
 		}
 
 		// Require basic authorization method to be used and that basic
 		// authorization used password login to verify the user.
-		if passwordLogin, ok := ctx.Data["IsPasswordLogin"].(bool); !ok || !passwordLogin {
+		if !ctx.Authentication.IsPasswordAuthentication() {
 			ctx.Error(http.StatusUnauthorized, "reqBasicAuth", "auth method not allowed")
 			return
 		}

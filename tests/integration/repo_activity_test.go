@@ -16,11 +16,10 @@ import (
 	"forgejo.org/models/db"
 	repo_model "forgejo.org/models/repo"
 	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/test"
 	repo_service "forgejo.org/services/repository"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -105,7 +104,7 @@ func TestRepoActivity(t *testing.T) {
 
 func TestRepoActivityAllUnitsDisabled(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: "user1"})
+	user := forgery.CreateUser(t, nil)
 	session := loginUser(t, user.Name)
 
 	unit_model.LoadUnitConfig()
@@ -135,7 +134,7 @@ func TestRepoActivityAllUnitsDisabled(t *testing.T) {
 
 func TestRepoActivityOnlyCodeUnitWithEmptyRepo(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: "user1"})
+	user := forgery.CreateUser(t, nil)
 	session := loginUser(t, user.Name)
 
 	unit_model.LoadUnitConfig()
@@ -168,14 +167,17 @@ func TestRepoActivityOnlyCodeUnitWithEmptyRepo(t *testing.T) {
 
 func TestRepoActivityOnlyCodeUnitWithNonEmptyRepo(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: "user1"})
+	user := forgery.CreateUser(t, nil)
 	session := loginUser(t, user.Name)
 
 	unit_model.LoadUnitConfig()
 
 	// Create a repo, with only code unit enabled.
-	repo, _, f := tests.CreateDeclarativeRepo(t, user, "", []unit_model.Type{unit_model.TypeCode}, nil, nil)
-	defer f()
+	repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+		Files: forgery.FilesInit{},
+	})
+	forgery.DisableRepoUnits(t, repo, unit_model.AllRepoUnitTypes...)
+	forgery.EnableRepoUnits(t, repo, unit_model.TypeCode)
 
 	req := NewRequest(t, "GET", fmt.Sprintf("%s/activity", repo.Link()))
 	session.MakeRequest(t, req, http.StatusOK)
@@ -191,7 +193,7 @@ func TestRepoActivityOnlyCodeUnitWithNonEmptyRepo(t *testing.T) {
 
 func TestRepoActivityOnlyIssuesUnit(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: "user1"})
+	user := forgery.CreateUser(t, nil)
 	session := loginUser(t, user.Name)
 
 	unit_model.LoadUnitConfig()

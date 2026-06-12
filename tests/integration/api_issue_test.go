@@ -20,15 +20,14 @@ import (
 	"forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"xorm.io/xorm/convert"
 )
 
 func TestAPIListIssues(t *testing.T) {
@@ -752,35 +751,28 @@ func TestAPISearchIssuesAccessTokenResources(t *testing.T) {
 func TestAPIInternalAndExternalIssueTracker(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-	otherUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
+	repoOptions := &forgery.CreateRepositoryOptions{
+		Files: forgery.FilesInit{}, // some tests will fail with 404 if the repository is empty
+	}
+	user := forgery.CreateUser(t, &forgery.CreateUserOptions{
+		IsAdmin: true,
+	})
+	otherUser := forgery.CreateUser(t, nil)
 	token := getUserToken(t, user.Name, auth_model.AccessTokenScopeAll)
 
-	internalIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-		Name:          optional.Some("internal-issues"),
-		EnabledUnits:  optional.Some([]unit.Type{unit.TypeIssues}),
-		DisabledUnits: optional.Some([]unit.Type{unit.TypeExternalTracker}),
-		UnitConfig: optional.Some(map[unit.Type]convert.Conversion{
-			unit.TypeIssues: &repo_model.IssuesConfig{
-				EnableTimetracker:  true,
-				EnableDependencies: true,
-			},
-		}),
+	internalIssueRepo := forgery.CreateRepository(t, user, repoOptions)
+	forgery.DisableRepoUnits(t, internalIssueRepo, unit.TypeExternalTracker)
+	forgery.EnableRepoUnit(t, internalIssueRepo, unit.TypeIssues, &repo_model.IssuesConfig{
+		EnableTimetracker:  true,
+		EnableDependencies: true,
 	})
-	defer reset()
 
-	externalIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-		Name:          optional.Some("external-issues"),
-		EnabledUnits:  optional.Some([]unit.Type{unit.TypeExternalTracker}),
-		DisabledUnits: optional.Some([]unit.Type{unit.TypeIssues}),
-	})
-	defer reset()
+	externalIssueRepo := forgery.CreateRepository(t, user, repoOptions)
+	forgery.DisableRepoUnits(t, externalIssueRepo, unit.TypeIssues)
+	forgery.EnableRepoUnit(t, internalIssueRepo, unit.TypeExternalTracker, nil)
 
-	disabledIssueRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, user, tests.DeclarativeRepoOptions{
-		Name:          optional.Some("disabled-issues"),
-		DisabledUnits: optional.Some([]unit.Type{unit.TypeIssues, unit.TypeExternalTracker}),
-	})
-	defer reset()
+	disabledIssueRepo := forgery.CreateRepository(t, user, repoOptions)
+	forgery.DisableRepoUnits(t, disabledIssueRepo, unit.TypeIssues, unit.TypeExternalTracker)
 
 	runTest := func(t *testing.T, repo *repo_model.Repository, requestAllowed bool) {
 		t.Helper()
@@ -937,15 +929,13 @@ func TestAPIIssueDependencyPermissions(t *testing.T) {
 	actingUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 4})
 	token := getUserToken(t, actingUser.Name, auth_model.AccessTokenScopeAll)
 
-	actingUserRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, actingUser, tests.DeclarativeRepoOptions{})
-	defer reset()
+	actingUserRepo := forgery.CreateRepository(t, actingUser, nil)
 	actingUserIssue := createIssue(t, actingUser, actingUserRepo, "source issue", "some content")
 
 	otherUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-	otherUserRepo, _, reset := tests.CreateDeclarativeRepoWithOptions(t, otherUser, tests.DeclarativeRepoOptions{
-		IsPrivate: optional.Some(true),
+	otherUserRepo := forgery.CreateRepository(t, otherUser, &forgery.CreateRepositoryOptions{
+		IsPrivate: true,
 	})
-	defer reset()
 	otherUserIssue := createIssue(t, otherUser, otherUserRepo, "target issue", "some content")
 
 	apiEndpoint := fmt.Sprintf("/api/v1/repos/%s/%s/issues/%d/dependencies", actingUserRepo.OwnerName, actingUserRepo.Name, actingUserIssue.Index)

@@ -608,6 +608,7 @@ func InsertReleases(ctx context.Context, rels ...*Release) error {
 		if len(rel.Attachments) > 0 {
 			for i := range rel.Attachments {
 				rel.Attachments[i].ReleaseID = rel.ID
+				rel.Attachments[i].RepoID = rel.RepoID
 			}
 
 			if _, err := sess.NoAutoTime().Insert(rel.Attachments); err != nil {

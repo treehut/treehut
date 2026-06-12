@@ -293,6 +293,28 @@ func (repo *Repository) AfterLoad() {
 	repo.NumOpenProjects = repo.NumProjects - repo.NumClosedProjects
 }
 
+// LoadLanguage loads the primary language of the repository, if one exists.
+// If one doesn't exists `nil` is still returned.
+func (repo *Repository) LoadLanguage(ctx context.Context) error {
+	if repo.PrimaryLanguage != nil {
+		return nil
+	}
+
+	var stat LanguageStat
+	has, err := db.GetEngine(ctx).
+		Where("`repo_id` = ? AND `is_primary` = ? AND `language` != ?", repo.ID, true, "other").
+		Get(&stat)
+	if err != nil {
+		return fmt.Errorf("unable to find the primary languages: %w", err)
+	}
+	if has {
+		stat.LoadAttributes()
+		repo.PrimaryLanguage = &stat
+	}
+
+	return nil
+}
+
 // LoadAttributes loads attributes of the repository.
 func (repo *Repository) LoadAttributes(ctx context.Context) error {
 	// Load owner
@@ -300,20 +322,11 @@ func (repo *Repository) LoadAttributes(ctx context.Context) error {
 		return fmt.Errorf("load owner: %w", err)
 	}
 
-	// Load primary language
-	stats := make(LanguageStatList, 0, 1)
-	if err := db.GetEngine(ctx).
-		Where("`repo_id` = ? AND `is_primary` = ? AND `language` != ?", repo.ID, true, "other").
-		Find(&stats); err != nil {
-		return fmt.Errorf("find primary languages: %w", err)
+	// Load the primary language.
+	if err := repo.LoadLanguage(ctx); err != nil {
+		return fmt.Errorf("load language: %w", err)
 	}
-	stats.LoadAttributes()
-	for _, st := range stats {
-		if st.RepoID == repo.ID {
-			repo.PrimaryLanguage = st
-			break
-		}
-	}
+
 	return nil
 }
 

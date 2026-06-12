@@ -2,10 +2,11 @@
 // Copyright 2019 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-package auth
+package method
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -15,17 +16,19 @@ import (
 	auth_model "forgejo.org/models/auth"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/log"
+	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	"forgejo.org/modules/util"
 	"forgejo.org/modules/web/middleware"
 	"forgejo.org/services/actions"
+	"forgejo.org/services/auth"
 	"forgejo.org/services/auth/source/oauth2"
 	"forgejo.org/services/authz"
 )
 
 // Ensure the struct implements the interface.
 var (
-	_ Method = &OAuth2{}
+	_ auth.Method = &OAuth2{}
 )
 
 // grantAdditionalScopes returns valid scopes coming from grant
@@ -113,11 +116,6 @@ func CheckTaskIsRunning(ctx context.Context, taskID int64) bool {
 // "Authorization" header.
 type OAuth2 struct{}
 
-// Name represents the name of auth method
-func (o *OAuth2) Name() string {
-	return "oauth2"
-}
-
 // parseToken returns the token from request, and a boolean value
 // representing whether the token exists or not
 func parseToken(req *http.Request) (string, bool) {
@@ -148,33 +146,39 @@ func parseToken(req *http.Request) (string, bool) {
 // userIDFromToken returns the user id corresponding to the OAuth token.
 // It will set 'IsApiToken' to true if the token is an API token and
 // set 'ApiTokenScope' to the scope of the access token
-func (o *OAuth2) userIDFromToken(ctx context.Context, tokenSHA string, store DataStore) (int64, error) {
+func (o *OAuth2) userIDFromToken(ctx context.Context, tokenSHA string) auth.MethodOutput {
 	if tokenSHA == "" {
-		return 0, auth_model.ErrAccessTokenEmpty{}
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: auth_model.ErrAccessTokenEmpty{}}
 	}
 	// Let's see if token is valid.
 	if strings.Contains(tokenSHA, ".") {
 		// First attempt to decode an actions JWT, returning the actions user
 		if taskID, err := actions.TokenToTaskID(tokenSHA); err == nil {
 			if CheckTaskIsRunning(ctx, taskID) {
-				store.GetData()["IsActionsToken"] = true
-				store.GetData()["ActionsTaskID"] = taskID
-				return user_model.ActionsUserID, nil
+				return &auth.AuthenticationSuccess{Result: &actionsTaskTokenAuthenticationResult{user: user_model.NewActionsUser(), taskID: taskID}}
 			}
 		}
 
 		// Otherwise, check if this is an OAuth access token
 		uid, grantScopes := CheckOAuthAccessToken(ctx, tokenSHA)
+		var accessTokenScope optional.Option[auth_model.AccessTokenScope]
 		if uid != 0 {
-			store.GetData()["IsApiToken"] = true
 			if grantScopes != "" {
-				store.GetData()["ApiTokenScope"] = auth_model.AccessTokenScope(grantScopes)
+				accessTokenScope = optional.Some(auth_model.AccessTokenScope(grantScopes))
 			} else {
-				store.GetData()["ApiTokenScope"] = auth_model.AccessTokenScopeAll // fallback to all
+				accessTokenScope = optional.Some(auth_model.AccessTokenScopeAll) // fallback to all
 			}
 		}
-		return uid, nil
+		user, err := user_model.GetPossibleUserByID(ctx, uid)
+		if err != nil {
+			if user_model.IsErrUserNotExist(err) {
+				return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
+			}
+			return &auth.AuthenticationError{Error: fmt.Errorf("oauth2 GetPossibleUserByID: %w", err)}
+		}
+		return &auth.AuthenticationSuccess{Result: &oAuth2JWTAuthenticationResult{user: user, scope: accessTokenScope}}
 	}
+
 	t, err := auth_model.GetAccessTokenBySHA(ctx, tokenSHA)
 	if err != nil {
 		if auth_model.IsErrAccessTokenNotExist(err) {
@@ -182,68 +186,50 @@ func (o *OAuth2) userIDFromToken(ctx context.Context, tokenSHA string, store Dat
 			task, err := actions_model.GetRunningTaskByToken(ctx, tokenSHA)
 			if err == nil && task != nil {
 				log.Trace("Basic Authorization: Valid AccessToken for task[%d]", task.ID)
-
-				store.GetData()["IsActionsToken"] = true
-				store.GetData()["ActionsTaskID"] = task.ID
-
-				return user_model.ActionsUserID, nil
+				return &auth.AuthenticationSuccess{Result: &actionsTaskTokenAuthenticationResult{user: user_model.NewActionsUser(), taskID: task.ID}}
 			}
 		} else if !auth_model.IsErrAccessTokenNotExist(err) && !auth_model.IsErrAccessTokenEmpty(err) {
-			log.Error("GetAccessTokenBySHA: %v", err)
+			return &auth.AuthenticationError{Error: fmt.Errorf("oauth2 GetAccessTokenBySHA: %w", err)}
 		}
-		return 0, err
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
 	if err := t.UpdateLastUsed(ctx); err != nil {
 		log.Error("UpdateLastUsed: %v", err)
 	}
 	if t.UID == 0 {
-		return 0, auth_model.ErrAccessTokenNotExist{}
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
-	store.GetData()["IsApiToken"] = true
-	store.GetData()["ApiTokenScope"] = t.Scope
 
 	reducer, err := authz.GetAuthorizationReducerForAccessToken(ctx, t)
 	if err != nil {
-		log.Error("authz.GetAuthorizationReducerForAccessToken: %v", err)
-		return 0, err
+		return &auth.AuthenticationError{Error: fmt.Errorf("oauth2 GetAuthorizationReducerForAccessToken: %w", err)}
 	}
-	store.GetData()["ApiTokenReducer"] = reducer
 
-	return t.UID, nil
+	u, err := user_model.GetUserByID(ctx, t.UID)
+	if err != nil {
+		return &auth.AuthenticationError{Error: fmt.Errorf("oauth2 GetUserByID: %w", err)}
+	}
+
+	return &auth.AuthenticationSuccess{Result: &accessTokenAuthenticationResult{user: u, scope: t.Scope, reducer: reducer}}
 }
 
 // Verify extracts the user ID from the OAuth token in the query parameters
 // or the "Authorization" header and returns the corresponding user object for that ID.
 // If verification is successful returns an existing user object.
 // Returns nil if verification fails.
-func (o *OAuth2) Verify(req *http.Request, w http.ResponseWriter, store DataStore, sess SessionStore) (*user_model.User, error) {
+func (o *OAuth2) Verify(req *http.Request, w http.ResponseWriter, _ auth.SessionStore) auth.MethodOutput {
 	// These paths are not API paths, but we still want to check for tokens because they maybe in the API returned URLs
 	if !middleware.IsAPIPath(req) && !isAttachmentDownload(req) && !isAuthenticatedTokenRequest(req) &&
 		!isGitRawOrAttachPath(req) && !isArchivePath(req) {
-		return nil, nil
+		return &auth.AuthenticationNotAttempted{}
 	}
 
 	token, ok := parseToken(req)
 	if !ok {
-		return nil, nil
+		return &auth.AuthenticationNotAttempted{}
 	}
 
-	id, err := o.userIDFromToken(req.Context(), token, store)
-	if err != nil {
-		return nil, err
-	}
-	log.Trace("OAuth2 Authorization: Found token for user[%d]", id)
-
-	user, err := user_model.GetPossibleUserByID(req.Context(), id)
-	if err != nil {
-		if !user_model.IsErrUserNotExist(err) {
-			log.Error("GetUserByName: %v", err)
-		}
-		return nil, err
-	}
-
-	log.Trace("OAuth2 Authorization: Logged in user %-v", user)
-	return user, nil
+	return o.userIDFromToken(req.Context(), token)
 }
 
 func isAuthenticatedTokenRequest(req *http.Request) bool {

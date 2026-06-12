@@ -153,7 +153,9 @@ func (run *ActionRun) LoadAttributes(ctx context.Context) error {
 
 	if run.TriggerUser == nil {
 		u, err := user_model.GetPossibleUserByID(ctx, run.TriggerUserID)
-		if err != nil {
+		if user_model.IsErrUserNotExist(err) {
+			u = user_model.NewGhostUser()
+		} else if err != nil {
 			return err
 		}
 		run.TriggerUser = u
@@ -255,17 +257,31 @@ func (run *ActionRun) IsDispatchedRun() bool {
 	return run.TriggerEvent == "workflow_dispatch"
 }
 
-// IsRunnable indicates whether this ActionRun can generally be run.
-func (run *ActionRun) IsRunnable() bool {
+// IsValid indicates whether this ActionRun is valid and can be run.
+func (run *ActionRun) IsValid() bool {
 	return run.PreExecutionErrorCode == 0 && run.PreExecutionError == ""
 }
 
 // CanBeRerun indicates whether this ActionRun can be rerun.
 func (run *ActionRun) CanBeRerun() bool {
-	if !run.IsRunnable() {
+	if !run.IsValid() {
 		return false
 	}
 	return run.Status.IsDone()
+}
+
+func (run *ActionRun) PrepareNextAttempt() error {
+	if run.Status != StatusUnknown && !run.Status.IsDone() {
+		return fmt.Errorf("cannot prepare next attempt because run %d is active: %s", run.ID, run.Status.String())
+	}
+
+	run.PreviousDuration = run.Duration()
+
+	run.Status = StatusWaiting
+	run.Started = 0
+	run.Stopped = 0
+
+	return nil
 }
 
 func actionsCountOpenCacheKey(repoID int64) string {
@@ -331,7 +347,7 @@ func UpdateRunApprovalByID(ctx context.Context, id int64, approval ApprovalType,
 func GetRunsNotDoneByRepoIDAndPullRequestPosterID(ctx context.Context, repoID, pullRequestPosterID int64) ([]*ActionRun, error) {
 	var runs []*ActionRun
 	// performance relies on indexes on repo_id and status
-	if err := db.GetEngine(ctx).Where("repo_id=? AND pull_request_poster_id=?", repoID, pullRequestPosterID).And(builder.In("status", []Status{StatusUnknown, StatusWaiting, StatusRunning, StatusBlocked})).Find(&runs); err != nil {
+	if err := db.GetEngine(ctx).Where("repo_id=? AND pull_request_poster_id=?", repoID, pullRequestPosterID).And(builder.In("status", PendingStatuses())).Find(&runs); err != nil {
 		return nil, err
 	}
 	return runs, nil
@@ -340,7 +356,7 @@ func GetRunsNotDoneByRepoIDAndPullRequestPosterID(ctx context.Context, repoID, p
 func GetRunsNotDoneByRepoIDAndPullRequestID(ctx context.Context, repoID, pullRequestID int64) ([]*ActionRun, error) {
 	var runs []*ActionRun
 	// performance relies on indexes on repo_id and status
-	if err := db.GetEngine(ctx).Where("repo_id=? AND pull_request_id=?", repoID, pullRequestID).And(builder.In("status", []Status{StatusUnknown, StatusWaiting, StatusRunning, StatusBlocked})).Find(&runs); err != nil {
+	if err := db.GetEngine(ctx).Where("repo_id=? AND pull_request_id=?", repoID, pullRequestID).And(builder.In("status", PendingStatuses())).Find(&runs); err != nil {
 		return nil, err
 	}
 	return runs, nil

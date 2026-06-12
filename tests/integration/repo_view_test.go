@@ -7,66 +7,49 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
-	unit_model "forgejo.org/models/unit"
-	"forgejo.org/models/unittest"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/routers/web/repo"
 	"forgejo.org/services/context"
 	"forgejo.org/services/contexttest"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func createRepoAndGetContext(t *testing.T, files []string, deleteMdReadme bool) (*context.Context, func()) {
+func createRepoAndGetContext(t *testing.T, user *user_model.User, filenames ...string) *context.Context {
 	t.Helper()
 
-	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{Name: "user1"})
-
-	size := len(files)
-	if deleteMdReadme {
-		size++
-	}
-	changeFiles := make([]*files_service.ChangeRepoFile, size)
-	for i, e := range files {
-		changeFiles[i] = &files_service.ChangeRepoFile{
-			Operation:     "create",
-			TreePath:      e,
-			ContentReader: strings.NewReader("test"),
+	files := make(forgery.MapFS, len(filenames))
+	for _, e := range filenames {
+		if _, ok := files[e]; ok {
+			t.Errorf("duplicated filename %q", e)
 		}
+		files[e] = forgery.MapFile("some readme content")
 	}
-	if deleteMdReadme {
-		changeFiles[len(files)] = &files_service.ChangeRepoFile{
-			Operation: "delete",
-			TreePath:  "README.md",
-		}
-	}
-
-	// README.md is already added by auto init
-	repo, _, f := tests.CreateDeclarativeRepo(t, user, "readmetest", []unit_model.Type{unit_model.TypeCode}, nil, changeFiles)
-
-	ctx, _ := contexttest.MockContext(t, "user1/readmetest")
+	repo := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+		Files: files,
+	})
+	ctx, _ := contexttest.MockContext(t, repo.FullName())
 	ctx.SetParams(":id", fmt.Sprint(repo.ID))
 	contexttest.LoadRepo(t, ctx, repo.ID)
 	contexttest.LoadGitRepo(t, ctx)
 	contexttest.LoadRepoCommit(t, ctx)
-
-	return ctx, func() {
-		f()
+	t.Cleanup(func() {
 		ctx.Repo.GitRepo.Close()
-	}
+	})
+
+	return ctx
 }
 
 func TestRepoView_FindReadme(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		user := forgery.CreateUser(t, nil)
 		t.Run("PrioOneLocalizedMdReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.en.md", "README.en.org", "README.org", "README.txt", "README.tex"}, false)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.en.md", "README.en.org", "README.org", "README.txt", "README.tex", "README.md")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -76,8 +59,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioTwoMdReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.en.org", "README.org", "README.txt", "README.tex"}, false)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.en.org", "README.org", "README.txt", "README.tex", "README.md")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -87,8 +69,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioThreeLocalizedOrgReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.en.org", "README.org", "README.txt", "README.tex"}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.en.org", "README.org", "README.txt", "README.tex")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -98,8 +79,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioFourOrgReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.org", "README.txt", "README.tex"}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.org", "README.txt", "README.tex")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -109,8 +89,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioFiveTxtReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.txt", "README", "README.tex"}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.txt", "README", "README.tex")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -120,8 +99,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioSixWithoutExtensionReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README", "README.tex"}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README", "README.tex")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -131,8 +109,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("PrioSevenAnyReadme", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{"README.tex"}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user, "README.tex")
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -142,8 +119,7 @@ func TestRepoView_FindReadme(t *testing.T) {
 		})
 		t.Run("DoNotPickReadmeIfNonPresent", func(t *testing.T) {
 			defer tests.PrintCurrentTest(t)()
-			ctx, f := createRepoAndGetContext(t, []string{}, true)
-			defer f()
+			ctx := createRepoAndGetContext(t, user)
 
 			tree, _ := ctx.Repo.Commit.SubTree(ctx.Repo.TreePath)
 			entries, _ := tree.ListEntries()
@@ -156,45 +132,17 @@ func TestRepoView_FindReadme(t *testing.T) {
 
 func TestRepoViewFileLines(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, _ *url.URL) {
-		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
-		repo, _, f := tests.CreateDeclarativeRepo(t, user, "file-lines", []unit_model.Type{unit_model.TypeCode}, nil, []*files_service.ChangeRepoFile{
-			{
-				Operation:     "create",
-				TreePath:      "test-1",
-				ContentReader: strings.NewReader("No newline"),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "test-2",
-				ContentReader: strings.NewReader("No newline\n"),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "test-3",
-				ContentReader: strings.NewReader("Two\nlines"),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "test-4",
-				ContentReader: strings.NewReader("Really two\nlines\n"),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "empty",
-				ContentReader: strings.NewReader(""),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "seemingly-empty",
-				ContentReader: strings.NewReader("\n"),
-			},
-			{
-				Operation:     "create",
-				TreePath:      "CITATION.cff",
-				ContentReader: strings.NewReader(""),
+		repo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"test-1":          forgery.MapFile("No newline"),
+				"test-2":          forgery.MapFile("No newline\n"),
+				"test-3":          forgery.MapFile("Two\nlines"),
+				"test-4":          forgery.MapFile("Really two\nlines\n"),
+				"empty":           forgery.MapFile(""),
+				"seemingly-empty": forgery.MapFile("\n"),
+				"CITATION.cff":    forgery.MapFile(""),
 			},
 		})
-		defer f()
 
 		testEOL := func(t *testing.T, filename string, hasEOL bool) {
 			t.Helper()

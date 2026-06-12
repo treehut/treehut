@@ -4,11 +4,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	{{/* Display `- .Repository.FullName` only if `.Title` does not already start with that. */}}
 	<title>{{if .Title}}{{.Title}} - {{end}}{{if and (.Repository.Name) (not (StringUtils.HasPrefix .Title .Repository.FullName))}}{{.Repository.FullName}} - {{end}}{{AppDisplayName}}</title>
-	<link rel="manifest" href="/manifest.json">
+	<link rel="manifest" href="{{AppSubUrl}}/manifest.json">
 	<meta name="author" content="{{if .Repository}}{{.Owner.Name}}{{else}}{{MetaAuthor}}{{end}}">
 	<meta name="description" content="{{if .Repository}}{{.Repository.Name}}{{if .Repository.Description}} - {{.Repository.Description}}{{end}}{{else}}{{MetaDescription}}{{end}}">
 	<meta name="keywords" content="{{MetaKeywords}}">
-	<meta name="referrer" content="strict-origin">
+	<meta name="referrer" content="same-origin">
 {{if .GoGetImport}}
 	<meta name="go-import" content="{{.GoGetImport}} git {{.RepoCloneLink.HTTPS}}">
 	<meta name="go-source" content="{{.GoGetImport}} _ {{.GoDocDirectory}} {{.GoDocFile}}">

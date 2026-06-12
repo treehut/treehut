@@ -4,6 +4,7 @@
 package integration
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -23,7 +24,7 @@ import (
 	pull_service "forgejo.org/services/pull"
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
-	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -130,6 +131,106 @@ func TestAPIPullUpdateBranchProtection(t *testing.T) {
 	})
 }
 
+func TestAPIPullAllowMaintainerEditRestrictedHead(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, giteaURL *url.URL) {
+		realBaseRepo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{}, // ensure an initial commit is present
+		})
+
+		forkUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		forkRepo, err := repo_service.ForkRepositoryAndUpdates(t.Context(), forkUser, forkUser, repo_service.ForkRepoOptions{
+			BaseRepo:    realBaseRepo,
+			Name:        "repo-pr-update",
+			Description: "desc",
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, forkRepo)
+
+		_, err = files_service.ChangeRepoFiles(git.DefaultContext, forkRepo, forkUser, &files_service.ChangeRepoFilesOptions{
+			Files: []*files_service.ChangeRepoFile{
+				{
+					Operation:     "create",
+					TreePath:      "File_B",
+					ContentReader: strings.NewReader("File B"),
+				},
+			},
+			Message:   "Add File on PR branch",
+			OldBranch: "main",
+			NewBranch: "main",
+			Author: &files_service.IdentityOptions{
+				Name:  forkUser.Name,
+				Email: forkUser.Email,
+			},
+			Committer: &files_service.IdentityOptions{
+				Name:  forkUser.Name,
+				Email: forkUser.Email,
+			},
+			Dates: &files_service.CommitDateOptions{
+				Author:    time.Now(),
+				Committer: time.Now(),
+			},
+		})
+		require.NoError(t, err)
+
+		// Create a pull request that is unexpectedly backwards -- normally we'd request a branch from the fork to be
+		// merged into the original base repo. But there's nothing preventing us from creating a pull request for the
+		// base to be pulled into the fork:
+
+		pullIssue := &issues_model.Issue{
+			RepoID:   forkRepo.ID,
+			Title:    "Pull Base into Fork",
+			PosterID: forkUser.ID,
+			Poster:   forkUser,
+			IsPull:   true,
+		}
+		pullRequest := &issues_model.PullRequest{
+			HeadRepoID:          realBaseRepo.ID,
+			BaseRepoID:          forkRepo.ID,
+			HeadBranch:          "main",
+			BaseBranch:          "main",
+			HeadRepo:            realBaseRepo,
+			BaseRepo:            forkRepo,
+			Type:                issues_model.PullRequestGitea,
+			AllowMaintainerEdit: true,
+		}
+		err = pull_service.NewPullRequest(git.DefaultContext, forkRepo, pullIssue, nil, nil, pullRequest, nil)
+		require.NoError(t, err)
+
+		// forkUser is the owner of forkRepo, and therefore a maintainer of forkRepo.  `AllowMaintainerEdit` should
+		// allow forkUser to edit the head of the PR... except that, in this case, the owner of the PR delegated that
+		// edit access but they never had that edit access.  Try to modify the head repo & branch to see.
+		session := loginUser(t, forkUser.LoginName)
+		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
+
+		// Attempt modification by editing the realBase's main branch via API:
+		req := NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/contents/File_A", realBaseRepo.OwnerName, realBaseRepo.Name),
+			&api.CreateFileOptions{
+				FileOptions: api.FileOptions{
+					BranchName:    "main",
+					NewBranchName: "main",
+					Message:       "illegal change",
+					Author: api.Identity{
+						Name:  forkUser.FullName,
+						Email: forkUser.Email,
+					},
+					Committer: api.Identity{
+						Name:  forkUser.FullName,
+						Email: forkUser.Email,
+					},
+				},
+				ContentBase64: base64.StdEncoding.EncodeToString([]byte("Some content.")),
+			}).
+			AddTokenAuth(token)
+		MakeRequest(t, req, http.StatusForbidden)
+
+		// Modify by "updating" the PR, which would pull the base into the head, even though we don't have access to
+		// write the head:
+		req = NewRequestf(t, "POST", "/api/v1/repos/%s/%s/pulls/%d/update", forkRepo.OwnerName, forkRepo.Name, pullIssue.Index).
+			AddTokenAuth(token)
+		MakeRequest(t, req, http.StatusInternalServerError) // probably should be Forbidden
+	})
+}
+
 func TestAPIViewUpdateSettings(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, giteaURL *url.URL) {
 		// Create PR to test
@@ -230,7 +331,9 @@ func createOutdatedPR(t *testing.T, actor, forkOrg *user_model.User, baseRepoOwn
 		baseRepoOwner = baseRepoOwnerOption[0]
 	}
 
-	baseRepo, _, _ := tests.CreateDeclarativeRepo(t, baseRepoOwner, "repo-pr-update", nil, nil, nil)
+	baseRepo := forgery.CreateRepository(t, baseRepoOwner, &forgery.CreateRepositoryOptions{
+		Files: forgery.FilesInit{}, // ensure an initial commit is present
+	})
 
 	headRepo, err := repo_service.ForkRepositoryAndUpdates(git.DefaultContext, actor, forkOrg, repo_service.ForkRepoOptions{
 		BaseRepo:    baseRepo,

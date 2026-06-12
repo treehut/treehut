@@ -173,6 +173,10 @@ func innerToRepo(ctx stdCtx.Context, repo *repo_model.Repository, permissionInRe
 		}
 	}
 
+	if err := repo.LoadLanguage(ctx); err != nil {
+		log.Warn("Unable to load language for repo[id=%d]: %w", repo.ID, err)
+	}
+
 	var language string
 	if repo.PrimaryLanguage != nil {
 		language = repo.PrimaryLanguage.Language

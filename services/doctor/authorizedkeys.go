@@ -13,11 +13,27 @@ import (
 	asymkey_model "forgejo.org/models/asymkey"
 	"forgejo.org/modules/log"
 	"forgejo.org/modules/setting"
+	"forgejo.org/modules/system"
 )
 
 func checkAuthorizedKeys(ctx context.Context, logger log.Logger, autofix bool) error {
 	if setting.SSH.StartBuiltinServer || !setting.SSH.CreateAuthorizedKeysFile {
 		return nil
+	}
+
+	// make sure the doctor has the same AppPath as forgejo
+	// they can differ due to symlinks
+	// https://codeberg.org/forgejo/forgejo/pulls/12901
+	if err := system.Init(); err != nil {
+		return err
+	}
+	runtimeState := new(system.RuntimeState)
+	if err := system.AppState.Get(ctx, runtimeState); err != nil {
+		return err
+	}
+	if setting.AppPath != runtimeState.LastAppPath {
+		logger.Info("AppPath set to '%s' (was '%s')", runtimeState.LastAppPath, setting.AppPath)
+		setting.AppPath = runtimeState.LastAppPath
 	}
 
 	findings, err := asymkey_model.InspectPublicKeys(ctx)

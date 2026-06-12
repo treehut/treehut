@@ -377,10 +377,18 @@ func TeamMembers(ctx *context.Context) {
 		return
 	}
 
-	if err := ctx.Org.Team.LoadMembers(ctx); err != nil {
+	page := max(ctx.FormInt("page"), 1)
+	total := ctx.Org.Team.NumMembers
+	pager := context.NewPagination(total, setting.UI.MembersPagingNum, page, 5)
+	opts := db.ListOptions{}
+	opts.Page = page
+	opts.PageSize = setting.UI.MembersPagingNum
+
+	if err := ctx.Org.Team.LoadPaginatedMembers(ctx, opts); err != nil {
 		ctx.ServerError("GetMembers", err)
 		return
 	}
+	ctx.Data["Page"] = pager
 	ctx.Data["Units"] = unit_model.Units
 
 	invites, err := org_model.GetInvitesByTeamID(ctx, ctx.Org.Team.ID)

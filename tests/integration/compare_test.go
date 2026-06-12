@@ -15,13 +15,11 @@ import (
 	repo_model "forgejo.org/models/repo"
 	unit_model "forgejo.org/models/unit"
 	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/gitrepo"
-	"forgejo.org/modules/optional"
 	"forgejo.org/modules/test"
 	repo_service "forgejo.org/services/repository"
-	files_service "forgejo.org/services/repository/files"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/stretchr/testify/assert"
@@ -239,6 +237,16 @@ func TestCompareBranches(t *testing.T) {
 	diffChanges = []string{"test.txt"}
 
 	inspectCompare(t, htmlDoc, diffCount, diffChanges)
+
+	// Branches with name 'diff' or 'patch'
+	req = NewRequest(t, "GET", "/user2/repo16/compare/master..diff")
+	session.MakeRequest(t, req, http.StatusOK)
+	req = NewRequest(t, "GET", "/user2/repo16/compare/master..diff.patch")
+	session.MakeRequest(t, req, http.StatusOK)
+	req = NewRequest(t, "GET", "/user2/repo16/compare/master..patch")
+	session.MakeRequest(t, req, http.StatusOK)
+	req = NewRequest(t, "GET", "/user2/repo16/compare/master..patch.diff")
+	session.MakeRequest(t, req, http.StatusOK)
 }
 
 func TestCompareWithPRsDisabled(t *testing.T) {
@@ -333,22 +341,16 @@ func TestCompareCrossRepo(t *testing.T) {
 
 func TestCompareCodeExpand(t *testing.T) {
 	onApplicationRun(t, func(t *testing.T, u *url.URL) {
-		owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-
 		// Create a new repository, with a file that has many lines
-		repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, owner, tests.DeclarativeRepoOptions{
-			Files: optional.Some([]*files_service.ChangeRepoFile{
-				{
-					Operation:     "create",
-					TreePath:      "docs.md",
-					ContentReader: strings.NewReader("01\n02\n03\n04\n05\n06\n07\n08\n09\n0a\n0b\n0c\n0d\n0e\n0f\n10\n11\n12\n12\n13\n14\n15\n16\n17\n18\n19\n1a\n1b\n1c\n1d\n1e\n1f\n20\n"),
-				},
-			}),
+		repo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.MapFS{
+				"docs.md": forgery.MapFile("01\n02\n03\n04\n05\n06\n07\n08\n09\n0a\n0b\n0c\n0d\n0e\n0f\n10\n11\n12\n12\n13\n14\n15\n16\n17\n18\n19\n1a\n1b\n1c\n1d\n1e\n1f\n20\n"),
+			},
 		})
-		defer f()
+		owner := repo.Owner
 
 		// Fork the repository
-		forker := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		forker := forgery.CreateUser(t, nil)
 		session := loginUser(t, forker.Name)
 		testRepoFork(t, session, owner.Name, repo.Name, forker.Name, repo.Name+"-copy")
 		testCreateBranch(t, session, forker.Name, repo.Name+"-copy", "branch/main", "code-expand", http.StatusSeeOther)

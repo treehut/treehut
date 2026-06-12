@@ -1,0 +1,82 @@
+- id: 455620
+  title: Completed workflow
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  workflow_id: test.yaml
+  workflow_directory: .forgejo/workflows
+  index: 110
+  trigger_user_id: 2
+  ref: refs/heads/main
+  commit_sha: 1ca7f0f9-81e7-4e27-85eb-b080c33d32d3
+  event: push
+  event_payload: "{}"
+  status: 1 # success
+  version: 4
+  started: 1776279254
+  stopped: 1776279265
+  previous_duration: 0
+  created: 1776263479
+  updated: 1776279265
+
+- id: 455630
+  title: Running workflow
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  workflow_id: test.yaml
+  workflow_directory: .forgejo/workflows
+  index: 111
+  trigger_user_id: 2
+  ref: refs/heads/main
+  commit_sha: e36900942550acf94ddd8c0a3b91cc0165b4bd02
+  event: push
+  event_payload: "{}"
+  status: 6 # running
+  version: 2
+  started: 1776281360
+  stopped: 0
+  previous_duration: 0
+  created: 1776281359
+  updated: 1776281367
+
+- id: 455640
+  title: Invalid workflow
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  workflow_id: invalid.yaml
+  workflow_directory: .forgejo/workflows
+  index: 112
+  trigger_user_id: 2
+  ref: refs/heads/main
+  commit_sha: 4055b3488bf960c9c9f5c1eb2d84e346faaad7dc
+  event: push
+  event_payload: "{}"
+  status: 2 # failure
+  version: 2
+  started: 0
+  stopped: 0
+  previous_duration: 0
+  created: 1776282729
+  updated: 1776282729
+  pre_execution_error_code: 1
+  pre_execution_error_details:
+    - "yaml: unmarshal errors:\n  line 7: cannot unmarshal !!map into []*model.Step"
+
+- id: 455650
+  title: Workflow with dependent jobs
+  repo_id: 62 # test_workflows
+  owner_id: 2 # user2
+  workflow_id: dependent.yaml
+  workflow_directory: .forgejo/workflows
+  index: 113
+  trigger_user_id: 2
+  ref: refs/heads/main
+  commit_sha: ae36c1d75cc82cb9f9e54a86c8137ed05c3bd66e
+  event: push
+  event_payload: "{}"
+  status: 1 # success
+  version: 2
+  started: 1776331635
+  stopped: 1776331721
+  previous_duration: 0
+  created: 1776331495
+  updated: 1776331721

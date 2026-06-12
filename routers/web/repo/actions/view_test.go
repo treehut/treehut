@@ -340,7 +340,14 @@ func TestActionsViewViewPost(t *testing.T) {
 				// in-sync with the RepoActionView 'view non-picked action run job' test.
 				resp.State.CurrentJob.Details = []template.HTML{"actions.status.diagnostics.waiting"}
 				resp.State.CurrentJob.Steps = []*ViewJobStep{}
-				resp.State.CurrentJob.AllAttempts = nil
+				resp.State.CurrentJob.AllAttempts = []*TaskAttempt{
+					{
+						Number:            1,
+						Started:           template.HTML("actions.jobs.not_started"),
+						Status:            "waiting",
+						StatusDiagnostics: []template.HTML{"actions.status.diagnostics.waiting"},
+					},
+				}
 			},
 		},
 	}
@@ -554,7 +561,7 @@ func TestActionsRerun(t *testing.T) {
 			runIndex:     138575,
 			jobIndex:     1,
 			expectedCode: 400,
-			expectedBody: "{\"errorMessage\":\"actions.workflow.job_rerun_impossible\",\"renderFormat\":\"html\"}\n",
+			expectedBody: "{\"errorMessage\":\"actions.workflow.rerun_impossible\",\"renderFormat\":\"html\"}\n",
 		},
 	}
 	for _, tt := range tests {

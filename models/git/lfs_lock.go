@@ -112,10 +112,10 @@ func GetLFSLock(ctx context.Context, repo *repo_model.Repository, path string) (
 	return rel, nil
 }
 
-// GetLFSLockByID returns release by given id.
-func GetLFSLockByID(ctx context.Context, id int64) (*LFSLock, error) {
+// GetLFSLockByIDAndRepo returns lfs lock by given id and repository id.
+func GetLFSLockByIDAndRepo(ctx context.Context, id, repoID int64) (*LFSLock, error) {
 	lock := new(LFSLock)
-	has, err := db.GetEngine(ctx).ID(id).Get(lock)
+	has, err := db.GetEngine(ctx).ID(id).And("repo_id = ?", repoID).Get(lock)
 	if err != nil {
 		return nil, err
 	} else if !has {
@@ -169,7 +169,7 @@ func DeleteLFSLockByID(ctx context.Context, id int64, repo *repo_model.Repositor
 	}
 	defer committer.Close()
 
-	lock, err := GetLFSLockByID(dbCtx, id)
+	lock, err := GetLFSLockByIDAndRepo(ctx, id, repo.ID)
 	if err != nil {
 		return nil, err
 	}

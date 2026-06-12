@@ -14,10 +14,8 @@ import (
 	asymkey_model "forgejo.org/models/asymkey"
 	"forgejo.org/models/db"
 	issues_model "forgejo.org/models/issues"
-	access_model "forgejo.org/models/perm/access"
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/models/unit"
-	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/log"
 	"forgejo.org/services/stats"
 
@@ -277,7 +275,7 @@ func DoctorUserStarNum(ctx context.Context) (err error) {
 }
 
 // DeleteDeployKey delete deploy keys
-func DeleteDeployKey(ctx context.Context, doer *user_model.User, id int64) error {
+func DeleteDeployKey(ctx context.Context, id, repoID int64) error {
 	key, err := asymkey_model.GetDeployKeyByID(ctx, id)
 	if err != nil {
 		if asymkey_model.IsErrDeployKeyNotExist(err) {
@@ -286,21 +284,10 @@ func DeleteDeployKey(ctx context.Context, doer *user_model.User, id int64) error
 		return fmt.Errorf("GetDeployKeyByID: %w", err)
 	}
 
-	// Check if user has access to delete this key.
-	if !doer.IsAdmin {
-		repo, err := repo_model.GetRepositoryByID(ctx, key.RepoID)
-		if err != nil {
-			return fmt.Errorf("GetRepositoryByID: %w", err)
-		}
-		has, err := access_model.IsUserRepoAdmin(ctx, repo, doer)
-		if err != nil {
-			return fmt.Errorf("GetUserRepoPermission: %w", err)
-		} else if !has {
-			return asymkey_model.ErrKeyAccessDenied{
-				UserID: doer.ID,
-				KeyID:  key.ID,
-				Note:   "deploy",
-			}
+	if key.RepoID != repoID {
+		return asymkey_model.ErrKeyAccessDenied{
+			KeyID: key.ID,
+			Note:  "deploy",
 		}
 	}
 

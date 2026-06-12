@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	auth_model "forgejo.org/models/auth"
-	"forgejo.org/models/unittest"
-	user_model "forgejo.org/models/user"
 	api "forgejo.org/modules/structs"
+	notify_service "forgejo.org/services/notify"
 	"forgejo.org/tests"
+	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -20,9 +20,9 @@ import (
 func TestAPIRepoActivityFeeds(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 
-	owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
-	repo, _, f := tests.CreateDeclarativeRepoWithOptions(t, owner, tests.DeclarativeRepoOptions{})
-	defer f()
+	repo := forgery.CreateRepository(t, nil, nil)
+	owner := repo.Owner
+	notify_service.CreateRepository(t.Context(), owner, owner, repo)
 
 	feedURL := fmt.Sprintf("/api/v1/repos/%s/activities/feeds", repo.FullName())
 	assertAndReturnActivities := func(t *testing.T, length int) []api.Activity {
@@ -66,7 +66,7 @@ func TestAPIRepoActivityFeeds(t *testing.T) {
 	t.Run("a new watcher, no new activities", func(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 
-		watcher := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		watcher := forgery.CreateUser(t, nil)
 		watcherSession := loginUser(t, watcher.Name)
 		watcherToken := getTokenForLoggedInUser(t, watcherSession, auth_model.AccessTokenScopeWriteRepository, auth_model.AccessTokenScopeReadUser)
 

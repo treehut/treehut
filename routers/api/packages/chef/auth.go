@@ -39,8 +39,18 @@ var (
 	versionPattern       = regexp.MustCompile(`version=(\d+\.\d+)`)
 	authorizationPattern = regexp.MustCompile(`\AX-Ops-Authorization-(\d+)`)
 
-	_ auth.Method = &Auth{}
+	_ auth.Method               = &Auth{}
+	_ auth.AuthenticationResult = &chefAuthenticationResult{}
 )
+
+type chefAuthenticationResult struct {
+	*auth.BaseAuthenticationResult
+	user *user_model.User
+}
+
+func (r *chefAuthenticationResult) User() *user_model.User {
+	return r.user
+}
 
 // Documentation:
 // https://docs.chef.io/server/api_chef_server/#required-headers
@@ -55,34 +65,37 @@ func (a *Auth) Name() string {
 
 // Verify extracts the user from the signed request
 // If the request is signed with the user private key the user is verified.
-func (a *Auth) Verify(req *http.Request, w http.ResponseWriter, store auth.DataStore, sess auth.SessionStore) (*user_model.User, error) {
+func (a *Auth) Verify(req *http.Request, w http.ResponseWriter, sess auth.SessionStore) auth.MethodOutput {
 	u, err := getUserFromRequest(req)
 	if err != nil {
-		return nil, err
+		if !user_model.IsErrUserNotExist(err) {
+			return &auth.AuthenticationError{Error: fmt.Errorf("chef auth getUserFromRequest: %w", err)}
+		}
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
 	if u == nil {
-		return nil, nil
+		return &auth.AuthenticationNotAttempted{}
 	}
 
 	pub, err := getUserPublicKey(req.Context(), u)
 	if err != nil {
-		return nil, err
+		return &auth.AuthenticationError{Error: fmt.Errorf("chef auth getUserPublicKey: %w", err)}
 	}
 
 	if err := verifyTimestamp(req); err != nil {
-		return nil, err
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
 
 	version, err := getSignVersion(req)
 	if err != nil {
-		return nil, err
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
 
 	if err := verifySignedHeaders(req, version, pub.(*rsa.PublicKey)); err != nil {
-		return nil, err
+		return &auth.AuthenticationAttemptedIncorrectCredential{Error: err}
 	}
 
-	return u, nil
+	return &auth.AuthenticationSuccess{Result: &chefAuthenticationResult{user: u}}
 }
 
 func getUserFromRequest(req *http.Request) (*user_model.User, error) {
