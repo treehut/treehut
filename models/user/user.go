@@ -678,6 +678,12 @@ var (
 		"gitea-actions",   // gitea builtin user (id: -2)
 		"forgejo-actions", // forgejo builtin user (id: -2)
 		"actor",           // user for activitypub / federation (id: -3)
+
+		"chat",
+		"discord",
+		"mail",
+		"media",
+		"photos",
 	}
 
 	// These names are reserved for user accounts: user's keys, user's rss feed, user's avatar, etc.

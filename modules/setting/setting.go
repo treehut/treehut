@@ -21,14 +21,21 @@ import (
 	"github.com/hashicorp/go-version"
 )
 
-var ForgejoVersion = "1.0.0"
-
 // settings
 var (
 	// AppVer is the version of the current build of Forgejo. It is set in main.go from main.Version.
 	AppVer string
 	// AppDocsVer returns the Forgejo Docs version string corresponding to the current build of Forgejo.
 	AppDocsVer = sync.OnceValue(initialAppDocsVer)
+
+	// ForgejoVersion
+	ForgejoVersion string = "1.0.0"
+
+	// TreehutVer is the version of Treehut. It matches AppVer, but with an extra
+	// segment to indicate the number of Treehut releases since the Forgejo
+	// release that it is based on.
+	TreehutVersion string = "1.0.0+tree.0"
+
 	// AppBuiltWith represents a human-readable version go runtime build version and build tags. (See main.go formatBuiltWith().)
 	AppBuiltWith string
 	// AppStartTime stores the time at which Forgejo started.

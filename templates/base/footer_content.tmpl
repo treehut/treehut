@@ -6,9 +6,9 @@
 		{{if (or .ShowFooterVersion .PageIsAdmin)}}
 			{{ctx.Locale.Tr "version"}}:
 			{{if .IsAdmin}}
-				<a href="{{AppSubUrl}}/admin/config">{{AppVerNoMetadata}}</a>
+				<a href="{{AppSubUrl}}/admin/config">{{TreehutVer}}</a>
 			{{else}}
-				{{AppVerNoMetadata}}
+				{{TreehutVer}}
 			{{end}}
 		{{end}}
 		{{if and .TemplateLoadTimes ShowFooterTemplateLoadTime}}

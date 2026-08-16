@@ -33,9 +33,19 @@ func init() {
 	db.RegisterModel(new(LanguageStat))
 }
 
+var languageColorOverrides map[string]string = map[string]string{
+	"Rust": "#a72145",
+	"Zig":  "#eba842",
+}
+
 // LoadAttributes loads attributes
 func (stat *LanguageStat) LoadAttributes() {
-	stat.Color = enry.GetColor(stat.Language)
+	lang := stat.Language
+	stat.Color = enry.GetColor(lang)
+	color, ok := languageColorOverrides[lang]
+	if ok {
+		stat.Color = color
+	}
 }
 
 // LanguageStatList defines a list of language statistics

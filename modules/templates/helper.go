@@ -131,6 +131,9 @@ func NewFuncMap() template.FuncMap {
 		"AppNextDocsURL": func(path string) string {
 			return setting.AppVersionDocsURL("next", path)
 		},
+		"TreehutVer": func() string {
+			return setting.TreehutVersion
+		},
 		"AppDomain": func() string { // documented in mail-templates.md
 			return setting.Domain
 		},
