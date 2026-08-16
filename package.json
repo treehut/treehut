@@ -1,5 +1,5 @@
 {
-  "name": "forgejo",
+  "name": "treehut",
   "type": "module",
   "engines": {
     "node": ">= 20.0.0"

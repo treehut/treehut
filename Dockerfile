@@ -3,9 +3,10 @@ FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/xx AS xx
 FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/golang:1.26-alpine3.23 AS build-env
 
 ARG GOPROXY
-ENV GOPROXY=${GOPROXY:-https://proxy.golang.org,direct}
+ENV GOPROXY=${GOPROXY:-https://proxy.golang.org}
 
 ARG RELEASE_VERSION
+ARG TREEHUT_REV="0"
 ARG TAGS="sqlite sqlite_unlock_notify"
 ENV TAGS="bindata timetzdata $TAGS"
 ARG CGO_EXTRA_CFLAGS
@@ -33,10 +34,17 @@ RUN apk --no-cache add build-base git nodejs npm
 COPY . ${GOPATH}/src/forgejo.org
 WORKDIR ${GOPATH}/src/forgejo.org
 
-RUN make clean-no-bindata
+RUN --mount=type=cache,target=/go/pkg/mod/cache/ go mod download
+
+RUN make clean
 RUN make frontend
+RUN echo "$RELEASE_VERSION" > VERSION
 RUN go build contrib/environment-to-ini/environment-to-ini.go && xx-verify environment-to-ini
-RUN LDFLAGS="-buildid=" make FORGEJO_GENERATE_SKIP_HASH=true RELEASE_VERSION=$RELEASE_VERSION GOFLAGS="-trimpath" go-check generate-backend static-executable && xx-verify gitea
+RUN --mount=type=cache,target=/go/pkg/mod/cache/ LDFLAGS="-buildid=" \
+  make FORGEJO_GENERATE_SKIP_HASH=true \
+    RELEASE_VERSION=$RELEASE_VERSION \
+    TREEHUT_REV=$TREEHUT_REV GOFLAGS="-trimpath" \
+  go-check generate-backend static-executable && xx-verify gitea
 
 # Copy local files
 COPY docker/root /tmp/local

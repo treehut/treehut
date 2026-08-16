@@ -34,10 +34,12 @@ var (
 )
 
 var ForgejoVersion = "1.0.0"
+var TreehutVersion = "1.0.0+tree.0"
 
 func init() {
 	setting.AppVer = Version
 	setting.ForgejoVersion = ForgejoVersion
+	setting.TreehutVersion = TreehutVersion
 	setting.AppBuiltWith = formatBuiltWith()
 	setting.AppStartTime = time.Now().UTC()
 }

@@ -97,6 +97,15 @@
 					</a>
 				{{end}}
 
+				{{if and (not .UnitProjectsGlobalDisabled) (.Permission.CanRead $.UnitTypeProjects)}}
+					<a href="{{.RepoLink}}/projects" class="{{if .IsProjectsPage}}active {{end}}item">
+						{{svg "octicon-project"}} {{ctx.Locale.Tr "repo.project"}}
+						{{if .Repository.NumOpenProjects}}
+							<span class="ui small label">{{CountFmt .Repository.NumOpenProjects}}</span>
+						{{end}}
+					</a>
+				{{end}}
+
 				{{if .Permission.CanRead $.UnitTypeIssues}}
 					<a class="{{if .PageIsIssueList}}active {{end}}item" href="{{.RepoLink}}/issues">
 						{{svg "octicon-issue-opened"}} {{ctx.Locale.Tr "repo.issues"}}
@@ -121,11 +130,11 @@
 					</a>
 				{{end}}
 
-				{{if and (not .UnitProjectsGlobalDisabled) (.Permission.CanRead $.UnitTypeProjects)}}
-					<a href="{{.RepoLink}}/projects" class="{{if .IsProjectsPage}}active {{end}}item">
-						{{svg "octicon-project"}} {{ctx.Locale.Tr "repo.project"}}
-						{{if .Repository.NumOpenProjects}}
-							<span class="ui small label">{{CountFmt .Repository.NumOpenProjects}}</span>
+				{{if and .EnableActions (not .UnitActionsGlobalDisabled) (.Permission.CanRead $.UnitTypeActions)}}
+					<a class="{{if .PageIsActions}}active {{end}}item" href="{{.RepoLink}}/actions">
+						{{svg "octicon-play"}} {{ctx.Locale.Tr "actions.actions"}}
+						{{if .NumOpenActionRuns}}
+							<span class="ui small label">{{CountFmt .NumOpenActionRuns}}</span>
 						{{end}}
 					</a>
 				{{end}}
@@ -163,15 +172,6 @@
 				{{if and (.Permission.CanReadAny $.UnitTypeCode $.UnitTypePullRequests $.UnitTypeIssues $.UnitTypeReleases)}}
 					<a class="{{if .PageIsActivity}}active {{end}}item" href="{{.RepoLink}}/activity">
 						{{svg "octicon-pulse"}} {{ctx.Locale.Tr "repo.activity"}}
-					</a>
-				{{end}}
-
-				{{if and .EnableActions (not .UnitActionsGlobalDisabled) (.Permission.CanRead $.UnitTypeActions)}}
-					<a class="{{if .PageIsActions}}active {{end}}item" href="{{.RepoLink}}/actions">
-						{{svg "octicon-play"}} {{ctx.Locale.Tr "actions.actions"}}
-						{{if .NumOpenActionRuns}}
-							<span class="ui small label">{{CountFmt .NumOpenActionRuns}}</span>
-						{{end}}
 					</a>
 				{{end}}
 
