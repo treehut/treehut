@@ -1,0 +1,34 @@
+VERSION =
+REV =
+TAG = latest
+
+DOCKER ?= docker
+
+ARGFLAGS := --build-arg RELEASE_VERSION=$(VERSION) --build-arg TREEHUT_REV=$(REV)
+
+TEST_TAG := treehut:testing
+
+test: check-version
+	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
+	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
+	$(DOCKER) build $(ARGFLAGS) -t $(TEST_TAG) .
+	$(DOCKER) run --name treehut-mini --rm \
+		-p 127.0.0.1:3022:3022 \
+		-p 127.0.0.1:3000:3000 \
+		-v $(PWD)/.scratch/data:/data \
+		$(TEST_TAG)
+.PHONY: test
+
+TAGFLAGS := -t ghcr.io/treehut/treehut \
+	-t ghcr.io/treehut/treehut:$(TAG) \
+	-t ghcr.io/treehut/treehut:$(VERSION) \
+	-t ghcr.io/treehut/treehut:$(VERSION)+tree.$(REV)
+
+pub: check-version
+	docker buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+.PHONY: pub
+
+check-version:
+	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
+	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
+.PHONY: check-version

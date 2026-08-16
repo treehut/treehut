@@ -84,7 +84,7 @@ func Dashboard(ctx *context.Context) {
 		page = 1
 	}
 
-	ctx.Data["Title"] = ctxUser.DisplayName() + " - " + ctx.Locale.TrString("dashboard")
+	ctx.Data["Title"] = ctx.Locale.TrString("dashboard")
 	ctx.Data["PageIsDashboard"] = true
 	ctx.Data["PageIsNews"] = true
 	cnt, _ := organization.GetOrganizationCount(ctx, ctxUser)

@@ -204,5 +204,5 @@ func TabSizeClass(ec *editorconfig.Editorconfig, filename string) string {
 			return "tab-size-" + strconv.Itoa(def.TabWidth)
 		}
 	}
-	return "tab-size-4"
+	return "tab-size-2"
 }
