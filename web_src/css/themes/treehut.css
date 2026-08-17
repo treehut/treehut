@@ -1,0 +1,92 @@
+[data-theme^="treehut-"] {
+  &:root {
+    --border-radius: 6px;
+
+    --fonts-override: Avenir Next, Avenir, Lexend, Montserrat, Corbel;
+    --fonts-monospace: Cascadia Code PL, Cascadia Code;
+  }
+
+  /* Green folder icons look weird. Do a nice manilla yellow instead.
+  */
+  .repository.file.list #repo-files-table tbody {
+    svg.svg.octicon-file-directory-fill,
+    svg.svg.octicon-file-submodule {
+      color: var(--color-yellow-light);
+    }
+  }
+  #diff-file-tree {
+    svg.svg.octicon-file-directory-fill,
+    svg.svg.octicon-file-submodule {
+      color: var(--color-yellow-light) !important;
+    }
+  }
+
+  /* Fix issues with the language stats bar not having properly rounded bottom.
+  corners.
+  */
+  .repository .repository-summary {
+    overflow: hidden;
+  }
+  #language-stats stats-bar {
+    border-radius: 0;
+    opacity: 0.4;
+    transition: opacity 300ms;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  /* I like how a narrower repository page looks.
+  */
+  .page-content .ui.container:not(.fluid) {
+    --container-width: 1024px !important;
+  }
+
+  /* The default background color choice for dropdowns is a bit odd.
+  */
+  details.dropdown > .content {
+    background-color: var(--color-nav-bg);
+  }
+
+  /* The default styles make the message a pixel too wide in each direction for
+  some reason.
+  Bug reproduction: http://localhost:3000/lilac/forestry.d/commit/08e3c0788e48355b8257dbd8753cf323df3f8788
+  */
+  .ui.attached.message {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Side menus in two columns layouts (like the repo settings page)
+  */
+  .ui.vertical.menu {
+    background-color: transparent;
+  }
+
+  /* Verified commits are waaaay too green by default
+  */
+  .sha.label.isSigned.isVerified {
+    border-color: var(--color-light-border);
+    .signature {
+      border-left: inherit;
+    }
+  }
+
+  /* The trailing icons on the activity feed don't really add anything and are
+  not pretty.
+  */
+  #activity-feed .flex-item .flex-item-trailing {
+    display: none;
+  }
+
+  /* Make dropdowns just a touch wider than they come
+  */
+  details.dropdown {
+    --dropdown-padding-inline: 1rem;
+  }
+
+  #navbar details.dropdown summary {
+    padding-inline: 0.75rem;
+  }
+}

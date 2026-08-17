@@ -1,10 +1,11 @@
 @import "../chroma/dark.css";
 @import "../codemirror/dark.css";
 @import "../markup/dark.css";
+@import "./treehut.css";
 
 :root {
   --is-dark-theme: true;
-  --color-primary: #3e944b;
+  --color-primary: #4183c4;
   --color-primary-contrast: #ffffff;
   --color-primary-dark-1: #548fca;
   --color-primary-dark-2: #679cd0;
@@ -197,12 +198,7 @@
   --color-input-border: var(--color-secondary);
   --color-input-border-hover: var(--color-secondary-dark-1);
   --color-light: #00001728;
-  --color-light-mimic-enabled: rgba(
-    0,
-    0,
-    0,
-    calc(40 / 255 * 222 / 255 / var(--opacity-disabled))
-  );
+  --color-light-mimic-enabled: rgba(0, 0, 0, calc(40 / 255 * 222 / 255 / var(--opacity-disabled)));
   --color-light-border: #e8e8ff28;
   --color-hover: #e8e8ff19;
   --color-active: #393b43;
@@ -221,9 +217,7 @@
   --color-placeholder-text: var(--color-text-light-3);
   --color-editor-line-highlight: var(--color-primary-light-5);
   --color-project-column-bg: var(--color-secondary-light-2);
-  --color-caret: var(
-    --color-text
-  ); /* should ideally be --color-text-dark, see #15651 */
+  --color-caret: var(--color-text); /* should ideally be --color-text-dark, see #15651 */
   --color-reaction-bg: #e8e8ff12;
   --color-reaction-hover-bg: var(--color-primary-light-4);
   --color-reaction-active-bg: var(--color-primary-light-5);
