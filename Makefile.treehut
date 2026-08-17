@@ -22,7 +22,7 @@ test: check-version
 TAGFLAGS := -t ghcr.io/treehut/treehut \
 	-t ghcr.io/treehut/treehut:$(TAG) \
 	-t ghcr.io/treehut/treehut:$(VERSION) \
-	-t ghcr.io/treehut/treehut:$(VERSION)+tree.$(REV)
+	-t ghcr.io/treehut/treehut:$(VERSION).$(REV)
 
 pub: check-version
 	docker buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
