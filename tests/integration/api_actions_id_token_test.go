@@ -53,6 +53,8 @@ func TestActionsIDToken(t *testing.T) {
 	require.NoError(t, err)
 	tokenWithoutOIDCAccess, err := actions_service.CreateAuthorizationToken(task, gitCtx, false, &repo_model.ActionsConfig{})
 	require.NoError(t, err)
+	tokenWithoutOIDCAccess, err := actions_service.CreateAuthorizationToken(task, gitCtx, false)
+	require.NoError(t, err)
 
 	// get JWKs information
 	req := NewRequest(t, "GET", "/api/actions/.well-known/keys")

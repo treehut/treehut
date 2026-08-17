@@ -443,7 +443,10 @@ func createPullMirrorViaAPI(t *testing.T, sourceRepo *repo_model.Repository, aut
 		RepoOwner: "user2",
 		RepoName:  mirrorName,
 		Mirror:    true,
+<<<<<<< HEAD
+=======
 		LFS:       true,
+>>>>>>> treehut/16
 	}
 	if authenticate {
 		form.AuthUsername = "user2"
@@ -582,7 +585,10 @@ func verifyPullMirrorConfig(t *testing.T, mirrorName string, sourceRepo *repo_mo
 	assert.Equal(t, expectedURL, getGitConfig(t, configPath, "remote.origin.url"))
 	assert.Equal(t, "true", getGitConfig(t, configPath, "remote.origin.mirror"))
 	assert.Equal(t, "+refs/tags/*:refs/tags/*", getGitConfig(t, configPath, "remote.origin.fetch"))
+<<<<<<< HEAD
+=======
 	assert.Equal(t, "false", getGitConfig(t, configPath, "http.followRedirects"))
+>>>>>>> treehut/16
 }
 
 func changePullMirrorSource(t *testing.T, sourceRepo *repo_model.Repository, sourceRepoSha string) string {

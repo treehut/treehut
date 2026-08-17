@@ -30,6 +30,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/ulikunitz/xz"
+	"xorm.io/xorm"
 )
 
 // GetOrCreateRepositoryVersion gets or creates the internal repository package

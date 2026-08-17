@@ -38,9 +38,23 @@ func GetAllRerunJobs(job *actions_model.ActionRunJob, allJobs []*actions_model.A
 	rerunJobsIDSet := make(container.Set[string])
 	rerunJobsIDSet.Add(job.JobID)
 
+<<<<<<< HEAD
+	for {
+		found := false
+		for _, j := range allJobs {
+			if rerunJobsIDSet.Contains(j.JobID) {
+				continue
+			}
+			if slices.ContainsFunc(j.Needs, rerunJobsIDSet.Contains) {
+				found = true
+				rerunJobs = append(rerunJobs, j)
+				rerunJobsIDSet.Add(j.JobID)
+			}
+=======
 	for _, j := range allJobs {
 		if rerunJobsIDSet.Contains(j.JobID) {
 			continue
+>>>>>>> treehut/16
 		}
 		if slices.ContainsFunc(j.Needs, rerunJobsIDSet.Contains) {
 			rerunJobs = append(rerunJobs, j)

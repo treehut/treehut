@@ -3,10 +3,10 @@
 	<div class="ui container">
 		{{template "base/alert" .}}
 		<div class="ui stackable grid">
-			<div class="ui four wide column">
+			<div class="ui five wide column">
 				{{template "shared/user/profile_big_avatar" .}}
 			</div>
-			<div class="ui twelve wide column tw-mb-4">
+			<div class="ui eleven wide column tw-mb-4">
 				{{template "user/overview/header" .}}
 				{{if eq .TabName "activity"}}
 					{{if eq .SignedUserID .ContextUser.ID}}

@@ -517,6 +517,10 @@ func Rerun(ctx *app_context.Context) {
 		ctx.Error(http.StatusInternalServerError, err.Error())
 		return
 	}
+	if jobIndexStr == "" && !run.CanBeRerun() {
+		ctx.JSONError(ctx.Locale.Tr("actions.workflow.rerun_impossible"))
+		return
+	}
 
 	var rerunJobs []*actions_model.ActionRunJob
 	if jobIndexStr == "" { // Rerun the entire workflow.

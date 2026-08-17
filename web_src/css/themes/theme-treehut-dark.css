@@ -1,6 +1,64 @@
 @import "../chroma/dark.css";
 @import "../codemirror/dark.css";
 @import "../markup/dark.css";
+@import "./treehut.css";
+
+:root {
+  --is-dark-theme: true;
+  --color-primary: oklch(0.6 0.14 145);
+  --color-primary-contrast: #ffffff;
+  --color-primary-dark-1: oklch(0.65 0.12 145);
+  --color-primary-dark-2: oklch(0.7 0.1 145);
+  --color-primary-dark-3: oklch(0.75 0.08 145);
+  --color-primary-dark-4: oklch(0.81 0.06 145);
+  --color-primary-dark-5: oklch(0.87 0.04 145);
+  --color-primary-dark-6: oklch(0.93 0.02 145);
+  --color-primary-dark-7: oklch(1 0 145);
+  --color-primary-light-1: oklch(0.6 0.12 145);
+  --color-primary-light-2: oklch(0.5 0.1 145);
+  --color-primary-light-3: oklch(0.4 0.08 145);
+  --color-primary-light-4: oklch(0.3 0.06 145);
+  --color-primary-light-5: oklch(0.2 0.04 145);
+  --color-primary-light-6: oklch(0.1 0.02 145);
+  --color-primary-light-7: oklch(0 0 145);
+  --color-primary-alpha-10: oklch(0.6 0.136 145 0.1);
+  --color-primary-alpha-20: oklch(0.6 0.136 145 0.2);
+  --color-primary-alpha-30: oklch(0.6 0.136 145 0.3);
+  --color-primary-alpha-40: oklch(0.6 0.136 145 0.4);
+  --color-primary-alpha-50: oklch(0.6 0.136 145 0.5);
+  --color-primary-alpha-60: oklch(0.6 0.136 145 0.6);
+  --color-primary-alpha-70: oklch(0.6 0.136 145 0.7);
+  --color-primary-alpha-80: oklch(0.6 0.136 145 0.8);
+  --color-primary-alpha-90: oklch(0.6 0.136 145 0.9);
+  --color-primary-hover: var(--color-primary-light-1);
+  --color-primary-active: var(--color-primary-light-2);
+  --color-secondary: #2a2a2a;
+  --color-secondary-dark-1: #323232;
+  --color-secondary-dark-2: #4a4a4a;
+  --color-secondary-dark-3: #595959;
+  --color-secondary-dark-4: #6b6b6b;
+  --color-secondary-dark-5: #787878;
+  --color-secondary-dark-6: #878787;
+  --color-secondary-dark-7: #939393;
+  --color-secondary-dark-8: #a1a1a1;
+  --color-secondary-dark-9: #aaaaaa;
+  --color-secondary-dark-10: #b6b6b6;
+  --color-secondary-dark-11: #c2c2c2;
+  --color-secondary-dark-12: #cccccc;
+  --color-secondary-dark-13: #cfcfcf;
+  --color-secondary-light-1: #2e2e2e;
+  --color-secondary-light-2: #2b2b2b;
+  --color-secondary-light-3: #1c1c1c;
+  --color-secondary-light-4: #161616;
+  --color-secondary-alpha-10: #2a2a2a19;
+  --color-secondary-alpha-20: #2a2a2a33;
+  --color-secondary-alpha-30: #2a2a2a4b;
+  --color-secondary-alpha-40: #2a2a2a66;
+  --color-secondary-alpha-50: #2a2a2a80;
+  --color-secondary-alpha-60: #2a2a2a99;
+  --color-secondary-alpha-70: #2a2a2ab3;
+  --color-secondary-alpha-80: #2a2a2acc;
+  --color-secondary-alpha-90: #2a2a2ae1;
 
 :root {
   --is-dark-theme: true;
@@ -81,7 +139,7 @@
   --color-purple: #b259d0;
   --color-pink: #d22e8b;
   --color-brown: #a47252;
-  --color-black: #1d2328;
+  --color-black: #0a0a0a;
   /* light variants - produced via Sass scale-color(color, $lightness: +10%) */
   --color-red-light: #d15a5a;
   --color-orange-light: #f6a066;
@@ -122,6 +180,7 @@
   --color-brown-dark-2: #835b42;
   --color-black-dark-2: #272930;
   /* ansi colors used for actions console and console files */
+  --color-ansi-black: var(--color-body);
   --color-ansi-black: #1d2328;
   --color-ansi-red: #cc4848;
   --color-ansi-green: #87ab63;
@@ -153,9 +212,9 @@
   --color-diff-added-row-border: #314a37;
   --color-diff-inactive: #22282d;
   --color-error-border: #a04141;
-  --color-error-bg: #522;
-  --color-error-bg-active: #744;
-  --color-error-bg-hover: #633;
+  --color-error-bg: #1b0d0d;
+  --color-error-bg-active: #633;
+  --color-error-bg-hover: #522;
   --color-error-text: #f9cbcb;
   --color-success-border: #458a57;
   --color-success-bg: #284034;
@@ -179,6 +238,20 @@
   --color-orange-badge-bg: #f2711c1a;
   --color-orange-badge-hover-bg: #f2711c4d;
   /* target-based colors */
+  --color-body: var(--color-black);
+  --color-box-header: #131313;
+  --color-box-body: transparent;
+  --color-box-body-highlight: #1c1c1c;
+  --color-text-dark: #f8f8f9;
+  --color-text: #d1d1d1;
+  --color-text-light: #c3c3c3;
+  --color-text-light-1: #afafaf;
+  --color-text-light-2: #9b9b9b;
+  --color-text-light-3: #878787;
+  --color-footer: var(--color-nav-bg);
+  --color-timeline: #353c42;
+  --color-input-text: var(--color-text-dark);
+  --color-input-background: transparent;
   --color-body: #1c1f25;
   --color-box-header: #1a1d1f;
   --color-box-body: #14171a;
@@ -205,7 +278,7 @@
   );
   --color-light-border: #e8e8ff28;
   --color-hover: #e8e8ff19;
-  --color-active: #393b43;
+  --color-active: var(--color-secondary-light-4);
   --color-menu: #151a1e;
   --color-card: #151a1e;
   --fancy-card-bg: #14171a;
@@ -213,7 +286,7 @@
   --color-markup-table-row: #e8e8ff0f;
   --color-markup-code-block: #e8e8ff12;
   --color-markup-code-inline: #e8e8ff28;
-  --color-button: #151a1e;
+  --color-button: #151a17;
   --color-code-bg: #14171a;
   --color-shadow: #00001758;
   --color-secondary-bg: #2f3138;
@@ -229,9 +302,9 @@
   --color-reaction-active-bg: var(--color-primary-light-5);
   --color-tooltip-text: #fafafb;
   --color-tooltip-bg: #000017f0;
-  --color-nav-bg: #16191c;
+  --color-nav-bg: #131313;
   --color-nav-hover-bg: var(--color-secondary-light-1);
-  --color-secondary-nav-bg: #181c20;
+  --color-secondary-nav-bg: transparent;
   --color-label-text: var(--color-text);
   --color-label-bg: #73828e4b;
   --color-label-hover-bg: #73828ea0;
@@ -241,8 +314,13 @@
   --color-highlight-fg: #87651e;
   --color-highlight-bg: #352c1c;
   --color-overlay-backdrop: #080808c0;
+<<<<<<< HEAD
+  --color-selection-bg: var(--color-white);
+  --color-selection-fg: var(--color-black);
+=======
   --color-selection-bg: var(--color-primary-light-1);
   --color-selection-fg: var(--color-white);
+>>>>>>> treehut/16
   /* pattern colors for image diff */
   --checkerboard-color-1: #313131;
   --checkerboard-color-2: #212121;

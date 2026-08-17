@@ -11,7 +11,7 @@ details.toggleable-item summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.92857143em 1.14285714em;
+  padding: 0.93em 1.14em;
 }
 
 details.toggleable-item summary::marker, /* Chrome, Edge, Firefox */

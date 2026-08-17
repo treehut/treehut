@@ -8,7 +8,8 @@
 			<div id="repo-desc" class="tw-break-anywhere tw-text-16">
 				{{$description := .Repository.DescriptionHTML $.Context}}
 				{{if $description}}<span class="description">{{$description | RenderCodeBlock}}</span>{{else}}<span class="no-description text-italic">{{ctx.Locale.Tr "repo.no_desc"}}</span>{{end}}
-				{{if .Repository.Website}}<a class="link" href="{{.Repository.Website}}">{{.Repository.Website}}</a>{{end}}
+				{{$websiteHostname := .Repository.Website}}
+				{{if .Repository.Website}}<a class="link" href="{{.Repository.Website}}">{{$websiteHostname}}</a>{{end}}
 			</div>
 		</div>
 		<div class="repo-topics tw-my-2" id="repo-topics">

@@ -12,7 +12,7 @@ dialog {
   box-shadow:
     1px 3px 3px 0 var(--color-shadow),
     1px 3px 15px 2px var(--color-shadow);
-  border-radius: 0.28571429rem;
+  border-radius: 6px;
   outline: none;
   z-index: 1001;
 
