@@ -108,7 +108,7 @@ VERSION ?= ${RELEASE_VERSION}
 FORGEJO_VERSION_API ?= ${FORGEJO_VERSION}
 
 TREEHUT_REV ?= 0
-TREEHUT_VERSION ?= ${FORGEJO_VERSION}+tree.${TREEHUT_REV}
+TREEHUT_VERSION ?= ${FORGEJO_VERSION}.${TREEHUT_REV}
 
 # Strip binaries by default to reduce size, allow overriding for debugging
 STRIP ?= 1

@@ -6,7 +6,7 @@ DOCKER ?= docker
 
 ARGFLAGS := --build-arg RELEASE_VERSION=$(VERSION) --build-arg TREEHUT_REV=$(REV)
 
-TEST_TAG := treehut:testing
+TEST_TAG := codeberg.org/treehut/treehut:testing
 
 test: check-version
 	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
@@ -19,10 +19,9 @@ test: check-version
 		$(TEST_TAG)
 .PHONY: test
 
-TAGFLAGS := -t ghcr.io/treehut/treehut \
-	-t ghcr.io/treehut/treehut:$(TAG) \
-	-t ghcr.io/treehut/treehut:$(VERSION) \
-	-t ghcr.io/treehut/treehut:$(VERSION)+tree.$(REV)
+TAGFLAGS := -t codeberg.org/treehut/treehut:latest \
+	-t codeberg.org/treehut/treehut:$(TAG) \
+	-t codeberg.org/treehut/treehut:$(VERSION).$(REV)
 
 pub: check-version
 	docker buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
