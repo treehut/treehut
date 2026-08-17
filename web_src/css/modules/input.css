@@ -16,7 +16,7 @@
   padding: 0.67857143em 1em;
   border: 1px solid var(--color-input-border);
   color: var(--color-input-text);
-  border-radius: 0.28571429rem;
+  border-radius: 6px;
   line-height: var(--line-height-default);
   text-align: start;
 }
@@ -54,7 +54,7 @@
   height: 100%;
   width: 2.67142857em;
   opacity: 0.5;
-  border-radius: 0 0.28571429rem 0.28571429rem 0;
+  border-radius: 0 6px 6px 0;
   pointer-events: none;
   padding: 4px;
 }
@@ -116,8 +116,8 @@
 }
 .ui.action.input > .button,
 .ui.action.input > .buttons > .button {
-  padding-top: 0.78571429em;
-  padding-bottom: 0.78571429em;
+  padding-top: 0.785em;
+  padding-bottom: 0.785em;
   margin: 0;
 }
 
@@ -130,7 +130,7 @@
 .ui.action.input > .dropdown:first-child,
 .ui.action.input > .button:first-child,
 .ui.action.input > .buttons:first-child > .button {
-  border-radius: 0.28571429rem 0 0 0.28571429rem;
+  border-radius: 6px 0 0 6px;
 }
 .ui.action.input > .dropdown:not(:first-child),
 .ui.action.input > .button:not(:first-child),
@@ -140,7 +140,7 @@
 .ui.action.input > .dropdown:last-child,
 .ui.action.input > .button:last-child,
 .ui.action.input > .buttons:last-child > .button {
-  border-radius: 0 0.28571429rem 0.28571429rem 0;
+  border-radius: 0 6px 6px 0;
 }
 
 .ui.fluid.input {
@@ -154,7 +154,7 @@
   font-size: 0.85714286em;
 }
 .ui.small.input {
-  font-size: 0.92857143em;
+  font-size: 0.93em;
 }
 
 .ui.action.input .ui.ui.button {
@@ -170,7 +170,8 @@
 .ui.action.input:not([class*="left action"]) > .ui.dropdown.selection:not(:focus) {
   border-inline-end: none;
 }
-.ui.action.input:not([class*="left action"]) > .ui.dropdown.selection:not(.active):hover {
+.ui.action.input:not([class*="left action"])
+  > .ui.dropdown.selection:not(.active):hover {
   border-color: var(--color-input-border);
 }
 .ui.action.input:not([class*="left action"]) .ui.dropdown.selection.upward.visible {
@@ -181,8 +182,12 @@
 .ui.action.input:not([class*="left action"]) > input:hover {
   border-inline-end: none;
 }
-.ui.action.input:not([class*="left action"]) > input:focus + .ui.dropdown.selection,
-.ui.action.input:not([class*="left action"]) > input:focus + .ui.dropdown.selection:hover,
+.ui.action.input:not([class*="left action"])
+  > input:focus
+  + .ui.dropdown.selection,
+.ui.action.input:not([class*="left action"])
+  > input:focus
+  + .ui.dropdown.selection:hover,
 .ui.action.input:not([class*="left action"]) > input:focus + .button,
 .ui.action.input:not([class*="left action"]) > input:focus + .button:hover,
 .ui.action.input:not([class*="left action"]) > input:focus + .icon + .button,

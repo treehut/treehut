@@ -112,7 +112,7 @@
 			</div>
 			{{end}}
 
-			<a class="item not-mobile tw-mx-0" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}" aria-label="{{ctx.Locale.Tr "notifications"}}">
+			<a class="ui button tiny not-mobile" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}" aria-label="{{ctx.Locale.Tr "notifications"}}">
 				<div class="notification-icon-relative">
 					{{svg "octicon-bell"}}
 					<span class="notification_count{{if not $notificationUnreadCount}} tw-hidden{{end}}">{{$notificationUnreadCount}}</span>
@@ -120,7 +120,7 @@
 			</a>
 
 			<details class="dropdown dir-rtl">
-				<summary data-tooltip-content="{{ctx.Locale.Tr "create_new"}}">
+				<summary class="ui button tiny" data-tooltip-content="{{ctx.Locale.Tr "create_new"}}">
 					{{svg "octicon-plus"}}
 					<span class="not-mobile dropdown-icon">{{svg "octicon-triangle-down"}}</span>
 					<span class="only-mobile">{{ctx.Locale.Tr "create_new"}}</span>
