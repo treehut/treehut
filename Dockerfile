@@ -1,3 +1,4 @@
+
 FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/xx AS xx
 
 FROM --platform=$BUILDPLATFORM data.forgejo.org/oci/golang:1.26-alpine3.23 AS build-env
@@ -114,3 +115,5 @@ COPY --from=build-env /go/src/forgejo.org/gitea /app/gitea/gitea
 RUN ln -s /app/gitea/gitea /app/gitea/forgejo-cli
 COPY --from=build-env /go/src/forgejo.org/environment-to-ini /usr/local/bin/environment-to-ini
 COPY --from=build-env /go/src/forgejo.org/contrib/autocompletion/bash_autocomplete /etc/profile.d/gitea_bash_autocomplete.sh
+
+LABEL org.opencontainers.image.source=https://github.com/treehut/treehut
