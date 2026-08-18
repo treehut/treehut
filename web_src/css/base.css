@@ -1,13 +1,8 @@
 :root {
   /* fonts */
-  --fonts-proportional:
-    -apple-system, "Segoe UI", system-ui, "Noto Sans", "Noto Sans Hebrew",
-    Roboto, "Helvetica Neue", Arial;
-  --fonts-monospace:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace, var(--fonts-emoji);
-  --fonts-emoji:
-    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla";
+  --fonts-proportional: -apple-system, "Segoe UI", system-ui, "Noto Sans", "Noto Sans Hebrew", Roboto, "Helvetica Neue", Arial;
+  --fonts-monospace: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, var(--fonts-emoji);
+  --fonts-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla";
   /* font weights - use between 400 and 600 for general purposes. Avoid 700 as it is perceived too bold */
   --font-weight-light: 300;
   --font-weight-normal: 400;
@@ -55,14 +50,10 @@
 }
 
 :root * {
-  --fonts-regular:
-    var(--fonts-override, var(--fonts-proportional)), "Liberation Sans",
-    sans-serif, var(--fonts-emoji);
+  --fonts-regular: var(--fonts-override, var(--fonts-proportional)), "Liberation Sans", sans-serif, var(--fonts-emoji);
 }
 
-*,
-::before,
-::after {
+*, ::before, ::after {
   /* these are needed for tailwind borders to work because we do not load tailwind's base
      https://github.com/tailwindlabs/tailwindcss/blob/master/src/css/preflight.css */
   border-width: 0;
@@ -70,8 +61,7 @@
   border-color: currentcolor;
 }
 
-html,
-body {
+html, body {
   height: 100%;
   font-size: 14px;
 }
@@ -243,13 +233,7 @@ h1.error-code {
   color: transparent;
   --error-code-color-1: #a2a2a2;
   --error-code-color-2: #797979;
-  --gradient: repeating-linear-gradient(
-    45deg,
-    var(--error-code-color-1),
-    var(--error-code-color-1) 10px,
-    var(--error-code-color-2) 10px,
-    var(--error-code-color-2) 20px
-  );
+  --gradient: repeating-linear-gradient(45deg, var(--error-code-color-1), var(--error-code-color-1) 10px, var(--error-code-color-2) 10px, var(--error-code-color-2) 20px);
   background: var(--gradient);
   background-clip: text;
 }
@@ -385,7 +369,7 @@ a.label,
 
 .inline-code-block {
   padding: 2px 4px;
-  border-radius: 0.24em;
+  border-radius: .24em;
   background-color: var(--color-label-bg);
 }
 
@@ -403,9 +387,7 @@ a.label,
 .ui.menu .item {
   color: var(--color-text);
   user-select: auto;
-  line-height: var(
-    --line-height-default
-  ); /* fomantic uses "1" which causes overflow problems because "1" doesn't consider the descent part */
+  line-height: var(--line-height-default); /* fomantic uses "1" which causes overflow problems because "1" doesn't consider the descent part */
 }
 
 .ui.menu .item > .svg {
@@ -436,8 +418,7 @@ a.label,
   color: var(--color-text-light-3);
 }
 
-.ui.menu .item::before,
-.ui.vertical.menu .item::before {
+.ui.menu .item::before, .ui.vertical.menu .item::before {
   background: var(--color-secondary);
 }
 
@@ -774,7 +755,7 @@ img.ui.avatar,
 }
 
 .ui .menu:not(.vertical) .item > .button.small {
-  font-size: 0.93rem;
+  font-size: 0.92857143rem;
 }
 
 .ui.menu .ui.dropdown.item .menu .item {
@@ -903,7 +884,7 @@ img.ui.avatar,
 }
 
 @media (max-width: 767.98px) {
-  .ui.pagination.menu .item:not(.active, .navigation),
+  .ui.pagination.menu .item:not(.active,.navigation),
   .ui.pagination.menu .item.navigation span.navigation_label {
     position: absolute;
     width: 1px;
@@ -966,40 +947,35 @@ img.ui.avatar,
 blockquote.attention-note {
   border-inline-start-color: var(--color-blue-dark-1);
 }
-strong.attention-note,
-svg.attention-note {
+strong.attention-note, svg.attention-note {
   color: var(--color-blue-dark-1);
 }
 
 blockquote.attention-tip {
   border-inline-start-color: var(--color-success-text);
 }
-strong.attention-tip,
-svg.attention-tip {
+strong.attention-tip, svg.attention-tip {
   color: var(--color-success-text);
 }
 
 blockquote.attention-important {
   border-inline-start-color: var(--color-violet-dark-1);
 }
-strong.attention-important,
-svg.attention-important {
+strong.attention-important, svg.attention-important {
   color: var(--color-violet-dark-1);
 }
 
 blockquote.attention-warning {
   border-inline-start-color: var(--color-warning-text);
 }
-strong.attention-warning,
-svg.attention-warning {
+strong.attention-warning, svg.attention-warning {
   color: var(--color-warning-text);
 }
 
 blockquote.attention-caution {
   border-inline-start-color: var(--color-red-dark-1);
 }
-strong.attention-caution,
-svg.attention-caution {
+strong.attention-caution, svg.attention-caution {
   color: var(--color-red-dark-1);
 }
 
@@ -1285,16 +1261,13 @@ table th[data-sortt-desc] .svg {
 }
 
 .ui.tabular.menu .item:hover,
-.ui.secondary.pointing.menu a.item:hover,
-.ui.secondary.pointing.menu a.item:focus {
+.ui.secondary.pointing.menu a.item:hover, .ui.secondary.pointing.menu a.item:focus {
   color: var(--color-text);
 }
 
 .ui.secondary.pointing.menu .active.item,
-.ui.secondary.pointing.menu .active.item:hover,
-.ui.secondary.pointing.menu .active.item:focus,
-.ui.secondary.pointing.menu .dropdown.item:hover,
-.ui.secondary.pointing.menu .dropdown.item:focus {
+.ui.secondary.pointing.menu .active.item:hover, .ui.secondary.pointing.menu .active.item:focus,
+.ui.secondary.pointing.menu .dropdown.item:hover, .ui.secondary.pointing.menu .dropdown.item:focus {
   color: var(--color-text-dark);
 }
 
@@ -1353,9 +1326,7 @@ table th[data-sortt-desc] .svg {
 }
 
 .ui.dropdown:not(.button) {
-  line-height: var(
-    --line-height-default
-  ); /* the dropdown doesn't have default line-height, use this to make the dropdown icon align with plain dropdown */
+  line-height: var(--line-height-default); /* the dropdown doesn't have default line-height, use this to make the dropdown icon align with plain dropdown */
 }
 
 /* dropdown has some kinds of icons:
@@ -1409,7 +1380,7 @@ table th[data-sortt-desc] .svg {
 .flex-text-inline {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: .25rem;
   vertical-align: middle;
   min-width: 0;
 }
@@ -1431,6 +1402,6 @@ table th[data-sortt-desc] .svg {
 .flex-text-block {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: .25rem;
   min-width: 0;
 }

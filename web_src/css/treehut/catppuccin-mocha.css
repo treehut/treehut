@@ -1,0 +1,39 @@
+/* Catppuccin Mocha palette for the vendored file-type icons (dark themes).
+ *
+ * The icons in web_src/svg/catppuccin/ are the `css-variables` variant from
+ * catppuccin/vscode-icons: they stroke with `var(--vscode-ctp-*)` rather than
+ * baked hex, which is why we can tint them from here instead of shipping one of
+ * the four pre-coloured flavours.
+ *
+ * The icons are line art — `fill: none` with a 1px stroke — so most of an icon
+ * is the neutral outline and only the distinguishing detail is chromatic.
+ *
+ * TWO OF THESE ARE DELIBERATELY NOT CATPPUCCIN. `text` and `overlay1` are the
+ * neutral outline colours and account for the large majority of all strokes
+ * (382 and 90 uses across the set), so they are mapped onto treehut's own
+ * foreground tokens. That way a file list reads as part of this theme rather
+ * than as a pasted-in icon pack, and only the accent details carry Catppuccin's
+ * hues. Swap them for the commented-out values below to get the authentic look.
+ */
+
+:root {
+  /* neutral outlines — treehut's, not Catppuccin's */
+  --vscode-ctp-text: var(--th-fg); /* authentic Mocha: #cdd6f4 */
+  --vscode-ctp-overlay1: var(--th-fg-subtle); /* authentic Mocha: #7f849c */
+
+  /* accents — authentic Catppuccin Mocha */
+  --vscode-ctp-rosewater: #f5e0dc;
+  --vscode-ctp-flamingo: #f2cdcd;
+  --vscode-ctp-pink: #f5c2e7;
+  --vscode-ctp-mauve: #cba6f7;
+  --vscode-ctp-red: #f38ba8;
+  --vscode-ctp-maroon: #eba0ac;
+  --vscode-ctp-peach: #fab387;
+  --vscode-ctp-yellow: #f9e2af;
+  --vscode-ctp-green: #a6e3a1;
+  --vscode-ctp-teal: #94e2d5;
+  --vscode-ctp-sky: #89dceb;
+  --vscode-ctp-sapphire: #74c7ec;
+  --vscode-ctp-blue: #89b4fa;
+  --vscode-ctp-lavender: #b4befe;
+}

@@ -1,0 +1,37 @@
+/* Treehut dark, adjusted for tritanopia (blue-yellow CVD).
+ *
+ * As with the deuteranopia variant this is only a hue override; see
+ * ./theme-treehut-dark-deuteranopia-protanopia.css for the layering rationale
+ * and the scoring method.
+ *
+ * ── how these hues were chosen ────────────────────────────────────────────
+ * Tritanopia affects the S-cone, so the red-green axis survives — red danger and
+ * green success are both fine here and are deliberately kept, which is why this
+ * variant still looks like Treehut. The failure is elsewhere: the base theme
+ * scores 0.009 because danger (25°) and attention (41°) are indistinguishable
+ * once blue is removed, and purple `done` collapses toward red.
+ *
+ *   base theme      danger 25  success 145  attention 41   done 298  → 0.009
+ *   this variant    danger 25  success 145  attention 100  done 300  → 0.201
+ *
+ * So attention moves from orange to olive-yellow, well clear of danger, and done
+ * moves a couple of degrees to buy separation from it.
+ *
+ * KNOWN LIMITATION: the accent stays green, and tritanopes confuse blue with
+ * green. Upstream's `--color-blue` and `--color-info-*` families are not bridged
+ * yet, so an accent-green link can still read close to an info-blue one. Fixing
+ * that needs those families tokenised first — see the status-families note in
+ * ../treehut/README.md.
+ */
+
+@import "./theme-treehut-dark.css";
+
+:root {
+  --th-danger-hue: 25deg;
+  --th-success-hue: 145deg;
+  --th-attention-hue: 100deg;
+  --th-done-hue: 300deg;
+
+  /* Accent left at the base theme's green on purpose: red-green vision is
+     intact under tritanopia, so there is nothing to fix. */
+}

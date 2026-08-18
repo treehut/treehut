@@ -10,19 +10,23 @@
 	<tbody>
 		<tr class="commit-list">
 			<td class="tw-overflow-hidden repo-files-table-latest-commit-cell repo-files-table-latest-commit-left" colspan="2">
-				<div class="tw-flex">
+				<div class="tw-flex tw-items-center tw-gap-4">
 					<div class="latest-commit">
 						{{template "repo/latest_commit" .}}
 					</div>
-					<div class="tw-flex tw-items-center tw-gap-4">
-						<span class="text grey right age">{{if .LatestCommit}}{{if .LatestCommit.Committer}}{{DateUtils.TimeSince .LatestCommit.Committer.When}}{{end}}{{end}}</span>
-						<a class="item muted {{if .PageIsCommits}}active{{end}}" href="{{.RepoLink}}/commits/{{.BranchNameSubURL}}">
-							{{svg "octicon-history"}} {{ctx.Locale.TrN .CommitsCount "repo.n_commit_one" "repo.n_commit_few" (printf "<b>%s</b>" (ctx.Locale.PrettyNumber .CommitsCount) | TrustHTML)}}
-						</a>
-					</div>
+					{{/* .latest-commit is flex:1, so the timestamp is pushed to this cell's right edge. */}}
+					<span class="text grey commit-age">{{if .LatestCommit}}{{if .LatestCommit.Committer}}{{DateUtils.TimeSince .LatestCommit.Committer.When}}{{end}}{{end}}</span>
 				</div>
 			</td>
-			<td class="text grey right age repo-files-table-latest-commit-cell tw-py-0">{{if .LatestCommit}}{{if .LatestCommit.Committer}}{{DateUtils.TimeSince .LatestCommit.Committer.When}}{{end}}{{end}}</td>
+			{{/* Commit history sits furthest right, past the timestamp. Keeping the
+			     `age` class preserves the mobile rule at repo.css:2546 that pushes
+			     this cell to the end of the flex row. */}}
+			<td class="right age repo-files-table-latest-commit-cell tw-py-0">
+				<a class="muted flex-text-inline commit-history-link" href="{{.RepoLink}}/commits/{{.BranchNameSubURL}}">
+					{{svg "octicon-history"}}
+					{{ctx.Locale.TrPluralString .CommitsCount "counters.n_commits" (printf "<b>%s</b>" (ctx.Locale.PrettyNumber .CommitsCount) | TrustHTML)}}
+				</a>
+			</td>
 		</tr>
 		{{if .HasParentPath}}
 			<tr class="has-parent">
@@ -38,7 +42,8 @@
 						{{if $entry.IsSubmodule}}
 							{{$submodule := $item.Submodule}}
 							{{$refURL := $submodule.ResolveUpstreamURL $.Repository.HTMLURL}}
-							{{$icon := (svg "octicon-file-submodule" 16 "tw-mr-2")}}
+							{{/* treehut: FileIcon resolves per-filetype Catppuccin icons; see modules/base/catppuccin.go */}}
+							{{$icon := (svg (FileIcon $entry) 16 "tw-mr-2")}}
 							{{if $refURL}}
 								<a class="muted" href="{{$refURL}}">{{$icon}}{{$entry.Name}}</a><span class="at">@</span><a href="{{$refURL}}/commit/{{PathEscape $submodule.Commit.String}}">{{ShortSha $submodule.Commit.String}}</a>
 							{{else}}
@@ -50,7 +55,7 @@
 								<a class="muted" href="{{$.TreeLink}}/{{PathEscapeSegments $subJumpablePathName}}" title="{{$subJumpablePathName}}">
 									{{$subJumpablePathFields := StringUtils.Split $subJumpablePathName "/"}}
 									{{$subJumpablePathFieldLast := (Eval (len $subJumpablePathFields) "-" 1)}}
-									{{svg "octicon-file-directory-fill" 16 "tw-mr-2" -}}
+									{{svg (FileIcon $entry) 16 "tw-mr-2" -}}
 									{{if eq $subJumpablePathFieldLast 0 -}}
 										{{$subJumpablePathName}}
 									{{else -}}
@@ -59,7 +64,7 @@
 									{{end}}
 								</a>
 							{{else}}
-								<a class="muted" href="{{$.TreeLink}}/{{PathEscapeSegments $entry.Name}}" title="{{$entry.Name}}">{{svg (printf "octicon-%s" (EntryIcon $entry)) 16 "tw-mr-2"}}{{$entry.Name}}</a>
+								<a class="muted" href="{{$.TreeLink}}/{{PathEscapeSegments $entry.Name}}" title="{{$entry.Name}}">{{svg (FileIcon $entry) 16 "tw-mr-2"}}{{$entry.Name}}</a>
 							{{end}}
 						{{end}}
 					</span>

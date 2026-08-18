@@ -1,0 +1,43 @@
+/* Treehut dark, adjusted for deuteranopia and protanopia (red-green CVD).
+ *
+ * This is a HUE OVERRIDE AND NOTHING ELSE. Because every status colour in the
+ * fork — text, icons, buttons, labels, badges and diff backgrounds — is composed
+ * from these four hues in ../treehut/semantic.css, changing them here re-colours
+ * the entire interface consistently. Contrast, spacing and layout are inherited
+ * unchanged from the base theme.
+ *
+ * That is the difference from forgejo's colourblind themes, which override the
+ * nine `--color-diff-*` tokens only and therefore recolour code diffs while
+ * leaving the rest of the UI red-green.
+ *
+ * ── how these hues were chosen ────────────────────────────────────────────
+ * Hue sets were scored by simulating dichromacy (Viénot, Brettel & Mollon 1999)
+ * and measuring the worst-case perceptual distance (ΔE in OKLab) between any two
+ * status colours after simulation. Higher is better; the base theme scores 0.010
+ * under deuteranopia, i.e. danger and success are essentially the same colour.
+ *
+ *   base theme      danger 25  success 145  attention 41  done 298  → 0.010
+ *   this variant    danger 20  success 250  attention 55  done 185  → 0.082
+ *
+ * Note that the obvious "conventional" fixes do NOT work here. Keeping danger
+ * red and moving attention to yellow scores 0.012 — no better than the base —
+ * because red and yellow collapse together under deuteranopia. With four status
+ * hues to separate, success has to leave the red-yellow half of the wheel
+ * entirely, so it becomes blue: the same choice GitHub makes in its colourblind
+ * mode, and it takes the accent with it.
+ *
+ * Re-verify with tools/ if you change any hue; the numbers are not intuitive.
+ */
+
+@import "./theme-treehut-dark.css";
+
+:root {
+  --th-danger-hue: 20deg;
+  --th-success-hue: 250deg;
+  --th-attention-hue: 55deg;
+  --th-done-hue: 185deg;
+
+  /* The accent follows success so the brand reads as one colour rather than
+     competing with the success state. */
+  --th-accent-hue: 250deg;
+}

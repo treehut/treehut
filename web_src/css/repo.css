@@ -274,10 +274,7 @@ td .commit-summary {
 .repository.file.list #repo-files-table tbody .svg.octicon-cross-reference,
 .repository.file.list #repo-files-table tbody .svg.octicon-file,
 .repository.file.list #repo-files-table tbody .svg.octicon-file-symlink-file,
-.repository.file.list
-  #repo-files-table
-  tbody
-  .svg.octicon-file-directory-symlink {
+.repository.file.list #repo-files-table tbody .svg.octicon-file-directory-symlink {
   color: var(--color-secondary-dark-7);
 }
 
@@ -395,38 +392,22 @@ td .commit-summary {
   font-size: 0.5em;
 }
 
-.repository.file.list
-  .non-diff-file-content
-  .header
-  .file-actions
-  .btn-octicon {
+.repository.file.list .non-diff-file-content .header .file-actions .btn-octicon {
   line-height: var(--line-height-default);
-  padding: 6px;
+  padding: 8px;
   vertical-align: middle;
   color: var(--color-text);
 }
 
-.repository.file.list
-  .non-diff-file-content
-  .header
-  .file-actions
-  .btn-octicon:hover {
+.repository.file.list .non-diff-file-content .header .file-actions .btn-octicon:hover {
   color: var(--color-primary);
 }
 
-.repository.file.list
-  .non-diff-file-content
-  .header
-  .file-actions
-  .btn-octicon-danger:hover {
+.repository.file.list .non-diff-file-content .header .file-actions .btn-octicon-danger:hover {
   color: var(--color-red);
 }
 
-.repository.file.list
-  .non-diff-file-content
-  .header
-  .file-actions
-  .btn-octicon.disabled {
+.repository.file.list .non-diff-file-content .header .file-actions .btn-octicon.disabled {
   color: inherit;
   opacity: var(--opacity-disabled);
   cursor: default;
@@ -573,11 +554,7 @@ citation-information .tab:not(.active) {
   margin-top: -8px;
 }
 
-.repository.file.editor
-  .commit-form-wrapper
-  .commit-form
-  .quick-pull-choice
-  .branch-name {
+.repository.file.editor .commit-form-wrapper .commit-form .quick-pull-choice .branch-name {
   display: inline-block;
   padding: 2px 4px;
   font: 12px var(--fonts-monospace);
@@ -587,30 +564,17 @@ citation-information .tab:not(.active) {
   margin: 0 2px;
 }
 
-.repository.file.editor
-  .commit-form-wrapper
-  .commit-form
-  .quick-pull-choice
-  .new-branch-name-input {
+.repository.file.editor .commit-form-wrapper .commit-form .quick-pull-choice .new-branch-name-input {
   position: relative;
   margin-inline-start: 25px;
 }
 
-.repository.file.editor
-  .commit-form-wrapper
-  .commit-form
-  .quick-pull-choice
-  .new-branch-name-input
-  input {
+.repository.file.editor .commit-form-wrapper .commit-form .quick-pull-choice .new-branch-name-input input {
   width: 240px !important;
   padding-inline-start: 26px !important;
 }
 
-.repository.file.editor
-  .commit-form-wrapper
-  .commit-form
-  .quick-pull-choice
-  .octicon-git-branch {
+.repository.file.editor .commit-form-wrapper .commit-form .quick-pull-choice .octicon-git-branch {
   position: absolute;
   top: 9px;
   inset-inline-start: 10px;
@@ -684,7 +648,7 @@ citation-information .tab:not(.active) {
   }
   .issue-title .button-row {
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: .5rem;
     justify-content: space-between;
   }
   .comment.form .issue-content-left .avatar {
@@ -729,7 +693,7 @@ citation-information .tab:not(.active) {
 
 .repository.view.issue .issue-title .ui.input input {
   font-size: 1.5em;
-  padding: 2px 0.5rem;
+  padding: 2px .5rem;
 }
 
 .repository.view.issue .issue-title .index {
@@ -812,8 +776,7 @@ citation-information .tab:not(.active) {
   padding-inline-start: 16px;
 }
 
-.repository.view.issue .comment-list .timeline::before {
-  /* ciara */
+.repository.view.issue .comment-list .timeline::before { /* ciara */
   display: block;
   content: "";
   position: absolute;
@@ -888,11 +851,7 @@ citation-information .tab:not(.active) {
   padding: 3px;
 }
 
-.repository.view.issue
-  .comment-list
-  .timeline-item
-  .badge
-  .svg.octicon-comment {
+.repository.view.issue .comment-list .timeline-item .badge .svg.octicon-comment {
   margin-top: 2px;
 }
 
@@ -922,12 +881,7 @@ citation-information .tab:not(.active) {
   padding: 12px;
 }
 
-.repository.view.issue
-  .comment-list
-  .timeline-item
-  .aggregated-actions
-  .badge
-  .svg {
+.repository.view.issue .comment-list .timeline-item .aggregated-actions .badge .svg {
   width: 20px;
   height: 20px;
 }
@@ -957,12 +911,8 @@ citation-information .tab:not(.active) {
   }
 }
 
-@media (max-width: 767.96px) {
-  .repository.view.issue
-    .comment-list
-    .timeline-item
-    .forced-push
-    span.compare {
+@media (max-width: 767.98px) {
+  .repository.view.issue .comment-list .timeline-item .forced-push span.compare {
     margin-inline-start: 1rem;
   }
 }
@@ -1095,11 +1045,7 @@ citation-information .tab:not(.active) {
   align-items: center;
 }
 
-.repository.view.issue
-  .comment-list
-  .code-comment
-  .header
-  .comment-header-left {
+.repository.view.issue .comment-list .code-comment .header .comment-header-left {
   gap: 0.5rem;
 }
 
@@ -1149,39 +1095,24 @@ citation-information .tab:not(.active) {
   background: transparent !important;
 }
 
-.repository.view.issue
-  .comment-list
-  .comment-code-cloud
-  .segment.reactions
-  .ui.label {
+.repository.view.issue .comment-list .comment-code-cloud .segment.reactions .ui.label {
   border: 1px solid;
-  padding: 5px 6px !important;
+  padding: 5px 8px !important;
   border-radius: var(--border-radius);
   border-color: var(--color-secondary-dark-1) !important;
 }
 
-.repository.view.issue
-  .comment-list
-  .comment-code-cloud
-  .segment.reactions
-  .ui.label.basic.primary {
+.repository.view.issue .comment-list .comment-code-cloud .segment.reactions .ui.label.basic.primary {
   background-color: var(--color-reaction-active-bg) !important;
   border-color: var(--color-primary-alpha-80) !important;
 }
 
-.repository.view.issue
-  .comment-list
-  .comment-code-cloud
-  .segment.reactions
-  .ui.label.basic.primary:hover {
+.repository.view.issue .comment-list .comment-code-cloud .segment.reactions .ui.label.basic.primary:hover {
   background-color: var(--color-reaction-hover-bg) !important;
   border-color: var(--color-primary-alpha-80) !important;
 }
 
-.repository.view.issue
-  .comment-list
-  .comment-code-cloud
-  button.comment-form-reply {
+.repository.view.issue .comment-list .comment-code-cloud button.comment-form-reply {
   margin: 0;
 }
 
@@ -1404,10 +1335,10 @@ citation-information .tab:not(.active) {
 
 /* the border css competes with .markup where all tables have outer border which would add a double
    border here, remove only the outer borders from this table */
-.repository .data-table tr:first-child :is(td, th) {
+.repository .data-table tr:first-child :is(td,th) {
   border-top: none !important;
 }
-.repository .data-table tr:last-child :is(td, th) {
+.repository .data-table tr:last-child :is(td,th) {
   border-bottom: none !important;
 }
 .repository .data-table tr :is(td,th):first-child {
@@ -1719,7 +1650,7 @@ details.repo-search-result summary::marker {
   padding: 5px 10px;
   font-size: 1.2em;
   line-height: 1.4;
-  flex: 1;
+  flex: 1
 }
 
 .empty-placeholder {
@@ -1935,8 +1866,15 @@ details.repo-search-result summary::marker {
 
 .repository .repository-summary .repository-menu {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   padding: 0;
+}
+
+@media (max-width: 767.98px) {
+  .repository .repository-summary .repository-menu {
+    grid-template-rows: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .repository .repository-summary .segment.sub-menu {
@@ -2238,7 +2176,7 @@ details.repo-search-result summary::marker {
 
 .repo-button-row .button strong {
   /* Workaround where 'overflow: hidden' is clipping the y-axis, force a small amount of extra padding in the y-axis. */
-  padding: 0.1em 0;
+  padding: .1em 0;
 }
 
 .repo-button-row input {
@@ -2471,8 +2409,8 @@ tbody.commit-list {
 
 /* fomantic's last-child selector does not work with hidden last child */
 .ui.buttons .unescape-button {
-  border-start-end-radius: 0.28571429rem;
-  border-end-end-radius: 0.28571429rem;
+  border-start-end-radius: var(--border-radius);
+  border-end-end-radius: var(--border-radius);
 }
 
 .webhook-info {
@@ -2637,11 +2575,7 @@ tbody.commit-list {
   /* Don't show the general avatar, we show the inline avatar on mobile.
    * And don't show the role labels, there's no place for that. */
   .repository.view.issue .comment-list .timeline .timeline-avatar,
-  .repository.view.issue
-    .comment-list
-    .timeline
-    .comment-header-right
-    .role-label {
+  .repository.view.issue .comment-list .timeline .comment-header-right .role-label {
     display: none;
   }
   .commit-header-row .ui.horizontal.list {
@@ -2779,14 +2713,14 @@ tbody.commit-list {
 }
 
 /* Branch tag selector - TODO: Merge this into the same selector on repo page */
-.repository .issue-content .issue-content-right .ui.grid .column.row {
+.repository .issue-content .issue-content-right  .ui.grid .column.row {
   padding: 10px;
   padding-bottom: 0;
 }
-.repository .issue-content .issue-content-right .ui.grid .column.muted {
+.repository .issue-content .issue-content-right  .ui.grid .column.muted {
   padding: 0;
 }
-.repository .issue-content .issue-content-right .ui.grid .column.muted .text {
+.repository .issue-content .issue-content-right  .ui.grid .column.muted .text {
   display: inline-block;
   padding: 10px;
   width: 100%;
@@ -2794,18 +2728,13 @@ tbody.commit-list {
   border: 1px solid transparent;
   border-bottom: none;
 }
-.repository
-  .issue-content
-  .issue-content-right
-  .ui.grid
-  .column.muted
-  .text.black {
+.repository .issue-content .issue-content-right .ui.grid .column.muted .text.black {
   border-color: var(--color-secondary);
   background: var(--color-menu);
   border-top-left-radius: var(--border-radius); /* stylelint-disable-line logical-css/require-logical-properties */
   border-top-right-radius: var(--border-radius); /* stylelint-disable-line logical-css/require-logical-properties */
 }
-.repository .issue-content .issue-content-right .ui.dropdown .scrolling.menu {
+.repository .issue-content .issue-content-right .ui.dropdown  .scrolling.menu {
   border-top: none;
 }
 .repository .issue-content .issue-content-right .branch-tag-divider {
