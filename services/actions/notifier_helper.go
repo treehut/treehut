@@ -382,6 +382,11 @@ func handleWorkflows(
 			TriggerEvent:      dwf.TriggerEvent.Name,
 			Status:            actions_model.StatusWaiting,
 		}
+		workflowSourceCommit := commit
+		if dwf.SourceCommit != nil && dwf.SourceCommit.ID.String() != commit.ID.String() {
+			run.WorkflowSourceCommit = optional.Some(dwf.SourceCommit.ID.String())
+			workflowSourceCommit = dwf.SourceCommit
+		}
 
 		if !actions_module.IsDefaultBranchWorkflow(input.Event) {
 			if err := setRunTrustForPullRequest(ctx, run, input.PullRequest, dwf.NeedApproval); err != nil {
@@ -433,7 +438,7 @@ func handleWorkflows(
 				// `IncompleteMatrix` tagging for any jobs that require the inputs of other jobs.
 				jobparser.WithJobOutputs(map[string]map[string]string{}),
 				jobparser.SupportIncompleteRunsOn(),
-				jobparser.ExpandLocalReusableWorkflows(expandLocalReusableWorkflows(commit)),
+				jobparser.ExpandLocalReusableWorkflows(expandLocalReusableWorkflows(workflowSourceCommit)),
 				jobparser.ExpandInstanceReusableWorkflows(expandInstanceReusableWorkflows(ctx)),
 				jobparser.WithGitContext(generateGiteaContextForRun(run)),
 			)

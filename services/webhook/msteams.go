@@ -243,6 +243,7 @@ func makeBadgeRow(badgeText, badgeIcon, badgeStyle string, refInfo ...string) MS
 			Size:     "Small",
 			IsSubtle: new(true),
 			Spacing:  "None",
+			Wrap:     new(true),
 		})
 	}
 
@@ -396,6 +397,7 @@ func (m msteamsConvertor) Push(p *api.PushPayload) (MSTeamsPayload, error) {
 							Text:     strings.TrimRight(commit.Message, "\r\n"),
 							Size:     "Small",
 							MaxLines: 3,
+							Wrap:     new(true),
 						},
 					},
 				},
@@ -489,7 +491,7 @@ func (m msteamsConvertor) Push(p *api.PushPayload) (MSTeamsPayload, error) {
 							Items: []any{
 								MSTeamsTextBlock{
 									Type: "TextBlock",
-									Text: "Collapse",
+									Text: "*Collapse*",
 									Size: "Small",
 								},
 							},
@@ -1032,6 +1034,7 @@ func createMSTeamsPayload(r *api.Repository, s *api.User, actionTitle string, bo
 				Weight:   "Bolder",
 				Size:     "Small",
 				IsSubtle: new(true),
+				Wrap:     new(true),
 			},
 		},
 	}
@@ -1055,6 +1058,7 @@ func createMSTeamsPayload(r *api.Repository, s *api.User, actionTitle string, bo
 				Type:  "TextBlock",
 				Style: "heading",
 				Text:  actionTitle,
+				Wrap:  new(true),
 			},
 		},
 	}

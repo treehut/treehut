@@ -125,3 +125,49 @@ func TestRepository_RecalculateAccesses2(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, has)
 }
+
+func TestRepository_RecalculateAccessRestrictedUser(t *testing.T) {
+	defer unittest.OverrideFixtures("models/perm/access/TestRepository_RecalculateAccessRestrictedUser")()
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	// User 29 is a restricted user in the fixture data that will be used in this test:
+	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 29})
+	assert.True(t, user.IsRestricted)
+
+	// user5/repo4, public repo; user29 is a write collaborator on it
+	repo4 := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 4})
+
+	// org17/big_test_private_4, private repo in org17, team.id=9 (reivew_team) gives read access
+	repo24 := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 24})
+
+	// user10/repo8, public repo; user29 is a read collaborator on it.  Public repos typically don't get AccessModeRead
+	// entries in the Access table because they're already public, but, for restricted users they must be present.
+	repo8 := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 8})
+
+	assertAccess := func(t *testing.T) {
+		access4 := unittest.AssertExistsAndLoadBean(t, &access_model.Access{UserID: user.ID, RepoID: repo4.ID})
+		assert.Equal(t, perm_model.AccessModeWrite, access4.Mode)
+		access24 := unittest.AssertExistsAndLoadBean(t, &access_model.Access{UserID: user.ID, RepoID: repo24.ID})
+		assert.Equal(t, perm_model.AccessModeRead, access24.Mode)
+		access8 := unittest.AssertExistsAndLoadBean(t, &access_model.Access{UserID: user.ID, RepoID: repo8.ID})
+		assert.Equal(t, perm_model.AccessModeRead, access8.Mode)
+	}
+
+	_, err := db.GetEngine(t.Context()).Delete(&access_model.Access{UserID: user.ID})
+	require.NoError(t, err)
+
+	// Recalculate via RecalculateAccesses:
+	require.NoError(t, access_model.RecalculateAccesses(t.Context(), repo4))
+	require.NoError(t, access_model.RecalculateAccesses(t.Context(), repo24))
+	require.NoError(t, access_model.RecalculateAccesses(t.Context(), repo8))
+	assertAccess(t)
+
+	_, err = db.GetEngine(t.Context()).Delete(&access_model.Access{UserID: user.ID})
+	require.NoError(t, err)
+
+	// Recalculate via RecalculateUserAccess:
+	require.NoError(t, access_model.RecalculateUserAccess(t.Context(), repo4, user.ID))
+	require.NoError(t, access_model.RecalculateUserAccess(t.Context(), repo24, user.ID))
+	require.NoError(t, access_model.RecalculateUserAccess(t.Context(), repo8, user.ID))
+	assertAccess(t)
+}

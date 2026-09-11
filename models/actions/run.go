@@ -18,6 +18,7 @@ import (
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/json"
 	"forgejo.org/modules/log"
+	"forgejo.org/modules/optional"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/util"
@@ -41,25 +42,26 @@ const (
 
 // ActionRun represents a run of a workflow file
 type ActionRun struct {
-	ID                int64
-	Title             string
-	RepoID            int64                  `xorm:"index unique(repo_index) index(concurrency)"`
-	Repo              *repo_model.Repository `xorm:"-"`
-	OwnerID           int64                  `xorm:"index"`
-	WorkflowID        string                 `xorm:"index"`                                 // the name of workflow file
-	WorkflowDirectory string                 `xorm:"NOT NULL DEFAULT '.forgejo/workflows'"` // directory where the workflow file resides, for example, .forgejo/workflows
-	Index             int64                  `xorm:"index unique(repo_index)"`              // a unique number for each run of a repository
-	TriggerUserID     int64                  `xorm:"index"`
-	TriggerUser       *user_model.User       `xorm:"-"`
-	ScheduleID        int64
-	Ref               string `xorm:"index"` // the commit/tag/… that caused the run
-	IsRefDeleted      bool   `xorm:"-"`
-	CommitSHA         string
-	Event             webhook_module.HookEventType // the webhook event that causes the workflow to run
-	EventPayload      string                       `xorm:"LONGTEXT"`
-	TriggerEvent      string                       // the trigger event defined in the `on` configuration of the triggered workflow
-	Status            Status                       `xorm:"index"`
-	Version           int                          `xorm:"version default 0"` // Status could be updated concomitantly, so an optimistic lock is needed
+	ID                   int64
+	Title                string
+	RepoID               int64                  `xorm:"index unique(repo_index) index(concurrency)"`
+	Repo                 *repo_model.Repository `xorm:"-"`
+	OwnerID              int64                  `xorm:"index"`
+	WorkflowID           string                 `xorm:"index"`                                 // the name of workflow file
+	WorkflowDirectory    string                 `xorm:"NOT NULL DEFAULT '.forgejo/workflows'"` // directory where the workflow file resides, for example, .forgejo/workflows
+	Index                int64                  `xorm:"index unique(repo_index)"`              // a unique number for each run of a repository
+	TriggerUserID        int64                  `xorm:"index"`
+	TriggerUser          *user_model.User       `xorm:"-"`
+	ScheduleID           int64
+	Ref                  string `xorm:"index"` // the commit/tag/… that caused the run
+	IsRefDeleted         bool   `xorm:"-"`
+	CommitSHA            string
+	WorkflowSourceCommit optional.Option[string]      // typically NULL indicating equality w/ CommitSHA, except for `pull_request_target` where it indicates the base branch's commit at time of execution
+	Event                webhook_module.HookEventType // the webhook event that causes the workflow to run
+	EventPayload         string                       `xorm:"LONGTEXT"`
+	TriggerEvent         string                       // the trigger event defined in the `on` configuration of the triggered workflow
+	Status               Status                       `xorm:"index"`
+	Version              int                          `xorm:"version default 0"` // Status could be updated concomitantly, so an optimistic lock is needed
 	// Started and Stopped is used for recording last run time, if rerun happened, they will be reset to 0
 	Started timeutil.TimeStamp
 	Stopped timeutil.TimeStamp
@@ -293,6 +295,16 @@ func (run *ActionRun) PrepareNextAttempt() error {
 	run.Prioritize = false
 
 	return nil
+}
+
+// Return the commit, in `RepoID`, which should be used for sourcing workflows for this run.  Typically this is the same
+// as CommitSHA, but in workflows which are executed by the `pull_request_target` trigger this will be a commit from the
+// pull request target, in other words the base branch of the PR, not the head.
+func (run *ActionRun) GetWorkflowSourceCommit() string {
+	if hasStoredSourceCommit, storedSourceCommit := run.WorkflowSourceCommit.Get(); hasStoredSourceCommit {
+		return storedSourceCommit
+	}
+	return run.CommitSHA
 }
 
 func actionsCountOpenCacheKey(repoID int64) string {

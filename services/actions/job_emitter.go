@@ -312,7 +312,7 @@ func prepareJobForEmitting(ctx context.Context, blockedJob *actions_model.Action
 
 	// Re-parse the blocked job, providing all the other completed jobs' outputs, to turn this incomplete job into
 	// one-or-more new jobs:
-	expandLocalReusableWorkflow, expandCleanup := lazyRepoExpandLocalReusableWorkflow(ctx, blockedJob.RepoID, blockedJob.CommitSHA)
+	expandLocalReusableWorkflow, expandCleanup := lazyRepoExpandLocalReusableWorkflow(ctx, blockedJob.RepoID, blockedJob.Run.GetWorkflowSourceCommit())
 	defer expandCleanup()
 	newJobWorkflows, err := jobparser.Parse(blockedJob.WorkflowPayload, false,
 		jobparser.WithJobOutputs(jobOutputs),

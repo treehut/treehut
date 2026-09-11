@@ -88,6 +88,7 @@ func TestUpdateTeam2(t *testing.T) {
 }
 
 func TestDeleteTeam(t *testing.T) {
+	defer unittest.OverrideFixtures("models/fixtures/TestDeleteTeam")()
 	require.NoError(t, unittest.PrepareTestDatabase())
 
 	team := unittest.AssertExistsAndLoadBean(t, &organization.Team{ID: 2})
@@ -102,6 +103,18 @@ func TestDeleteTeam(t *testing.T) {
 	accessMode, err := access_model.AccessLevel(db.DefaultContext, user, repo)
 	require.NoError(t, err)
 	assert.Less(t, accessMode, perm.AccessModeWrite)
+
+	// Delete a team that is set `includes_all_repositories: true`, which should still cleanup any access that was
+	// granted by this team.  First assert that the permission we're expecting to cleanup exists:
+	user = unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 33})
+	repo = unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 61})
+	unittest.AssertExistsAndLoadBean(t, &access_model.Access{UserID: user.ID, RepoID: repo.ID, Mode: perm.AccessModeWrite})
+	// Delete team 100, which includes all repos:
+	team = unittest.AssertExistsAndLoadBean(t, &organization.Team{ID: 100})
+	require.NoError(t, DeleteTeam(db.DefaultContext, team))
+	// Validate TeamRepo & Access are removed:
+	unittest.AssertNotExistsBean(t, &organization.TeamRepo{TeamID: team.ID})
+	unittest.AssertNotExistsBean(t, &access_model.Access{UserID: user.ID, RepoID: repo.ID, Mode: perm.AccessModeWrite})
 }
 
 func TestAddTeamMember(t *testing.T) {

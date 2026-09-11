@@ -1,0 +1,10 @@
+-
+  id: 100
+  org_id: 41
+  lower_name: team2
+  name: Team2
+  authorize: 2 # write
+  num_repos: 1
+  num_members: 2
+  includes_all_repositories: true
+  can_create_org_repo: false

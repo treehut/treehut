@@ -23,21 +23,27 @@ import (
 	"forgejo.org/services/convert"
 )
 
-func checkReleaseMatchRepo(ctx *context.APIContext, releaseID int64) bool {
+func checkReleaseAccess(ctx *context.APIContext, releaseID int64) *repo_model.Release {
 	release, err := repo_model.GetReleaseByID(ctx, releaseID)
 	if err != nil {
 		if repo_model.IsErrReleaseNotExist(err) {
 			ctx.NotFound()
-			return false
+			return nil
 		}
 		ctx.Error(http.StatusInternalServerError, "GetReleaseByID", err)
-		return false
+		return nil
 	}
 	if release.RepoID != ctx.Repo().Repository.ID {
 		ctx.NotFound()
-		return false
+		return nil
 	}
-	return true
+	// Draft releases and their attachments must not be visible to users
+	// without write permission on the releases unit, mirroring GetRelease.
+	if release.IsDraft && !ctx.Repo().CanWrite(unit_model.TypeReleases) {
+		ctx.NotFound()
+		return nil
+	}
+	return release
 }
 
 // GetReleaseAttachment gets a single attachment of the release
@@ -77,7 +83,7 @@ func GetReleaseAttachment(ctx *context.APIContext) {
 	//     "$ref": "#/responses/notFound"
 
 	releaseID := ctx.ParamsInt64(":id")
-	if !checkReleaseMatchRepo(ctx, releaseID) {
+	if checkReleaseAccess(ctx, releaseID) == nil {
 		return
 	}
 
@@ -131,21 +137,8 @@ func ListReleaseAttachments(ctx *context.APIContext) {
 	//     "$ref": "#/responses/notFound"
 
 	releaseID := ctx.ParamsInt64(":id")
-	release, err := repo_model.GetReleaseByID(ctx, releaseID)
-	if err != nil {
-		if repo_model.IsErrReleaseNotExist(err) {
-			ctx.NotFound()
-			return
-		}
-		ctx.Error(http.StatusInternalServerError, "GetReleaseByID", err)
-		return
-	}
-	if release.RepoID != ctx.Repo().Repository.ID {
-		ctx.NotFound()
-		return
-	}
-	if release.IsDraft && !ctx.Repo().CanWrite(unit_model.TypeReleases) {
-		ctx.NotFound()
+	release := checkReleaseAccess(ctx, releaseID)
+	if release == nil {
 		return
 	}
 	if err := release.LoadAttributes(ctx); err != nil {
@@ -217,7 +210,7 @@ func CreateReleaseAttachment(ctx *context.APIContext) {
 
 	// Check if release exists an load release
 	releaseID := ctx.ParamsInt64(":id")
-	if !checkReleaseMatchRepo(ctx, releaseID) {
+	if checkReleaseAccess(ctx, releaseID) == nil {
 		return
 	}
 
@@ -362,7 +355,7 @@ func EditReleaseAttachment(ctx *context.APIContext) {
 
 	// Check if release exists an load release
 	releaseID := ctx.ParamsInt64(":id")
-	if !checkReleaseMatchRepo(ctx, releaseID) {
+	if checkReleaseAccess(ctx, releaseID) == nil {
 		return
 	}
 
@@ -443,7 +436,7 @@ func DeleteReleaseAttachment(ctx *context.APIContext) {
 
 	// Check if release exists an load release
 	releaseID := ctx.ParamsInt64(":id")
-	if !checkReleaseMatchRepo(ctx, releaseID) {
+	if checkReleaseAccess(ctx, releaseID) == nil {
 		return
 	}
 

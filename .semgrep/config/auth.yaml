@@ -19,7 +19,7 @@ rules:
       include:
         - "/routers/api/**/*.go"
 
-  - id: forgejo-api-use-resource-SearchRepoOptions
+  - id: forgejo-api-use-resource-SearchTeamRepoOptions
     patterns:
       - pattern: |
           organization.SearchTeamRepoOptions{...}

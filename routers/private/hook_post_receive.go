@@ -45,11 +45,7 @@ func HookPostReceive(ctx *app_context.PrivateContext) {
 	repoName := ctx.Params(":repo")
 
 	// defer getting the repository at this point - as we should only retrieve it if we're going to call update
-	var (
-		repo    *repo_model.Repository
-		gitRepo *git.Repository
-	)
-	defer gitRepo.Close() // it's safe to call Close on a nil pointer
+	var repo *repo_model.Repository
 
 	updates := make([]*repo_module.PushUpdateOptions, 0, len(opts.OldCommitIDs))
 	wasEmpty := false
@@ -121,8 +117,7 @@ func HookPostReceive(ctx *app_context.PrivateContext) {
 			}
 		}
 		if len(branchesToSync) > 0 {
-			var err error
-			gitRepo, err = gitrepo.OpenRepository(ctx, repo)
+			gitRepo, err := gitrepo.OpenRepository(ctx, repo)
 			if err != nil {
 				log.Error("Failed to open repository: %s/%s Error: %v", ownerName, repoName, err)
 				ctx.JSON(http.StatusInternalServerError, private.HookPostReceiveResult{
@@ -140,7 +135,9 @@ func HookPostReceive(ctx *app_context.PrivateContext) {
 				commitIDs = append(commitIDs, update.NewCommitID)
 			}
 
-			if err := repo_service.SyncBranchesToDB(ctx, repo.ID, opts.UserID, branchNames, commitIDs, gitRepo.GetCommit); err != nil {
+			err = repo_service.SyncBranchesToDB(ctx, repo.ID, opts.UserID, branchNames, commitIDs, gitRepo.GetCommit)
+			gitRepo.Close()
+			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, private.HookPostReceiveResult{
 					Err: fmt.Sprintf("Failed to sync branch to DB in repository: %s/%s Error: %v", ownerName, repoName, err),
 				})

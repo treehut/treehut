@@ -99,13 +99,7 @@ func doAPIEditRepository(ctx APITestContext, editRepoOption *api.EditRepoOption,
 
 func doAPIAddCollaborator(ctx APITestContext, username string, mode perm.AccessMode) func(*testing.T) {
 	return func(t *testing.T) {
-		permission := "read"
-
-		if mode == perm.AccessModeAdmin {
-			permission = "admin"
-		} else if mode > perm.AccessModeRead {
-			permission = "write"
-		}
+		permission := mode.String()
 		addCollaboratorOption := &api.AddCollaboratorOption{
 			Permission: &permission,
 		}

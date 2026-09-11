@@ -70,19 +70,6 @@ func GetCollaborators(ctx context.Context, repoID int64, listOptions db.ListOpti
 	return collaborators, nil
 }
 
-// GetCollaboration get collaboration for a repository id with a user id
-func GetCollaboration(ctx context.Context, repoID, uid int64) (*Collaboration, error) {
-	collaboration := &Collaboration{
-		RepoID: repoID,
-		UserID: uid,
-	}
-	has, err := db.GetEngine(ctx).Get(collaboration)
-	if !has {
-		collaboration = nil
-	}
-	return collaboration, err
-}
-
 // IsCollaborator check if a user is a collaborator of a repository
 func IsCollaborator(ctx context.Context, repoID, userID int64) (bool, error) {
 	return db.GetEngine(ctx).Get(&Collaboration{RepoID: repoID, UserID: userID})
@@ -95,45 +82,6 @@ type FindCollaborationOptions struct {
 
 func (opts FindCollaborationOptions) ToConds() builder.Cond {
 	return builder.And(builder.Eq{"repo_id": opts.RepoID})
-}
-
-// ChangeCollaborationAccessMode sets new access mode for the collaboration.
-func ChangeCollaborationAccessMode(ctx context.Context, repo *Repository, uid int64, mode perm.AccessMode) error {
-	// Discard invalid input
-	if mode <= perm.AccessModeNone || mode > perm.AccessModeOwner {
-		return nil
-	}
-
-	return db.WithTx(ctx, func(ctx context.Context) error {
-		e := db.GetEngine(ctx)
-
-		collaboration := &Collaboration{
-			RepoID: repo.ID,
-			UserID: uid,
-		}
-		has, err := e.Get(collaboration)
-		if err != nil {
-			return fmt.Errorf("get collaboration: %w", err)
-		} else if !has {
-			return nil
-		}
-
-		if collaboration.Mode == mode {
-			return nil
-		}
-		collaboration.Mode = mode
-
-		if _, err = e.
-			ID(collaboration.ID).
-			Cols("mode").
-			Update(collaboration); err != nil {
-			return fmt.Errorf("update collaboration: %w", err)
-		} else if _, err = e.Exec("UPDATE access SET mode = ? WHERE user_id = ? AND repo_id = ?", mode, uid, repo.ID); err != nil {
-			return fmt.Errorf("update access table: %w", err)
-		}
-
-		return nil
-	})
 }
 
 // GetCollaboratorWithUser returns all collaborator IDs of collabUserID on

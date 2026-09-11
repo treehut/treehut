@@ -120,6 +120,14 @@ func RemoveAllRepositories(ctx context.Context, t *organization.Team) (err error
 // Note: Shall not be called if team includes all repositories
 func removeAllRepositories(ctx context.Context, t *organization.Team) (err error) {
 	e := db.GetEngine(ctx)
+
+	if err := t.LoadRepositories(ctx); err != nil {
+		return fmt.Errorf("load repositories failed: %w", err)
+	}
+	if err := t.LoadMembers(ctx); err != nil {
+		return fmt.Errorf("load repositories failed: %w", err)
+	}
+
 	// Delete all accesses.
 	for _, repo := range t.Repos {
 		if err := access_model.RecalculateTeamAccesses(ctx, repo, t.ID); err != nil {
@@ -334,10 +342,8 @@ func DeleteTeam(ctx context.Context, t *organization.Team) error {
 		}
 	}
 
-	if !t.IncludesAllRepositories {
-		if err := removeAllRepositories(ctx, t); err != nil {
-			return err
-		}
+	if err := removeAllRepositories(ctx, t); err != nil {
+		return err
 	}
 
 	if err := db.DeleteBeans(ctx,
@@ -404,36 +410,17 @@ func InsertTeamMember(ctx context.Context, team *organization.Team, userID int64
 
 		team.NumMembers++
 
-		// Give access to team repositories.
-		// update exist access if mode become bigger
-		subQuery := builder.Select("repo_id").From("team_repo").
-			Where(builder.Eq{"team_id": team.ID})
-
-		if _, err := sess.Where("user_id=?", userID).
-			In("repo_id", subQuery).
-			And("mode < ?", team.AccessMode).
-			SetExpr("mode", team.AccessMode).
-			Update(new(access_model.Access)); err != nil {
-			return fmt.Errorf("update user accesses: %w", err)
+		if err := team.LoadRepositories(ctx); err != nil {
+			return fmt.Errorf("load repositories: %w", err)
+		}
+		repoIDs := make([]int64, len(team.Repos))
+		for i, r := range team.Repos {
+			repoIDs[i] = r.ID
+		}
+		if err := access_model.RecalculateUserAccessForRepos(ctx, userID, repoIDs); err != nil {
+			return fmt.Errorf("error recalculating user access: %w", err)
 		}
 
-		// for not exist access
-		var repoIDs []int64
-		accessSubQuery := builder.Select("repo_id").From("access").Where(builder.Eq{"user_id": userID})
-		if err := sess.SQL(subQuery.And(builder.NotIn("repo_id", accessSubQuery))).Find(&repoIDs); err != nil {
-			return fmt.Errorf("select id accesses: %w", err)
-		}
-
-		accesses := make([]*access_model.Access, 0, 100)
-		for i, repoID := range repoIDs {
-			accesses = append(accesses, &access_model.Access{RepoID: repoID, UserID: userID, Mode: team.AccessMode})
-			if (i%100 == 0 || i == len(repoIDs)-1) && len(accesses) > 0 {
-				if err = db.Insert(ctx, accesses); err != nil {
-					return fmt.Errorf("insert new user accesses: %w", err)
-				}
-				accesses = accesses[:0]
-			}
-		}
 		return nil
 	})
 	if err != nil {

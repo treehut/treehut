@@ -9,10 +9,12 @@ import (
 	"fmt"
 
 	"forgejo.org/models/db"
-	"forgejo.org/models/organization"
 	"forgejo.org/models/perm"
 	repo_model "forgejo.org/models/repo"
 	user_model "forgejo.org/models/user"
+	"forgejo.org/modules/container"
+	"forgejo.org/modules/optional"
+	"forgejo.org/services/authz"
 
 	"xorm.io/builder"
 )
@@ -62,6 +64,180 @@ func accessLevel(ctx context.Context, user *user_model.User, repo *repo_model.Re
 	return a.Mode, nil
 }
 
+type recalcAccess struct {
+	users      optional.Option[[]int64] // UserID
+	repos      optional.Option[[]int64] // RepoID
+	ignoreTeam optional.Option[int64]   // TeamID
+}
+
+type accessKey struct {
+	userID int64
+	repoID int64
+}
+
+func recalculateAccess(ctx context.Context, recalc recalcAccess) error {
+	return db.WithTx(ctx, func(ctx context.Context) error {
+		accessMap := make(map[accessKey]perm.AccessMode, 20)
+
+		// Build user access map based upon collaborator records:
+		if err := updateAccessMapByCollaborators(ctx, accessMap, recalc); err != nil {
+			return fmt.Errorf("update access map by collaborators: %w", err)
+		}
+
+		// Update user access map based upon team membership:
+		if err := updateAccessMapByTeamMembership(ctx, accessMap, recalc); err != nil {
+			return fmt.Errorf("update access map by team membership: %w", err)
+		}
+
+		// Reduce records from accessMap when they aren't necessary:
+		if err := applyMinVisibility(ctx, accessMap); err != nil {
+			return fmt.Errorf("apply min visibility: %w", err)
+		}
+
+		newAccesses := make([]Access, 0, len(accessMap))
+		for key, accessMode := range accessMap {
+			newAccesses = append(newAccesses, Access{
+				UserID: key.userID,
+				RepoID: key.repoID,
+				Mode:   accessMode,
+			})
+		}
+
+		// Delete existing Access records:
+		accessCond := builder.NewCond()
+		if hasUserList, userList := recalc.users.Get(); hasUserList {
+			accessCond = accessCond.And(builder.In("user_id", userList))
+		}
+		if hasRepoList, repoList := recalc.repos.Get(); hasRepoList {
+			accessCond = accessCond.And(builder.In("repo_id", repoList))
+		}
+		if _, err := db.GetEngine(ctx).Where(accessCond).Delete(new(Access)); err != nil {
+			return fmt.Errorf("access batch delete error: %w", err)
+		}
+
+		// Insert newly created Access records:
+		batchSize := db.MaxBatchInsertSize(new(Access))
+		for len(newAccesses) > 0 {
+			batch := newAccesses[:min(len(newAccesses), batchSize)]
+			if err := db.Insert(ctx, batch); err != nil {
+				return fmt.Errorf("access batch insert error: %w", err)
+			}
+			newAccesses = newAccesses[len(batch):]
+		}
+
+		return nil
+	})
+}
+
+func updateAccessMapByCollaborators(ctx context.Context, accessMap map[accessKey]perm.AccessMode, recalc recalcAccess) error {
+	collabCond := builder.NewCond()
+	if hasUserList, userList := recalc.users.Get(); hasUserList {
+		collabCond = collabCond.And(builder.In("user_id", userList))
+	}
+	if hasRepoList, repoList := recalc.repos.Get(); hasRepoList {
+		collabCond = collabCond.And(builder.In("repo_id", repoList))
+	}
+	if err := db.Iterate(ctx, collabCond, func(ctx context.Context, c *repo_model.Collaboration) error {
+		key := accessKey{userID: c.UserID, repoID: c.RepoID}
+		updateUserAccess(accessMap, key, c.Mode)
+		return nil
+	}); err != nil {
+		return fmt.Errorf("iterate collaboration: %w", err)
+	}
+	return nil
+}
+
+func updateAccessMapByTeamMembership(ctx context.Context, accessMap map[accessKey]perm.AccessMode, recalc recalcAccess) error {
+	hasIgnoreTeam, ignoreTeam := recalc.ignoreTeam.Get()
+
+	teamCond := builder.NewCond()
+	if hasUserList, userList := recalc.users.Get(); hasUserList {
+		teamCond = teamCond.And(builder.In("team_user.uid", userList))
+	}
+	if hasRepoList, repoList := recalc.repos.Get(); hasRepoList {
+		teamCond = teamCond.And(builder.In("repository.id", repoList))
+	}
+	if hasIgnoreTeam {
+		// During delete operations for a team, a recalc is completed with a team ignored
+		teamCond = teamCond.And(builder.Neq{"team.id": ignoreTeam})
+	}
+
+	type teamMembershipAccess struct {
+		UserID         int64 `xorm:"uid"`
+		RepoID         int64
+		TeamAccessMode perm.AccessMode `xorm:"authorize"`
+	}
+	var teams []*teamMembershipAccess
+	if err := db.GetEngine(ctx).
+		Select("team_user.uid, team_repo.repo_id, team.authorize").
+		Table("team").
+		Join("INNER", "team_repo", "team_repo.team_id = team.id").
+		Join("INNER", "team_user", "team_user.team_id = team.id").
+		Join("INNER", "repository", "repository.id = team_repo.repo_id").
+		And(teamCond).
+		Find(&teams); err != nil {
+		return fmt.Errorf("team membership query: %w", err)
+	}
+	for _, team := range teams {
+		key := accessKey{userID: team.UserID, repoID: team.RepoID}
+		updateUserAccess(accessMap, key, team.TeamAccessMode)
+	}
+
+	return nil
+}
+
+func applyMinVisibility(ctx context.Context, accessMap map[accessKey]perm.AccessMode) error {
+	// If a repository is public, then an entry accessMap[k] for that repository isn't necessary if it is AccessModeRead
+	// -- the repository is already readable to users.
+	//
+	// The exception is that if the user is a restricted user.  Restricted users can't see public repositories.  But
+	// accessMap[k] for a public repository and a restricted user being AccessModeRead would indicate that the
+	// restricted user has been granted explicit access to this repository.
+	//
+	// To reduce the accessMap on these rules, query the DB for both the visibility of the repo (accounting for
+	// limited-org owned repos), and restricted user field.
+
+	uniqueRepos := make(container.Set[int64])
+	uniqueUsers := make(container.Set[int64])
+	for key := range accessMap {
+		uniqueRepos.Add(key.repoID)
+		uniqueUsers.Add(key.userID)
+	}
+
+	// Reuse logic from the PublicReposAuthorizationReducer to get a filter for only public repos
+	publicRepoFilter := (&authz.PublicReposAuthorizationReducer{}).RepoReadAccessFilter()
+	var publicRepoIDs []int64
+	if err := db.GetEngine(ctx).
+		Select("id").
+		Table("repository").
+		In("id", uniqueRepos.Slice()).
+		Where(publicRepoFilter).
+		Find(&publicRepoIDs); err != nil {
+		return fmt.Errorf("get public repos: %w", err)
+	}
+	publicRepoIDSet := container.SetOf(publicRepoIDs...)
+
+	// Fetch which of the users being recalculated, if any, are restricted users
+	var restrictedUserIDs []int64
+	if err := db.GetEngine(ctx).
+		Select("id").
+		Table("`user`").
+		In("id", uniqueUsers.Slice()).
+		Where("is_restricted").
+		Find(&restrictedUserIDs); err != nil {
+		return fmt.Errorf("get restricted users: %w", err)
+	}
+	restrictedUserIDSet := container.SetOf(restrictedUserIDs...)
+
+	for key, value := range accessMap {
+		if (publicRepoIDSet.Contains(key.repoID) && !restrictedUserIDSet.Contains(key.userID) && value <= perm.AccessModeRead) || value < perm.AccessModeRead {
+			delete(accessMap, key)
+		}
+	}
+
+	return nil
+}
+
 func maxAccessMode(modes ...perm.AccessMode) perm.AccessMode {
 	max := perm.AccessModeNone
 	for _, mode := range modes {
@@ -72,179 +248,49 @@ func maxAccessMode(modes ...perm.AccessMode) perm.AccessMode {
 	return max
 }
 
-type userAccess struct {
-	User *user_model.User
-	Mode perm.AccessMode
-}
-
-// updateUserAccess updates an access map so that user has at least mode
-func updateUserAccess(accessMap map[int64]*userAccess, user *user_model.User, mode perm.AccessMode) {
-	if ua, ok := accessMap[user.ID]; ok {
-		ua.Mode = maxAccessMode(ua.Mode, mode)
+func updateUserAccess(accessMap map[accessKey]perm.AccessMode, key accessKey, mode perm.AccessMode) {
+	if lastMode, ok := accessMap[key]; ok {
+		accessMap[key] = maxAccessMode(lastMode, mode)
 	} else {
-		accessMap[user.ID] = &userAccess{User: user, Mode: mode}
+		accessMap[key] = mode
 	}
-}
-
-// FIXME: do cross-comparison so reduce deletions and additions to the minimum?
-func refreshAccesses(ctx context.Context, repo *repo_model.Repository, accessMap map[int64]*userAccess) (err error) {
-	minMode := perm.AccessModeRead
-	if err := repo.LoadOwner(ctx); err != nil {
-		return fmt.Errorf("LoadOwner: %w", err)
-	}
-
-	// If the repo isn't private and isn't owned by a organization,
-	// increase the minMode to Write.
-	if !repo.IsPrivate && !repo.Owner.IsOrganization() {
-		minMode = perm.AccessModeWrite
-	}
-
-	newAccesses := make([]Access, 0, len(accessMap))
-	for userID, ua := range accessMap {
-		if ua.Mode < minMode && !ua.User.IsRestricted {
-			continue
-		}
-
-		newAccesses = append(newAccesses, Access{
-			UserID: userID,
-			RepoID: repo.ID,
-			Mode:   ua.Mode,
-		})
-	}
-
-	// Delete old accesses and insert new ones for repository.
-	if _, err = db.DeleteByBean(ctx, &Access{RepoID: repo.ID}); err != nil {
-		return fmt.Errorf("delete old accesses: %w", err)
-	}
-	if len(newAccesses) == 0 {
-		return nil
-	}
-
-	if err = db.Insert(ctx, newAccesses); err != nil {
-		return fmt.Errorf("insert new accesses: %w", err)
-	}
-	return nil
-}
-
-// refreshCollaboratorAccesses retrieves repository collaborations with their access modes.
-func refreshCollaboratorAccesses(ctx context.Context, repoID int64, accessMap map[int64]*userAccess) error {
-	collaborators, err := repo_model.GetCollaborators(ctx, repoID, db.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("getCollaborations: %w", err)
-	}
-	for _, c := range collaborators {
-		if c.IsGhost() {
-			continue
-		}
-		updateUserAccess(accessMap, c.User, c.Collaboration.Mode)
-	}
-	return nil
 }
 
 // RecalculateTeamAccesses recalculates new accesses for teams of an organization
 // except the team whose ID is given. It is used to assign a team ID when
 // remove repository from that team.
 func RecalculateTeamAccesses(ctx context.Context, repo *repo_model.Repository, ignTeamID int64) (err error) {
-	accessMap := make(map[int64]*userAccess, 20)
-
-	if err = repo.LoadOwner(ctx); err != nil {
-		return err
-	} else if !repo.Owner.IsOrganization() {
-		return fmt.Errorf("owner is not an organization: %d", repo.OwnerID)
+	var ign optional.Option[int64]
+	if ignTeamID == 0 {
+		ign = optional.None[int64]()
+	} else {
+		ign = optional.Some(ignTeamID)
 	}
-
-	if err = refreshCollaboratorAccesses(ctx, repo.ID, accessMap); err != nil {
-		return fmt.Errorf("refreshCollaboratorAccesses: %w", err)
-	}
-
-	teams, err := organization.FindOrgTeams(ctx, repo.Owner.ID)
-	if err != nil {
-		return err
-	}
-
-	for _, t := range teams {
-		if t.ID == ignTeamID {
-			continue
-		}
-
-		// Owner team gets owner access, and skip for teams that do not
-		// have relations with repository.
-		if t.IsOwnerTeam() {
-			t.AccessMode = perm.AccessModeOwner
-		} else if !organization.HasTeamRepo(ctx, t.OrgID, t.ID, repo.ID) {
-			continue
-		}
-
-		if err = t.LoadMembers(ctx); err != nil {
-			return fmt.Errorf("getMembers '%d': %w", t.ID, err)
-		}
-		for _, m := range t.Members {
-			updateUserAccess(accessMap, m, t.AccessMode)
-		}
-	}
-
-	return refreshAccesses(ctx, repo, accessMap)
+	return recalculateAccess(ctx, recalcAccess{
+		repos:      optional.Some([]int64{repo.ID}),
+		ignoreTeam: ign,
+	})
 }
 
 // RecalculateUserAccess recalculates new access for a single user
 // Usable if we know access only affected one user
 func RecalculateUserAccess(ctx context.Context, repo *repo_model.Repository, uid int64) (err error) {
-	minMode := perm.AccessModeRead
-	if !repo.IsPrivate {
-		minMode = perm.AccessModeWrite
-	}
-
-	accessMode := perm.AccessModeNone
-	e := db.GetEngine(ctx)
-	collaborator, err := repo_model.GetCollaboration(ctx, repo.ID, uid)
-	if err != nil {
-		return err
-	} else if collaborator != nil {
-		accessMode = collaborator.Mode
-	}
-
-	if err = repo.LoadOwner(ctx); err != nil {
-		return err
-	} else if repo.Owner.IsOrganization() {
-		var teams []organization.Team
-		if err := e.Join("INNER", "team_repo", "team_repo.team_id = team.id").
-			Join("INNER", "team_user", "team_user.team_id = team.id").
-			Where("team.org_id = ?", repo.OwnerID).
-			And("team_repo.repo_id=?", repo.ID).
-			And("team_user.uid=?", uid).
-			Find(&teams); err != nil {
-			return err
-		}
-
-		for _, t := range teams {
-			if t.IsOwnerTeam() {
-				t.AccessMode = perm.AccessModeOwner
-			}
-
-			accessMode = maxAccessMode(accessMode, t.AccessMode)
-		}
-	}
-
-	// Delete old user accesses and insert new one for repository.
-	if _, err = e.Delete(&Access{RepoID: repo.ID, UserID: uid}); err != nil {
-		return fmt.Errorf("delete old user accesses: %w", err)
-	} else if accessMode >= minMode {
-		if err = db.Insert(ctx, &Access{RepoID: repo.ID, UserID: uid, Mode: accessMode}); err != nil {
-			return fmt.Errorf("insert new user accesses: %w", err)
-		}
-	}
-	return nil
+	return recalculateAccess(ctx, recalcAccess{
+		repos: optional.Some([]int64{repo.ID}),
+		users: optional.Some([]int64{uid}),
+	})
 }
 
 // RecalculateAccesses recalculates all accesses for repository.
 func RecalculateAccesses(ctx context.Context, repo *repo_model.Repository) error {
-	if repo.Owner.IsOrganization() {
-		return RecalculateTeamAccesses(ctx, repo, 0)
-	}
+	return recalculateAccess(ctx, recalcAccess{
+		repos: optional.Some([]int64{repo.ID}),
+	})
+}
 
-	accessMap := make(map[int64]*userAccess, 20)
-	if err := refreshCollaboratorAccesses(ctx, repo.ID, accessMap); err != nil {
-		return fmt.Errorf("refreshCollaboratorAccesses: %w", err)
-	}
-	return refreshAccesses(ctx, repo, accessMap)
+func RecalculateUserAccessForRepos(ctx context.Context, userID int64, repoIDs []int64) (err error) {
+	return recalculateAccess(ctx, recalcAccess{
+		repos: optional.Some(repoIDs),
+		users: optional.Some([]int64{userID}),
+	})
 }

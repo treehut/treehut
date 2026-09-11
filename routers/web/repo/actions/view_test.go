@@ -8,11 +8,13 @@ import (
 	"html/template"
 	"net/http"
 	"testing"
+	"time"
 
 	actions_model "forgejo.org/models/actions"
 	repo_model "forgejo.org/models/repo"
 	"forgejo.org/models/unittest"
 	"forgejo.org/modules/json"
+	"forgejo.org/modules/timeutil"
 	"forgejo.org/modules/translation"
 	"forgejo.org/modules/web"
 	"forgejo.org/services/contexttest"
@@ -387,6 +389,92 @@ func TestActionsViewViewPost(t *testing.T) {
 			assert.Equal(t, *tt.expected, actual)
 		})
 	}
+}
+
+func TestActionsViewViewPost_Logs(t *testing.T) {
+	defer unittest.OverrideFixtures("routers/web/repo/actions/TestActionsViewViewPost_Logs")()
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	translation.InitLocales(t.Context())
+
+	timeutil.MockSet(time.Unix(1788695891, 0))
+	defer timeutil.MockUnset()
+
+	assertCurrentJob := func(t *testing.T, currentJob ViewCurrentJob) {
+		assert.Equal(t, "build", currentJob.Title)
+
+		assert.Len(t, currentJob.AllAttempts, 2)
+		assert.Equal(t, "waiting", currentJob.AllAttempts[0].Status)
+		assert.Equal(t, template.HTML("not started"), currentJob.AllAttempts[0].Started)
+		assert.EqualValues(t, 2, currentJob.AllAttempts[0].Number)
+		assert.Equal(t, "success", currentJob.AllAttempts[1].Status)
+		assert.Contains(t, currentJob.AllAttempts[1].Started, "2026-09-06 11:56:47 +00:00")
+		assert.EqualValues(t, 1, currentJob.AllAttempts[1].Number)
+
+		assert.Len(t, currentJob.AllAttempts[0].StatusDiagnostics, 1)
+		assert.Contains(t, currentJob.AllAttempts[0].StatusDiagnostics[0],
+			"for a runner with the following label: debian")
+
+		assert.Len(t, currentJob.AllAttempts[1].StatusDiagnostics, 1)
+		assert.EqualValues(t, "Success", currentJob.AllAttempts[1].StatusDiagnostics[0])
+	}
+
+	// Look at the newest attempt first. Because it is waiting and has not been picked up by a
+	// runner, there is no task. No task means no logs. But diagnostics and previous attempts
+	// should be visible.
+	ctx, resp := contexttest.MockContext(t, "user2/test_workflows/actions/runs/41/jobs/0/attempt/2")
+	contexttest.LoadUser(t, ctx, 2)
+	contexttest.LoadRepo(t, ctx, 62)
+	ctx.SetParams("run", "41")
+	ctx.SetParams("job", "0")
+	ctx.SetParams("attempt", "2")
+	ctx.Locale = translation.NewLocale("en-US")
+	web.SetForm(ctx, &ViewRequest{})
+
+	ViewPost(ctx)
+	require.Equal(t, http.StatusOK, resp.Result().StatusCode, "failure in ViewPost(): %q", resp.Body.String())
+
+	var actual ViewResponse
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &actual))
+
+	assert.Equal(t, "Update ci.yaml", actual.State.Run.Title)
+	assert.Equal(t, "waiting", actual.State.Run.Status)
+
+	assertCurrentJob(t, actual.State.CurrentJob)
+
+	assert.Empty(t, actual.State.CurrentJob.Steps)
+
+	// Now, look at the first attempt. Because it has succeeded, there is a task with logs which
+	// should be displayed.
+	ctx, resp = contexttest.MockContext(t, "user2/test_workflows/actions/runs/41/jobs/0/attempt/1")
+	contexttest.LoadUser(t, ctx, 2)
+	contexttest.LoadRepo(t, ctx, 62)
+	ctx.SetParams("run", "41")
+	ctx.SetParams("job", "0")
+	ctx.SetParams("attempt", "1")
+	ctx.Locale = translation.NewLocale("en-US")
+	web.SetForm(ctx, &ViewRequest{})
+
+	ViewPost(ctx)
+	require.Equal(t, http.StatusOK, resp.Result().StatusCode, "failure in ViewPost(): %q", resp.Body.String())
+
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &actual))
+
+	assert.Equal(t, "Update ci.yaml", actual.State.Run.Title)
+	assert.Equal(t, "waiting", actual.State.Run.Status)
+
+	assertCurrentJob(t, actual.State.CurrentJob)
+
+	assert.Len(t, actual.State.CurrentJob.Steps, 3)
+	assert.Equal(t, "Set up job", actual.State.CurrentJob.Steps[0].Summary)
+	assert.Equal(t, "success", actual.State.CurrentJob.Steps[0].Status)
+	assert.Equal(t, "2s", actual.State.CurrentJob.Steps[0].Duration)
+	assert.Equal(t, "Hello world!", actual.State.CurrentJob.Steps[1].Summary)
+	assert.Equal(t, "success", actual.State.CurrentJob.Steps[1].Status)
+	assert.Equal(t, "9s", actual.State.CurrentJob.Steps[1].Duration)
+	assert.Equal(t, "Complete job", actual.State.CurrentJob.Steps[2].Summary)
+	assert.Equal(t, "success", actual.State.CurrentJob.Steps[2].Status)
+	assert.Equal(t, "3s", actual.State.CurrentJob.Steps[2].Duration)
 }
 
 func TestActionsViewCancelableUntilAllJobsFinished(t *testing.T) {

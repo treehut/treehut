@@ -421,3 +421,42 @@ func TestRepoGenerateTemplatingSymlinkGlobFile(t *testing.T) {
 		assert.Contains(t, resp.Body.String(), "statat .forgejo/template: path escapes from parent")
 	})
 }
+
+func TestRepoGenerateTemplatingDotGitDir(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		user := forgery.CreateUser(t, &forgery.CreateUserOptions{
+			IsAdmin: true, // required to see the detailed error message on the error response
+		})
+		session := loginUser(t, user.Name)
+
+		template := forgery.CreateRepository(t, user, &forgery.CreateRepositoryOptions{
+			IsTemplate: true,
+			Files: forgery.MapFS{
+				"README.md":         forgery.MapFile("Hello!"),
+				".forgejo/template": forgery.MapFile("README.md\n.g*/config"),
+				// if this reached .git/config, because REPO_NAME is going to be "it", it would break template
+				// generation and result in an error "fatal: bad zlib compression level 999"
+				".g${REPO_NAME}/config": forgery.MapFile("[core]\n    compression = 999"),
+			},
+		})
+
+		// The repo.TemplateID field is not initialized. Luckily, the ID field holds the expected value
+		templateID := strconv.FormatInt(template.ID, 10)
+		generatedName := "it"
+
+		testRepoGenerateSuccess(
+			t,
+			session,
+			templateID,
+			user.Name,
+			template.Name,
+			user,
+			user,
+			generatedName,
+		)
+
+		req := NewRequestf(t, "GET", "/%s/%s/raw/branch/main/README.md", user.Name, generatedName)
+		resp := session.MakeRequest(t, req, http.StatusOK)
+		assert.Equal(t, "Hello!", resp.Body.String())
+	})
+}

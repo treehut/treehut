@@ -28,6 +28,7 @@ import (
 	actions_module "forgejo.org/modules/actions"
 	"forgejo.org/modules/git"
 	"forgejo.org/modules/gitrepo"
+	"forgejo.org/modules/optional"
 	"forgejo.org/modules/setting"
 	api "forgejo.org/modules/structs"
 	"forgejo.org/modules/test"
@@ -41,6 +42,7 @@ import (
 	"forgejo.org/tests"
 	"forgejo.org/tests/forgery"
 
+	runnerv1 "code.forgejo.org/forgejo/actions-proto/runner/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -591,6 +593,301 @@ func TestActionsPullRequestTargetEvent(t *testing.T) {
 
 		// the new pull request cannot trigger actions, so there is still only 1 record
 		assert.Equal(t, 1, unittest.GetCount(t, &actions_model.ActionRun{RepoID: baseRepo.ID}))
+	})
+}
+
+func TestActionsPullRequestTargetEventLocalReusable(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		t.Run("local reusable workflow is resolved from base when job is first queued", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+			user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2}) // owner of the base repo
+			org3 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 3})  // owner of the forked repo
+
+			// create the base repo
+			baseRepo, _, f := tests.CreateDeclarativeRepo(t, user2, "repo-pull-request-target",
+				[]unit_model.Type{unit_model.TypeActions}, nil, nil,
+			)
+			defer f()
+
+			// create the forked repo
+			forkedRepo, err := repo_service.ForkRepositoryAndUpdates(git.DefaultContext, user2, org3, repo_service.ForkRepoOptions{
+				BaseRepo:    baseRepo,
+				Name:        "forked-repo-pull-request-target",
+				Description: "test pull-request-target event",
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, forkedRepo)
+
+			// add workflow file to the base repo
+			addWorkflowToBaseResp, err := files_service.ChangeRepoFiles(git.DefaultContext, baseRepo, user2, &files_service.ChangeRepoFilesOptions{
+				Files: []*files_service.ChangeRepoFile{
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/pr.yml",
+						ContentReader: strings.NewReader(`
+name: test
+on:
+  pull_request_target:
+jobs:
+  outer-job:
+    uses: ./.forgejo/workflows/local-reusable.yml
+`),
+					},
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/local-reusable.yml",
+						ContentReader: strings.NewReader(`
+name: reusable
+on:
+  workflow_call:
+jobs:
+  job-from-base-repo:
+    runs-on: docker
+    steps:
+      - run: echo 0
+`),
+					},
+				},
+				Message:   "add workflow",
+				OldBranch: "main",
+				NewBranch: "main",
+				Author: &files_service.IdentityOptions{
+					Name:  user2.Name,
+					Email: user2.Email,
+				},
+				Committer: &files_service.IdentityOptions{
+					Name:  user2.Name,
+					Email: user2.Email,
+				},
+				Dates: &files_service.CommitDateOptions{
+					Author:    time.Now(),
+					Committer: time.Now(),
+				},
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, addWorkflowToBaseResp)
+
+			// add a new file to the forked repo, as a subtle replacement for `local-reusable.yml`
+			addFileToForkedResp, err := files_service.ChangeRepoFiles(git.DefaultContext, forkedRepo, org3, &files_service.ChangeRepoFilesOptions{
+				Files: []*files_service.ChangeRepoFile{
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/local-reusable.yml",
+						ContentReader: strings.NewReader(`
+name: reusable
+on:
+  workflow_call:
+jobs:
+  job-from-head-repo:
+    runs-on: docker
+    steps:
+      - run: echo 0
+`),
+					},
+				},
+				Message:   "add file1",
+				OldBranch: "main",
+				NewBranch: "fork-branch-1",
+				Author: &files_service.IdentityOptions{
+					Name:  org3.Name,
+					Email: org3.Email,
+				},
+				Committer: &files_service.IdentityOptions{
+					Name:  org3.Name,
+					Email: org3.Email,
+				},
+				Dates: &files_service.CommitDateOptions{
+					Author:    time.Now(),
+					Committer: time.Now(),
+				},
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, addFileToForkedResp)
+
+			// create Pull
+			pullIssue := &issues_model.Issue{
+				RepoID:   baseRepo.ID,
+				Title:    "Test pull-request-target-event",
+				PosterID: org3.ID,
+				Poster:   org3,
+				IsPull:   true,
+			}
+			pullRequest := &issues_model.PullRequest{
+				HeadRepoID: forkedRepo.ID,
+				BaseRepoID: baseRepo.ID,
+				HeadBranch: "fork-branch-1",
+				BaseBranch: "main",
+				HeadRepo:   forkedRepo,
+				BaseRepo:   baseRepo,
+				Type:       issues_model.PullRequestGitea,
+			}
+			err = pull_service.NewPullRequest(git.DefaultContext, baseRepo, pullIssue, nil, nil, pullRequest, nil)
+			require.NoError(t, err)
+
+			// load and compare ActionRun
+			assert.Equal(t, 1, unittest.GetCount(t, &actions_model.ActionRun{RepoID: baseRepo.ID}))
+			actionRun := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRun{RepoID: baseRepo.ID})
+			assert.Equal(t, addFileToForkedResp.Commit.SHA, actionRun.CommitSHA)
+			assert.Equal(t, optional.Some(addWorkflowToBaseResp.Commit.SHA), actionRun.WorkflowSourceCommit)
+			assert.Equal(t, actions_module.GithubEventPullRequestTarget, actionRun.TriggerEvent)
+
+			unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRunJob{RunID: actionRun.ID, Name: "outer-job"})
+			unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRunJob{RunID: actionRun.ID, Name: "job-from-base-repo"})
+		})
+
+		t.Run("local reusable workflow is resolved from base when job is later queued by dynamic expansion", func(t *testing.T) {
+			if !setting.Database.Type.IsSQLite3() {
+				// mockRunner only supported with sqlite
+				t.Skip()
+			}
+			defer tests.PrintCurrentTest(t)()
+			user2 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2}) // owner of the base repo
+			org3 := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 3})  // owner of the forked repo
+
+			// create the base repo
+			baseRepo, _, f := tests.CreateDeclarativeRepo(t, user2, "repo-pull-request-target-2",
+				[]unit_model.Type{unit_model.TypeActions}, nil, nil,
+			)
+			defer f()
+
+			// create the forked repo
+			forkedRepo, err := repo_service.ForkRepositoryAndUpdates(git.DefaultContext, user2, org3, repo_service.ForkRepoOptions{
+				BaseRepo:    baseRepo,
+				Name:        "forked-repo-pull-request-target-2",
+				Description: "test pull-request-target event",
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, forkedRepo)
+
+			// add workflow file to the base repo
+			addWorkflowToBaseResp, err := files_service.ChangeRepoFiles(git.DefaultContext, baseRepo, user2, &files_service.ChangeRepoFilesOptions{
+				Files: []*files_service.ChangeRepoFile{
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/pr.yml",
+						ContentReader: strings.NewReader(`
+name: test
+on:
+  pull_request_target:
+jobs:
+  outer-job-prereq:
+    runs-on: docker
+    steps:
+      - run: echo "Job contents go here." # we'll mock this having an output
+  outer-job:
+    needs: [outer-job-prereq]
+    strategy:
+      matrix:
+        dim1: ${{ needs.outer-job-prereq.outputs.fake-output }}
+    uses: ./.forgejo/workflows/local-reusable.yml
+`),
+					},
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/local-reusable.yml",
+						ContentReader: strings.NewReader(`
+name: reusable
+on:
+  workflow_call:
+jobs:
+  job-from-base-repo:
+    runs-on: docker
+    steps:
+      - run: echo 0
+`),
+					},
+				},
+				Message:   "add workflow",
+				OldBranch: "main",
+				NewBranch: "main",
+				Author: &files_service.IdentityOptions{
+					Name:  user2.Name,
+					Email: user2.Email,
+				},
+				Committer: &files_service.IdentityOptions{
+					Name:  user2.Name,
+					Email: user2.Email,
+				},
+				Dates: &files_service.CommitDateOptions{
+					Author:    time.Now(),
+					Committer: time.Now(),
+				},
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, addWorkflowToBaseResp)
+
+			// add a new file to the forked repo, as a subtle replacement for `local-reusable.yml`
+			addFileToForkedResp, err := files_service.ChangeRepoFiles(git.DefaultContext, forkedRepo, org3, &files_service.ChangeRepoFilesOptions{
+				Files: []*files_service.ChangeRepoFile{
+					{
+						Operation: "create",
+						TreePath:  ".forgejo/workflows/local-reusable.yml",
+						ContentReader: strings.NewReader(`
+name: reusable
+on:
+  workflow_call:
+jobs:
+  job-from-head-repo:
+    runs-on: docker
+    steps:
+      - run: echo 0
+`),
+					},
+				},
+				Message:   "add file1",
+				OldBranch: "main",
+				NewBranch: "fork-branch-1",
+				Author: &files_service.IdentityOptions{
+					Name:  org3.Name,
+					Email: org3.Email,
+				},
+				Committer: &files_service.IdentityOptions{
+					Name:  org3.Name,
+					Email: org3.Email,
+				},
+				Dates: &files_service.CommitDateOptions{
+					Author:    time.Now(),
+					Committer: time.Now(),
+				},
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, addFileToForkedResp)
+
+			// create Pull
+			pullIssue := &issues_model.Issue{
+				RepoID:   baseRepo.ID,
+				Title:    "Test pull-request-target-event",
+				PosterID: org3.ID,
+				Poster:   org3,
+				IsPull:   true,
+			}
+			pullRequest := &issues_model.PullRequest{
+				HeadRepoID: forkedRepo.ID,
+				BaseRepoID: baseRepo.ID,
+				HeadBranch: "fork-branch-1",
+				BaseBranch: "main",
+				HeadRepo:   forkedRepo,
+				BaseRepo:   baseRepo,
+				Type:       issues_model.PullRequestGitea,
+			}
+			err = pull_service.NewPullRequest(git.DefaultContext, baseRepo, pullIssue, nil, nil, pullRequest, nil)
+			require.NoError(t, err)
+
+			runner := newMockRunner()
+			runner.registerAsRepoRunner(t, user2.Name, baseRepo.Name, "mock-runner", []string{"docker"})
+			task := runner.fetchTask(t)
+			runner.execTask(t, task, &mockTaskOutcome{
+				result:  runnerv1.Result_RESULT_SUCCESS,
+				outputs: map[string]string{"fake-output": "matrix value"},
+			})
+
+			assert.Equal(t, 1, unittest.GetCount(t, &actions_model.ActionRun{RepoID: baseRepo.ID}))
+			actionRun := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRun{RepoID: baseRepo.ID})
+			unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRunJob{RunID: actionRun.ID, Name: "outer-job"})
+			// if job-from-base-repo is here, then we know the expanded job came from the base repo -- it would be a
+			// security problem if job-from-head-repo was created instead.
+			unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRunJob{RunID: actionRun.ID, Name: "job-from-base-repo"})
+		})
 	})
 }
 

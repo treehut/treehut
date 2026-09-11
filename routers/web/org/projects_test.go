@@ -4,12 +4,15 @@
 package org_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
 	issues_model "forgejo.org/models/issues"
+	"forgejo.org/models/project"
 	"forgejo.org/models/unittest"
 	"forgejo.org/models/user"
+	"forgejo.org/modules/util"
 	"forgejo.org/routers/web/org"
 	"forgejo.org/services/contexttest"
 
@@ -92,4 +95,34 @@ func TestViewProjectPRLinkVisibility(t *testing.T) {
 		require.True(t, ok, "linkedPRs must contain ID=16")
 		assert.Empty(t, prList)
 	})
+}
+
+func TestViewProjectTitle(t *testing.T) {
+	// Verify that an organization project has its title set
+	unittest.PrepareTestEnv(t)
+	for _, testCase := range []struct {
+		userOrg   string
+		userID    int64
+		projectID int64
+	}{
+		{"user", 2, 4},
+		{"org", 3, 7},
+	} {
+		testCaseName := fmt.Sprintf("%s%d", util.ToTitleCase(testCase.userOrg), testCase.userID)
+		t.Run(testCaseName, func(t *testing.T) {
+			projPath := fmt.Sprintf("%s%d/-/projects/%d", testCase.userOrg, testCase.userID, testCase.projectID)
+			ctx, _ := contexttest.MockContext(t, projPath)
+			if testCase.userOrg == "user" {
+				contexttest.LoadUser(t, ctx, testCase.userID)
+			} else {
+				// org
+				contexttest.LoadOrganization(t, ctx, testCase.userID)
+			}
+			ctx.ContextUser = unittest.AssertExistsAndLoadBean(t, &user.User{ID: testCase.userID})
+			proj := unittest.AssertExistsAndLoadBean(t, &project.Project{ID: testCase.projectID})
+			ctx.SetParams(":id", fmt.Sprintf("%d", testCase.projectID))
+			org.ViewProject(ctx)
+			assert.Equal(t, proj.Title, ctx.Data["Title"].(string))
+		})
+	}
 }

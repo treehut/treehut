@@ -150,3 +150,48 @@ func TestGetUserRepoPermissionWithReducer(t *testing.T) {
 		assert.False(t, permWithReducer.CanWrite(unit.TypeIssues))
 	})
 }
+
+func TestGetUserRepoPermissionOrganization(t *testing.T) {
+	defer unittest.OverrideFixtures("models/perm/access/TestGetUserRepoPermissionOrganization")()
+	require.NoError(t, unittest.PrepareTestDatabase())
+
+	t.Run("Owners", func(t *testing.T) {
+		// Member of Owners team:
+		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 2})
+		perm, err := access.GetUserRepoPermission(db.DefaultContext, repo, user)
+		require.NoError(t, err)
+		assertAccess(t, perm_model.AccessModeOwner, &perm)
+	})
+
+	t.Run("Admin", func(t *testing.T) {
+		// Member of Admin team `team12creators`
+		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 28})
+		repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 3})
+
+		perm, err := access.GetUserRepoPermission(db.DefaultContext, repo, user)
+		require.NoError(t, err)
+		assertAccess(t, perm_model.AccessModeAdmin, &perm)
+	})
+
+	t.Run("Custom access", func(t *testing.T) {
+		// If not Owner, and not Admin, then the team can specify No access, Read, or Write for each individual unit.
+		// User.ID = 15 is part of Team.ID = 7, which has unit=Issues,AccessMode=Write, for the repo.ID=32
+		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 15}) // part of team.ID = 7
+		repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 32})
+
+		perm, err := access.GetUserRepoPermission(db.DefaultContext, repo, user)
+		require.NoError(t, err)
+		assert.Equal(t, perm_model.AccessModeWrite, perm.AccessMode)
+		assert.Equal(t, perm_model.AccessModeRead, perm.UnitAccessMode(unit.TypeCode)) // code unit is enabled on repo, so that defaults access mode to read
+		assert.Equal(t, perm_model.AccessModeWrite, perm.UnitAccessMode(unit.TypeIssues))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypePullRequests))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeReleases))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeWiki))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeExternalWiki))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeExternalTracker))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeProjects))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypePackages))
+		assert.Equal(t, perm_model.AccessModeNone, perm.UnitAccessMode(unit.TypeActions))
+	})
+}

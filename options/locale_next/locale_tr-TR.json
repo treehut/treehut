@@ -468,7 +468,7 @@
 	"repo.issue_indexer.title": "Sorun Endeksleyici",
 	"relativetime.mins": {
 		"one": "%d dakika önce",
-		"other": "%d dakika_önce"
+		"other": "%d dakika önce"
 	},
 	"relativetime.hours": {
 		"one": "%d saat önce",
@@ -872,5 +872,9 @@
 	"actions.variables.not_found": "Değişken bulunamadı.",
 	"markup.filepreview.line": "%[2]s 'de %[1]d Satır",
 	"markup.filepreview.lines": "%[3]s içindeki %[1]d ile %[2]d arasındaki Satırlar",
-	"markup.filepreview.truncated": "Önizleme kısaltılmıştır"
+	"markup.filepreview.truncated": "Önizleme kısaltılmıştır",
+	"repo.packages.visibility_warning": "Bu depo gizli fakat bağlı olduğu paketler herkese açık (sahip %s herkese açık).",
+	"search.match_inside_quotes": "Sadece tırnak içindeki metinle eşleşen sonuçları göster",
+	"search.docs": "Arama, operatörler ve filtreler hakkında detaylı bilgi için <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"%[1]s\">belgeye bakın</a>.",
+	"repo.settings.units.more_units_disable_hint": "\"Daha fazla aktifleştir\" ipucu <a href=\"%s\">Kullanıcı ayarları > Görünüm</a>'den kapatılabilir."
 }

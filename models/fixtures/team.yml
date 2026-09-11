@@ -6,7 +6,7 @@
   authorize: 4 # owner
   num_repos: 3
   num_members: 1
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -28,7 +28,7 @@
   authorize: 4 # owner
   num_repos: 0
   num_members: 1
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -39,7 +39,7 @@
   authorize: 4 # owner
   num_repos: 0
   num_members: 1
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -50,7 +50,7 @@
   authorize: 4 # owner
   num_repos: 2
   num_members: 2
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -61,7 +61,7 @@
   authorize: 4 # owner
   num_repos: 2
   num_members: 2
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -158,9 +158,9 @@
   lower_name: owners
   name: Owners
   authorize: 4 # owner
-  num_repos: 0
+  num_repos: 2
   num_members: 0
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -169,9 +169,9 @@
   lower_name: owners
   name: Owners
   authorize: 4 # owner
-  num_repos: 0
+  num_repos: 2
   num_members: 0
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -193,7 +193,7 @@
   authorize: 4 # owner
   num_repos: 0
   num_members: 1
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -
@@ -204,7 +204,7 @@
   authorize: 4 # owner
   num_repos: 0
   num_members: 1
-  includes_all_repositories: false
+  includes_all_repositories: true
   can_create_org_repo: true
 
 -

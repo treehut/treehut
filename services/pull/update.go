@@ -19,6 +19,8 @@ import (
 	"forgejo.org/modules/repository"
 )
 
+var ErrPullRequestIsUpdateToDate = errors.New("update failed: already up-to-date")
+
 // Update updates pull request with base branch.
 func Update(ctx context.Context, pr *issues_model.PullRequest, doer *user_model.User, message string, rebase bool) error {
 	if pr.Flow == issues_model.PullRequestFlowAGit {
@@ -33,7 +35,7 @@ func Update(ctx context.Context, pr *issues_model.PullRequest, doer *user_model.
 	if err != nil {
 		return err
 	} else if diffCount.Behind == 0 {
-		return fmt.Errorf("HeadBranch of PR %d is up to date", pr.Index)
+		return fmt.Errorf("HeadBranch of PR %d is up to date: %w", pr.Index, ErrPullRequestIsUpdateToDate)
 	}
 
 	if rebase {
@@ -84,20 +86,13 @@ func Update(ctx context.Context, pr *issues_model.PullRequest, doer *user_model.
 }
 
 // IsUserAllowedToUpdate check if user is allowed to update PR with given permissions and branch protections
-func IsUserAllowedToUpdate(ctx context.Context, pull *issues_model.PullRequest, user *user_model.User) (mergeAllowed, rebaseAllowed bool, err error) {
+func IsUserAllowedToUpdate(ctx context.Context, pull *issues_model.PullRequest, user *user_model.User, headRepoPerm, baseRepoPerm access_model.Permission) (mergeAllowed, rebaseAllowed bool, err error) {
 	if pull.Flow == issues_model.PullRequestFlowAGit {
 		return false, false, nil
 	}
 
 	if user == nil {
 		return false, false, nil
-	}
-	headRepoPerm, err := access_model.GetUserRepoPermission(ctx, pull.HeadRepo, user)
-	if err != nil {
-		if repo_model.IsErrUnitTypeNotExist(err) {
-			return false, false, nil
-		}
-		return false, false, err
 	}
 
 	if err := pull.LoadBaseRepo(ctx); err != nil {
@@ -140,11 +135,6 @@ func IsUserAllowedToUpdate(ctx context.Context, pull *issues_model.PullRequest, 
 		if !pb.CanUserPush(ctx, user) {
 			return false, false, nil
 		}
-	}
-
-	baseRepoPerm, err := access_model.GetUserRepoPermission(ctx, pull.BaseRepo, user)
-	if err != nil {
-		return false, false, err
 	}
 
 	mergeAllowed, err = IsUserAllowedToMerge(ctx, pr, headRepoPerm, user)

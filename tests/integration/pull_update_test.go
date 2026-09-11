@@ -24,6 +24,7 @@ import (
 	pull_service "forgejo.org/services/pull"
 	repo_service "forgejo.org/services/repository"
 	files_service "forgejo.org/services/repository/files"
+	"forgejo.org/tests"
 	"forgejo.org/tests/forgery"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +57,99 @@ func TestAPIPullUpdate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 0, diffCount.Behind)
 		assert.Equal(t, 2, diffCount.Ahead)
+	})
+}
+
+func TestAPIPullUpdateAccessTokenResources(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, u *url.URL) {
+		session := loginUser(t, "user2")
+		writeToken := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteIssue, auth_model.AccessTokenScopeWriteRepository)
+
+		for _, repo := range []string{"user2/repo1", "user2/repo2", "org3/repo3"} {
+			// For our three target repos, we'll need to enable pull requests for this test case.
+			trueBool := true
+			req := NewRequestWithJSON(t, "PATCH", fmt.Sprintf("/api/v1/repos/%s", repo), &api.EditRepoOption{
+				HasPullRequests: &trueBool,
+			}).AddTokenAuth(writeToken)
+			MakeRequest(t, req, http.StatusOK)
+
+			// Add user `user5` as a collaborator on all the target repos as well, so that we can successfully request
+			// review from them.
+			write := "write"
+			req = NewRequestWithJSON(t, "PUT", fmt.Sprintf("/api/v1/repos/%s/collaborators/user5", repo), &api.AddCollaboratorOption{
+				Permission: &write,
+			}).AddTokenAuth(writeToken)
+			MakeRequest(t, req, http.StatusNoContent)
+		}
+
+		// Create a pull request on each of the target test repos.
+		var repo1PullRequest, repo2PullRequest, repo3PullRequest api.PullRequest
+		createPullRequest := func(repoFullname string, pullRequest *api.PullRequest) {
+			req := NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/contents", repoFullname),
+				&api.ChangeFilesOptions{
+					FileOptions: api.FileOptions{
+						NewBranchName: "prtest",
+					},
+					Files: []*api.ChangeFileOperation{},
+				}).AddTokenAuth(writeToken)
+			MakeRequest(t, req, http.StatusCreated)
+
+			req = NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/pulls", repoFullname), &api.CreatePullRequestOption{
+				Body:  "repo1 issue dependency",
+				Title: "important dependency",
+				Base:  "master",
+				Head:  "prtest",
+			}).AddTokenAuth(writeToken)
+			resp := MakeRequest(t, req, http.StatusCreated)
+			DecodeJSON(t, resp, pullRequest)
+		}
+		createPullRequest("user2/repo1", &repo1PullRequest)
+		createPullRequest("user2/repo2", &repo2PullRequest)
+		createPullRequest("org3/repo3", &repo3PullRequest)
+
+		// The core of the test is to see whether we can trigger the pull request to be updated from the base repo,
+		// using access tokens with different permission scopes (all, public-only, fine-grained access tokens).  Define
+		// the test:
+		testCase := func(t *testing.T, repo string, pullRequest *api.PullRequest, token string, expectedStatus int) {
+			req := NewRequest(t,
+				"POST",
+				fmt.Sprintf("/api/v1/repos/%s/pulls/%d/update", repo, pullRequest.Index)).
+				AddTokenAuth(token)
+			MakeRequest(t, req, expectedStatus)
+		}
+
+		t.Run("all access token", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			allToken := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
+
+			testCase(t, "user2/repo1", &repo1PullRequest, allToken, http.StatusOK) // public user2/repo1
+			testCase(t, "user2/repo2", &repo2PullRequest, allToken, http.StatusOK) // private user2/repo2
+			testCase(t, "org3/repo3", &repo3PullRequest, allToken, http.StatusOK)  // private org3/repo3
+		})
+
+		t.Run("public-only access token", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			publicOnlyToken := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopePublicOnly, auth_model.AccessTokenScopeWriteRepository)
+
+			testCase(t, "user2/repo1", &repo1PullRequest, publicOnlyToken, http.StatusOK)       // public user2/repo1
+			testCase(t, "user2/repo2", &repo2PullRequest, publicOnlyToken, http.StatusNotFound) // private user2/repo2
+			testCase(t, "org3/repo3", &repo3PullRequest, publicOnlyToken, http.StatusNotFound)  // private org3/repo3
+		})
+
+		t.Run("specific repo access token", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			repo2OnlyToken := createFineGrainedRepoAccessToken(t, "user2",
+				[]auth_model.AccessTokenScope{auth_model.AccessTokenScopeWriteRepository},
+				[]int64{3},
+			)
+
+			testCase(t, "user2/repo1", &repo1PullRequest, repo2OnlyToken, http.StatusForbidden) // public user2/repo1, read-only outside of the auth'd repos
+			testCase(t, "user2/repo2", &repo2PullRequest, repo2OnlyToken, http.StatusNotFound)  // private user2/repo2, outside of fine-grain
+			testCase(t, "org3/repo3", &repo3PullRequest, repo2OnlyToken, http.StatusOK)         // private org3/repo3
+		})
 	})
 }
 
@@ -228,6 +322,122 @@ func TestAPIPullAllowMaintainerEditRestrictedHead(t *testing.T) {
 		req = NewRequestf(t, "POST", "/api/v1/repos/%s/%s/pulls/%d/update", forkRepo.OwnerName, forkRepo.Name, pullIssue.Index).
 			AddTokenAuth(token)
 		MakeRequest(t, req, http.StatusInternalServerError) // probably should be Forbidden
+	})
+}
+
+func TestAPIPullAllowMaintainerEditRestrictedHeadRepoSpecific(t *testing.T) {
+	onApplicationRun(t, func(t *testing.T, giteaURL *url.URL) {
+		baseRepo := forgery.CreateRepository(t, nil, &forgery.CreateRepositoryOptions{
+			Files: forgery.FilesInit{}, // ensure an initial commit is present
+		})
+
+		forkUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+		forkRepo, err := repo_service.ForkRepositoryAndUpdates(t.Context(), forkUser, forkUser, repo_service.ForkRepoOptions{
+			BaseRepo:    baseRepo,
+			Name:        "repo-pr-update",
+			Description: "desc",
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, forkRepo)
+
+		_, err = files_service.ChangeRepoFiles(git.DefaultContext, forkRepo, forkUser, &files_service.ChangeRepoFilesOptions{
+			Files: []*files_service.ChangeRepoFile{
+				{
+					Operation:     "create",
+					TreePath:      "File_B",
+					ContentReader: strings.NewReader("File B"),
+				},
+			},
+			Message:   "Add File on PR branch",
+			OldBranch: "main",
+			NewBranch: "pull-request",
+			Author: &files_service.IdentityOptions{
+				Name:  forkUser.Name,
+				Email: forkUser.Email,
+			},
+			Committer: &files_service.IdentityOptions{
+				Name:  forkUser.Name,
+				Email: forkUser.Email,
+			},
+			Dates: &files_service.CommitDateOptions{
+				Author:    time.Now(),
+				Committer: time.Now(),
+			},
+		})
+		require.NoError(t, err)
+
+		// Create a pull request to merge fork into base...
+		pullIssue := &issues_model.Issue{
+			RepoID:   baseRepo.ID,
+			Title:    "Pull Base into Fork",
+			PosterID: forkUser.ID,
+			Poster:   forkUser,
+			IsPull:   true,
+		}
+		pullRequest := &issues_model.PullRequest{
+			BaseRepo:            baseRepo,
+			BaseRepoID:          baseRepo.ID,
+			BaseBranch:          "main",
+			HeadRepo:            forkRepo,
+			HeadRepoID:          forkRepo.ID,
+			HeadBranch:          "pull-request",
+			Type:                issues_model.PullRequestGitea,
+			AllowMaintainerEdit: true, // allow maintainers on baseRepo to edit -- therefore they can edit forkRepo's `main` branch.
+		}
+		err = pull_service.NewPullRequest(git.DefaultContext, baseRepo, pullIssue, nil, nil, pullRequest, nil)
+		require.NoError(t, err)
+
+		// Maintainers of baseRepo should be able to edit forkRepo's `main` branch, but not if they're using
+		// repo-specific access tokens which restrict the scope of what they're editing.
+		session := loginUser(t, baseRepo.OwnerName)
+		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
+
+		// Attempt modification by editing the realBase's main branch via API:
+		req := NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/contents/File_A", forkRepo.OwnerName, forkRepo.Name),
+			&api.CreateFileOptions{
+				FileOptions: api.FileOptions{
+					BranchName:    "pull-request",
+					NewBranchName: "pull-request",
+					Message:       "legal change, legal scope...",
+					Author: api.Identity{
+						Name:  baseRepo.Owner.FullName,
+						Email: baseRepo.Owner.Email,
+					},
+					Committer: api.Identity{
+						Name:  baseRepo.Owner.FullName,
+						Email: baseRepo.Owner.Email,
+					},
+				},
+				ContentBase64: base64.StdEncoding.EncodeToString([]byte("Some content.")),
+			}).
+			AddTokenAuth(token)
+		MakeRequest(t, req, http.StatusCreated)
+
+		// Repo-specific access token allows writing to baseRepo, but should not permit writing to the fork repo through
+		// the open PR.
+		repoSpecificToken := createFineGrainedRepoAccessToken(t, baseRepo.OwnerName,
+			[]auth_model.AccessTokenScope{auth_model.AccessTokenScopeWriteRepository},
+			[]int64{baseRepo.ID},
+		)
+		req = NewRequestWithJSON(t, "POST", fmt.Sprintf("/api/v1/repos/%s/%s/contents/File_C", forkRepo.OwnerName, forkRepo.Name),
+			&api.CreateFileOptions{
+				FileOptions: api.FileOptions{
+					BranchName:    "pull-request",
+					NewBranchName: "pull-request",
+					Message:       "legal change, but illegal scope...",
+					Author: api.Identity{
+						Name:  baseRepo.Owner.FullName,
+						Email: baseRepo.Owner.Email,
+					},
+					Committer: api.Identity{
+						Name:  baseRepo.Owner.FullName,
+						Email: baseRepo.Owner.Email,
+					},
+				},
+				ContentBase64: base64.StdEncoding.EncodeToString([]byte("Some content.")),
+			}).
+			AddTokenAuth(repoSpecificToken)
+		MakeRequest(t, req, http.StatusForbidden)
 	})
 }
 

@@ -291,10 +291,10 @@ func GetUserRepoPermission(ctx context.Context, repo *repo_model.Repository, use
 		return perm, err
 	}
 
-	// if user in an owner team
+	// if user in an owner team, or an admin team
 	for _, team := range teams {
 		if team.AccessMode >= perm_model.AccessModeAdmin {
-			perm.AccessMode = perm_model.AccessModeOwner
+			perm.AccessMode = team.AccessMode
 			perm.UnitsMode = nil
 			return perm, nil
 		}

@@ -21,6 +21,7 @@ func TestQuotaUsedGetUsedForUser(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 4096, used.Size.Assets.Artifacts)
+	assert.EqualValues(t, 10, used.Size.Assets.Packages.All)
 }
 
 func TestQuotaUsedTotals(t *testing.T) {

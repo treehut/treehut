@@ -877,5 +877,8 @@
 	"actions.runs.options": "Options",
 	"actions.runs.prioritization_success": "L'exécution du workflow #%d est maintenant priorisée.",
 	"actions.runs.deprioritization_success": "L'exécution du workflow #%d ne sera plus priorisée.",
-	"actions.jobs.not_started": "pas commencé"
+	"actions.jobs.not_started": "pas commencé",
+	"repo.files.caption": "Fichiers du dépôt (dernière modification en premier)",
+	"repo.settings.units.more_units_disable_hint": "L'astuce « En savoir plus » peut être désactivée dans <a href=\"%s\">Paramètres utilisateur > Apparence</a>.",
+	"admin.federation.hosts.title": "La Fédération accueille"
 }

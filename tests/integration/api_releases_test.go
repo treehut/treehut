@@ -388,6 +388,52 @@ func TestAPIReleaseGetAssets(t *testing.T) {
 	})
 }
 
+func TestAPIReleaseDraftAttachmentUnauthorizedAccess(t *testing.T) {
+	defer tests.PrepareTestEnv(t)()
+
+	repo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 1})
+	owner := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: repo.OwnerID})
+	ownerSession := loginUser(t, owner.LowerName)
+	ownerToken := getTokenForLoggedInUser(t, ownerSession, auth_model.AccessTokenScopeWriteRepository)
+
+	rel := unittest.AssertExistsAndLoadBean(t, &repo_model.Release{
+		RepoID:  repo.ID,
+		TagName: "draft-release",
+	})
+	assert.True(t, rel.IsDraft)
+
+	// sanity checks: the draft release itself and its attachment list are not
+	// visible to anonymous users (only the repository read permission is held)
+	req := NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d", owner.Name, repo.Name, rel.ID))
+	MakeRequest(t, req, http.StatusNotFound)
+	req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets", owner.Name, repo.Name, rel.ID))
+	MakeRequest(t, req, http.StatusNotFound)
+
+	// the owner uploads an attachment to the draft release
+	filename := "draft-secret.png"
+	buff := generateImg()
+	body := &bytes.Buffer{}
+	contentType := tests.WriteImageBody(t, buff, filename, body)
+
+	assetURL := fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets", owner.Name, repo.Name, rel.ID)
+	req = NewRequestWithBody(t, http.MethodPost, assetURL, bytes.NewReader(body.Bytes())).
+		AddTokenAuth(ownerToken).
+		SetHeader("Content-Type", contentType)
+	resp := MakeRequest(t, req, http.StatusCreated)
+	var attachment *api.Attachment
+	DecodeJSON(t, resp, &attachment)
+	require.NotNil(t, attachment)
+
+	// attachments of a draft release must not be accessible without write
+	// permission on the releases unit: the attachment metadata ...
+	req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/repos/%s/%s/releases/%d/assets/%d", owner.Name, repo.Name, rel.ID, attachment.ID))
+	MakeRequest(t, req, http.StatusNotFound)
+
+	// ... nor the attachment content
+	req = NewRequest(t, "GET", "/attachments/"+attachment.UUID)
+	MakeRequest(t, req, http.StatusNotFound)
+}
+
 func TestAPIReleaseDeleteByTagName(t *testing.T) {
 	defer tests.PrepareTestEnv(t)()
 

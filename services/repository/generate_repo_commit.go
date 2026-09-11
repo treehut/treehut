@@ -1,8 +1,6 @@
 // Copyright 2019 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
-//go:build go1.25
-
 package repository
 
 import (
@@ -117,6 +115,12 @@ func generateRepoCommit(ctx context.Context, repo, templateRepo, generateRepo *r
 			}); err != nil {
 				return err
 			}
+		}
+
+		// Before template expansion, .git was removed so that a fresh repo can be initialized; remove it again in case
+		// some template variable usage has conflicted with this directory and impacts git operations.
+		if err := root.RemoveAll(".git"); err != nil {
+			return fmt.Errorf("unable to remove .git folder")
 		}
 	}
 

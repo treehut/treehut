@@ -54,7 +54,7 @@ func (ctx *preReceiveContext) canWriteCodeToBranch(branchName string) bool {
 	if !ctx.loadPusherAndPermission() {
 		return false
 	}
-	return issues_model.CanMaintainerWriteToBranch(ctx, ctx.userPerm, branchName, ctx.user) || ctx.deployKeyAccessMode >= perm_model.AccessModeWrite
+	return issues_model.CanMaintainerWriteToBranch(ctx, ctx.userPerm, branchName, ctx.user, access_model.GetUserRepoPermission) || ctx.deployKeyAccessMode >= perm_model.AccessModeWrite
 }
 
 // assertCanWriteCodeToBranch verifies that the pusher can write code to the specified branch name on the ctx

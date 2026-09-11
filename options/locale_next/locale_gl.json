@@ -71,5 +71,19 @@
 	"repo.files.last_commit_message": "Mensaxe do último commit",
 	"repo.files.last_commit_date": "Data do último commit",
 	"repo.issues.filter_poster.hint": "Filtrar por autor",
-	"repo.issues.filter_assignee.hint": "Filtrar por usuario asignado"
+	"repo.issues.filter_assignee.hint": "Filtrar por usuario asignado",
+	"repo.issues.filter_reviewers.hint": "Filtrar polo usuario que revisou",
+	"repo.issues.filter_mention.hint": "Filtrar polo usuario mencionado",
+	"repo.issues.filter_modified.hint": "Filtrar pola data da última modificación",
+	"repo.issues.filter_sort.hint_with_placeholder": "Ordenar por: %s",
+	"issues.updated": "actualizado %s",
+	"issues.filters.labels.exclude": "Excluír etiqueta",
+	"issues.filters.labels.unexclude": "Limpar exclusión",
+	"repo.pulls.auto_merge.no_permission": "Non tes permisos para cancelar a mestura automática desta pull request.",
+	"repo.pulls.poster_manage_approval": "Xestionar a aprobación",
+	"repo.pulls.poster_requires_approval": "Algúns fluxos de traballo están <a href=\"%[1]s\">á espera de revisión</a>.",
+	"error.must_enable_2fa": "Esta instancia de Forgejo require que os usuarios activen a autenticación en dous pasos antes de acceder ás súas contas. Habilitaa en: %s",
+	"avatar.constraints_hint": "O avatar persoal non pode pesar máis de %s nin superar o tamaño de %dx%d píxeles",
+	"user.activitypub_feed.feed": "Fediverse Feed",
+	"user.activitypub_feed.no_activity": "Sen actividade no fediverso"
 }

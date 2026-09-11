@@ -105,7 +105,7 @@ jobs:
     runs-on: docker
     needs: [backend-checks, frontend-checks]
     container:
-      image: 'data.forgejo.org/oci/playwright:latest'
+      image: 'data.forgejo.org/oci/ci:3'
       # options: --tmpfs /tmp:exec,noatime # Too much memory usage
     steps:
       - uses: https://data.forgejo.org/actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -124,20 +124,25 @@ jobs:
           su forgejo -c 'make deps-frontend frontend'
       - name: Decide to run all tests
         id: run-all
-        if: contains(github.event.pull_request.labels.*.name, 'run-all-playwright-tests') || contains(github.event.pull_request.title, 'playwright')
+        if: forgejo.event_name == 'push' || contains(forgejo.event.pull_request.labels.*.name, 'run-all-playwright-tests') || contains(forgejo.event.pull_request.title, 'playwright')
         run: |
           echo "all=1" >> "$GITHUB_OUTPUT"
       - name: Get changed files
+        if: forgejo.event_name == 'pull_request'
         id: changed-files
         uses: https://data.forgejo.org/tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           separator: '\n'
+      - uses: https://data.forgejo.org/actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: playwright-${{ hashFiles('package-lock.json') }}
+          path: |
+            /home/forgejo/.cache/ms-playwright
       - run: |
           su forgejo -c 'make generate test-e2e-sqlite'
         timeout-minutes: 120
         env:
           USE_REPO_TEST_DIR: 1
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
           CHANGED_FILES: ${{steps.changed-files.outputs.all_changed_files}}
           RUN_ALL: ${{steps.run-all.all}}
       - name: Upload test artifacts on failure
@@ -301,6 +306,9 @@ jobs:
       - run: apk add nodejs # required for actions/checkout
       - uses: https://data.forgejo.org/actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: self-check semgrep rules
-        run: semgrep --test .semgrep/tests/ --config .semgrep/config/
+        run: |
+          set -x
+          semgrep validate .semgrep/config
+          semgrep --test .semgrep/tests/ --config .semgrep/config/
       - name: semgrep ci
         run: semgrep ci --config .semgrep/config/ --metrics=off

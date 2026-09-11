@@ -1,0 +1,16 @@
+- id: 18410
+  job_id: 9410
+  attempt: 1
+  status: 1 # success
+  started: 1788695807
+  stopped: 1788695821
+  repo_id: 62
+  owner_id: 2
+  token_hash: 225b7d24e460ab93c1c52d198f7d0a64b1910fbc112d7d076b170bf3c312f2f2bf4153410b0db305cd653979bf7cf6c81c90
+  token_salt: v7dd1ori2UYxAX_z03IVfO
+  token_last_eight: f53f532a
+  log_filename: user2/test_workflows/47EA/18410.log.zst
+  log_in_storage: true
+  log_length: 13
+  log_size: 1296
+  log_expired: false

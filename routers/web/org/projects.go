@@ -389,6 +389,7 @@ func ViewProject(ctx *context.Context) {
 	}
 
 	project.RenderedContent = templates.RenderMarkdownToHtml(ctx, project.Description)
+	ctx.Data["Title"] = project.Title
 	ctx.Data["LinkedPRs"] = linkedPrsMap
 	ctx.Data["PageIsViewProjects"] = true
 	ctx.Data["CanWriteProjects"] = canWriteProjects(ctx)

@@ -805,11 +805,11 @@
 	"actions.runners.runner_setup.last_chance_copying_token": "Nyní si zkopírujte token – už jej znovu neuvidíte!",
 	"actions.runners.runner_setup.button_copy_uuid_aria": "Kopírovat UUID runneru",
 	"actions.runners.runner_setup.button_copy_token_aria": "Kopírovat token runneru",
-	"actions.runners.runner_setup.heading_using_configuration": "Používám konfigurační soubor runneru",
+	"actions.runners.runner_setup.heading_using_configuration": "Pomocí konfiguračního souboru runneru",
 	"actions.runners.runner_setup.configuration_snippet_aria": "Část k vložení do konfigurace runneru",
 	"actions.runners.runner_setup.program_options_snippet_aria": "Jak spustit forgejo-runner",
 	"actions.runners.runner_setup.instruction_replace_connection_name": "Nahraďte název spojení (<code>forgejo</code> v příkladu) vlastní hodnotou.",
-	"actions.runners.runner_setup.heading_using_options": "Používám možnosti programu",
+	"actions.runners.runner_setup.heading_using_options": "Pomocí možností programu",
 	"actions.runners.runner_setup.instruction_advanced_configurations": "Pro nastavení runneru Forgejo běžícího v kontejnerech nebo pokročilých konfiguracích si přečtěte <a href=\"%s\">dokumentaci</a>.",
 	"actions.runners.reset_registration_token.token": "Registrační token (zastaralý)",
 	"form.RunnerName": "Název",
@@ -944,7 +944,7 @@
 	"settings.authorized_integration.forgejo_actions_local.workflow_file.error": "Chyba při zpracování souboru workflow: %s",
 	"settings.authorized_integration.forgejo_actions_local.description": "Forgejo Actions budou moci přistupovat ke službě Forgejo skrze tuto autorizovanou integraci z jednoho vybraného repozitáře v případě, že provedení dodržuje podmínky definované níže.",
 	"settings.authorized_integration.forgejo_actions_local.repo.required": "Musí být vybrán zdrojový repozitář pro Forgejo Actions.",
-	"repo.settings.units.more_units_disable_hint": "Nápovědu „Povolit více“ lze zakázat na stránce <a href=\"%s\">Uživatelská nastavení > Vzhled</a>.",
+	"repo.settings.units.more_units_disable_hint": "Nápovědu „Povolit další“ lze zakázat na stránce <a href=\"%s\">Uživatelská nastavení > Vzhled</a>.",
 	"migrate.in_progress.issues.progress": {
 		"one": "Migrován %[1]d problém",
 		"few": "Migrovány %[1]d problémy",
@@ -969,5 +969,10 @@
 	"actions.runs.prioritization_success": "Běh workflow #%d je nyní prioritizován.",
 	"actions.runs.deprioritization_success": "Běh workflow #%d již nebude prioritizován.",
 	"actions.workflow.pre_execution_warning": "Varování workflow:",
-	"actions.workflow.permissions_warning": "Úloha <code>%[1]s</code> nebo její workflow má pole <code>permissions</code>, které není podporováno službou Forgejo a bude ignorováno. Pro přidání schopností k této úloze použijte <a href=\"%[2]s\">autorizovanou integraci</a>."
+	"actions.workflow.permissions_warning": "Úloha <code>%[1]s</code> nebo její workflow má pole <code>permissions</code>, které není podporováno službou Forgejo a bude ignorováno. Pro přidání schopností k této úloze použijte <a href=\"%[2]s\">autorizovanou integraci</a>.",
+	"repo.watching": "Sledování",
+	"repo.watch.issues": "Problémy",
+	"repo.watch.pull_requests": "Žádosti o sloučení",
+	"repo.watch.releases": "Vydání",
+	"repo.watch.releases.hint": "(Pouze e-mail)"
 }

@@ -4,8 +4,11 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"forgejo.org/modules/setting"
@@ -74,4 +77,48 @@ func TestManifestJsonCustomFile(t *testing.T) {
 	assert.NotContains(t, data, "short_name")
 	assert.NotContains(t, data, "start_url")
 	assert.NotContains(t, data, "display")
+}
+
+func TestBaseTemplateTitle(t *testing.T) {
+	siteTitleText := "Forgejo: Beyond coding. We Forge."
+	defer tests.PrepareTestEnv(t)()
+
+	for _, testCase := range []struct {
+		urlPath       string
+		expectedTitle string
+		userSession   *TestSession
+	}{
+		{"/user2/-/projects/4", "project on user2", nil},
+		{"/user2/repo1/projects/1", "First project - user2/repo1", nil},
+		{"/org3/-/projects/7", "project on org3 - org3", nil},
+		{"/org6", "Org Six", nil},
+		{"/org17/big_test_public_4", "org17/big_test_public_4", nil},
+		{"/admin", "Dashboard", loginUser(t, "user1")},
+		{"/explore/repos", "Explore", nil}, // /explore is a redirect
+		{"/", "", nil},
+	} {
+		t.Run(testCase.urlPath, func(t *testing.T) {
+			urlPath := strings.TrimPrefix(testCase.urlPath, "/")
+			req := NewRequest(t, "GET", urlPath)
+			var resp *httptest.ResponseRecorder
+			if testCase.userSession == nil {
+				resp = MakeRequest(t, req, http.StatusOK)
+			} else {
+				resp = testCase.userSession.MakeRequest(t, req, http.StatusOK)
+			}
+
+			htmlDoc := NewHTMLParser(t, resp.Body)
+
+			titleTags := htmlDoc.Find("html > head > title")
+			assert.Equal(t, 1, titleTags.Length())
+			titleText := titleTags.Text()
+			var expectedTitleText string
+			if testCase.expectedTitle != "" {
+				expectedTitleText = fmt.Sprintf("%s - %s", testCase.expectedTitle, siteTitleText)
+			} else {
+				expectedTitleText = siteTitleText
+			}
+			assert.Equal(t, expectedTitleText, titleText)
+		})
+	}
 }

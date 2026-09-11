@@ -1,4 +1,5 @@
 // Copyright 2022 The Gitea Authors. All rights reserved.
+// Copyright 2026 The Forgejo Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
 package integration
@@ -91,6 +92,19 @@ func TestAPIRepoCollaboratorPermission(t *testing.T) {
 			var repoPermission api.RepoCollaboratorPermission
 			DecodeJSON(t, resp, &repoPermission)
 
+			assert.Equal(t, "admin", repoPermission.Permission)
+		})
+
+		t.Run("CollaboratorWithOwnerAccess", func(t *testing.T) {
+			t.Run("AddUserAsCollaboratorWithAdminAccess", doAPIAddCollaborator(testCtx, user4.Name, perm.AccessModeOwner))
+			req := NewRequestf(t, "GET", "/api/v1/repos/%s/%s/collaborators/%s/permission", repo2Owner.Name, repo2.Name, user4.Name).
+				AddTokenAuth(testCtx.Token)
+			resp := MakeRequest(t, req, http.StatusOK)
+
+			var repoPermission api.RepoCollaboratorPermission
+			DecodeJSON(t, resp, &repoPermission)
+
+			// Confirm it didn't change from the previous permission.
 			assert.Equal(t, "admin", repoPermission.Permission)
 		})
 

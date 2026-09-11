@@ -3,7 +3,7 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	{{/* Display `- .Repository.FullName` only if `.Title` does not already start with that. */}}
-	<title>{{if .Title}}{{.Title}} - {{end}}{{if and (.Repository.Name) (not (StringUtils.HasPrefix .Title .Repository.FullName))}}{{.Repository.FullName}} - {{end}}{{AppDisplayName}}</title>
+	<title>{{if .Title}}{{.Title}} - {{end}}{{if and (.Repository.Name) (not (StringUtils.HasPrefix .Title .Repository.FullName))}}{{.Repository.FullName}} - {{else}}{{if and (.ContextUser.IsOrganization) (.ContextUser.Name) (not (StringUtils.HasPrefix .Title .ContextUser.Name)) (not (StringUtils.HasPrefix .Title .ContextUser.FullName))}}{{.ContextUser.Name}} - {{end}}{{end}}{{AppDisplayName}}</title>
 	<link rel="manifest" href="{{AppSubUrl}}/manifest.json">
 	<meta name="author" content="{{if .Repository}}{{.Owner.Name}}{{else}}{{MetaAuthor}}{{end}}">
 	<meta name="description" content="{{if .Repository}}{{.Repository.Name}}{{if .Repository.Description}} - {{.Repository.Description}}{{end}}{{else}}{{MetaDescription}}{{end}}">

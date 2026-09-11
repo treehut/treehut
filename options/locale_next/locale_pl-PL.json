@@ -733,5 +733,22 @@
 	"members.user": "Użytkownik",
 	"members.user_already_member": "Ten użytkownik jest już członkiem tej organizacji.",
 	"members.no_team_selected": "Członkowie organizacji muszą należeć do przynajmniej jednego zespołu.",
-	"repo.view.gitmodules_too_large": "Plik .gitmodules jest za duży i będzie ignorowany (np. w wywołaniach API)"
+	"repo.view.gitmodules_too_large": "Plik .gitmodules jest za duży i będzie ignorowany (np. w wywołaniach API)",
+	"repo.packages.visibility_warning": "To repozytorium jest prywatne, ale podlinkowane pakiety są widoczne publicznie (właściciel %s jest publiczny).",
+	"search.docs": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"%[1]s\">Zobacz dokumentację</a> żeby dowiedzieć się więcej o wyszukiwaniu, operatorach oraz filtrach.",
+	"repo.settings.units.more_units_disable_hint": "Podpowiedź \"Włącz więcej\" może zostać wykłączona poprzez <a href=\"%s\">Ustawienia użytkownika > Wygląd</a>.",
+	"install.ssh_authorized_keys_inspection_error": "Nie udało się przeczytać aktualnego pliku authorized_keys: %v",
+	"install.ssh_authorized_keys_unexpected_key": "Włączenie serwera SSH dla Forgejo konfliktuje z plikiem zlokalizowanym w %s, który zawiera aktualnie klucze SSH. Sugestia: użyj dedykowanego użytkownika dla Forgejo albo wyłącz SSH.",
+	"keys.verify.token.hint": "Ten token jest ważny tylko 1 minutę. <a href=\"%[1]s\">Pobierz nowy jeżeli tamten się skończył</a>.",
+	"admin.federation.federation": "Federacja",
+	"admin.federation.host.id": "ID",
+	"admin.federation.host.port": "Port",
+	"admin.federation.host.software_name": "Oprogramowanie",
+	"admin.federation.host.created": "Utworzono",
+	"admin.federation.host.updated": "Zaaktualizowano",
+	"admin.federation.host.latest_activity": "Ostatnia aktywność",
+	"admin.federation.users": "Użytkownicy",
+	"mail.issue.action.close_by_commit": "%[1]s zamknięty %[2]s w commicie %[3]s.",
+	"editor.textarea.tab_hint": "Linia jest już wcięta. Wciśnij <kbd>Tab</kbd> ponownie, albo wciśnij <kbd>Escape</kbd> żeby wyjść z edytora.",
+	"editor.textarea.shift_tab_hint": "Brak wcięcia dla tej linii. Wciśnij <kbd>Tab</kbd> ponownie, albo wciśnij <kbd>Escape</kbd> żeby wyjść z edytora."
 }

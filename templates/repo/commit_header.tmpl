@@ -181,7 +181,7 @@
 				<span>{{ctx.Locale.Tr "repo.diff.commit"}}</span>
 				{{if .PageIsPullFiles}}
 					{{$commitShaLink := (printf "%s/commit/%s" $.RepoLink (PathEscape .CommitID))}}
-					<a href="{{$commitShaLink}}" class="ui primary sha label">
+					<a href="{{$commitShaLink}}" class="primary sha label">
 						<span class="shortsha">{{ShortSha .CommitID}}</span>
 					</a>
 				{{else}}

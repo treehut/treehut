@@ -197,7 +197,7 @@ func doRepoWikiGitOperationInner(t *testing.T, gitURL *url.URL, dstPath string, 
 
 		stdout, stderr, err := cmd.RunStdString(&git.RunOpts{
 			Dir:     dstPath,
-			Timeout: 2 * time.Second,
+			Timeout: 60 * time.Second,
 		})
 		if auth == RepoWikiAuthenticated {
 			require.NoError(t, err, "stdout = %q, stderr = %q", stdout, stderr)

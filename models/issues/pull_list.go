@@ -81,8 +81,10 @@ func GetUnmergedPullRequestsByHeadInfo(ctx context.Context, repoID int64, branch
 	return prs, sess.Find(&prs)
 }
 
+type GetUserRepoPermissionFunc func(ctx context.Context, repo *repo_model.Repository, user *user_model.User) (access_model.Permission, error)
+
 // CanMaintainerWriteToBranch check whether user is a maintainer and could write to the branch
-func CanMaintainerWriteToBranch(ctx context.Context, p access_model.Permission, branch string, user *user_model.User) bool {
+func CanMaintainerWriteToBranch(ctx context.Context, p access_model.Permission, branch string, user *user_model.User, getUserRepoPermission GetUserRepoPermissionFunc) bool {
 	if p.CanWrite(unit.TypeCode) {
 		return true
 	}
@@ -113,7 +115,7 @@ func CanMaintainerWriteToBranch(ctx context.Context, p access_model.Permission, 
 			// delegated that write access to the maintainers of the PR base.  If they don't currently have write
 			// access, they can't delegate that access.
 			poster := pr.Issue.Poster
-			posterHeadPerm, err := access_model.GetUserRepoPermission(ctx, pr.HeadRepo, poster)
+			posterHeadPerm, err := getUserRepoPermission(ctx, pr.HeadRepo, poster)
 			if err != nil {
 				log.Error("GetUserRepoPermission failed: %s", err)
 				continue
@@ -127,7 +129,7 @@ func CanMaintainerWriteToBranch(ctx context.Context, p access_model.Permission, 
 				log.Error("LoadBaseRepo failed: %s", err)
 				continue
 			}
-			prPerm, err := access_model.GetUserRepoPermission(ctx, pr.BaseRepo, user)
+			prPerm, err := getUserRepoPermission(ctx, pr.BaseRepo, user)
 			if err != nil {
 				log.Error("GetUserRepoPermission failed: %s", err)
 				continue

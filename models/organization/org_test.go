@@ -417,9 +417,10 @@ func TestUser_RemoveOrgRepo(t *testing.T) {
 
 	require.NoError(t, organization.RemoveOrgRepo(db.DefaultContext, org.ID, unittest.NonexistentID))
 
+	// Can't check consistency of Team here; `RemoveOrgRepo` removes a repo from the owners team making it fail the
+	// consistency rules, but it is only used when performing a transfer.
 	unittest.CheckConsistencyFor(t,
 		&user_model.User{ID: org.ID},
-		&organization.Team{OrgID: org.ID},
 		&repo_model.Repository{ID: repo.ID})
 }
 

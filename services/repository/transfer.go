@@ -395,7 +395,7 @@ func StartRepositoryTransfer(ctx context.Context, doer, newOwner *user_model.Use
 		if err := repo_module.AddCollaborator(ctx, repo, newOwner); err != nil {
 			return err
 		}
-		if err := repo_model.ChangeCollaborationAccessMode(ctx, repo, newOwner.ID, perm.AccessModeRead); err != nil {
+		if err := repo_module.ChangeCollaborationAccessMode(ctx, repo, newOwner.ID, perm.AccessModeRead); err != nil {
 			return err
 		}
 	}

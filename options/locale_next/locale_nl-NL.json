@@ -872,5 +872,8 @@
 	"repo.files.caption": "Bestanden in de repository (nieuwste commit bovenaan)",
 	"repo.files.filename": "Bestandsnaam",
 	"repo.files.last_commit_message": "Laatste commitbericht",
-	"repo.files.last_commit_date": "Datum van de laatste commit"
+	"repo.files.last_commit_date": "Datum van de laatste commit",
+	"repo.packages.visibility_warning": "Deze repository is privé, maar de gekoppelde pakketten zijn openbaar (eigenaar %s is openbaar).",
+	"search.match_inside_quotes": "Neem alleen resultaten op die overeenkomen met de term tussen aanhalingstekens",
+	"search.docs": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"%[1]s\">Raadpleeg de documentatie</a> voor meer informatie over zoeken, operatoren en filters."
 }
