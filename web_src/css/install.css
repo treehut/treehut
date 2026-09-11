@@ -17,7 +17,7 @@
   width: auto;
 }
 
-.page-content.install form.ui.form input:not([type="checkbox"], [type="radio"]),
+.page-content.install form.ui.form input:not([type="checkbox"],[type="radio"]),
 .page-content.install form.ui.form .ui.selection.dropdown {
   width: 60%;
 }
@@ -53,7 +53,7 @@
 
 .page-content.install details.collapsible {
   border: 1px solid var(--color-light-border);
-  border-radius: 6px;
+  border-radius: var(--border-radius);
 }
 .page-content.install .collapsible summary {
   background: transparent;

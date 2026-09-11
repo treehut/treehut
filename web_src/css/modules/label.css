@@ -4,7 +4,7 @@
 .ui.label {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: .25rem;
   min-width: 0;
   vertical-align: middle;
   line-height: 1;
@@ -14,7 +14,7 @@
   font-size: 0.85714286rem;
   font-weight: var(--font-weight-medium);
   border: 0 solid transparent;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   white-space: nowrap;
 }
 
@@ -67,7 +67,7 @@ a.ui.label {
 .ui.label > .close.icon,
 .ui.label > .delete.icon {
   cursor: pointer;
-  font-size: 0.93em;
+  font-size: 0.92857143em;
   opacity: 0.5;
 }
 .ui.label > .close.icon:hover,
@@ -291,7 +291,7 @@ a.ui.ui.ui.basic.grey.label:hover {
   font-size: 0.71428571rem;
 }
 .ui.small.label {
-  font-size: 0.785rem;
+  font-size: 0.78571429rem;
 }
 .ui.large.label {
   font-size: 1rem;

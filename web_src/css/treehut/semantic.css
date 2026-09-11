@@ -1,0 +1,103 @@
+/* Treehut semantic tokens — the vocabulary you should actually author against.
+ *
+ * This file is MODE-AGNOSTIC. It is shared verbatim by every treehut theme,
+ * light and dark, because both ramps agree that step-0 is the colour furthest
+ * from the text and step-9 the colour closest to it. Nothing here contains a
+ * literal colour; if you find yourself adding one, it belongs in a ramp file.
+ *
+ * Naming follows GitHub Primer, which is both a well-tested vocabulary and the
+ * thing we are trying to look more like:
+ *
+ *   canvas-*   page and container backgrounds
+ *   fg-*       foreground / text / icons
+ *   border-*   strokes and dividers
+ *   accent-*   the brand colour and interactive affordances
+ *   <role>-*   success / attention / danger / done, each with the same
+ *              fg / emphasis / muted / subtle shape
+ *
+ * Within a family the suffixes always mean the same thing:
+ *
+ *   -fg          readable text/icon colour on a plain canvas
+ *   -emphasis    solid, high-contrast fill (buttons, filled badges)
+ *   -on-emphasis text that sits on top of an -emphasis fill
+ *   -muted       a visible but quiet border or fill
+ *   -subtle      a faint background wash
+ */
+
+:root {
+  /* ── canvas ───────────────────────────────────────────────────────────── */
+  --th-canvas: var(--th-step-0);           /* the page itself */
+  --th-canvas-inset: var(--th-step-inset); /* wells: code blocks, diff gutters */
+  --th-canvas-surface: var(--th-step-1);   /* box / card body */
+  --th-canvas-raised: var(--th-step-2);    /* box headers, nav bars, menus */
+  --th-canvas-overlay: var(--th-step-2);   /* dropdowns, dialogs, popovers */
+  --th-canvas-highlight: var(--th-step-3); /* hovered rows, selected items */
+  --th-canvas-inverted: var(--th-step-inverted); /* tooltips: dark in both modes */
+  --th-fg-on-inverted: var(--th-step-inverted-fg);
+
+  /* ── foreground ───────────────────────────────────────────────────────── */
+  --th-fg-strong: var(--th-step-9);  /* headings, emphasised body text */
+  --th-fg: var(--th-step-8);         /* default body text */
+  --th-fg-muted: var(--th-step-7);   /* secondary text, metadata */
+  --th-fg-subtle: var(--th-step-6);  /* timestamps, placeholder, disabled */
+
+  /* ── border ───────────────────────────────────────────────────────────── */
+  --th-border-subtle: var(--th-step-3); /* hairlines inside a container */
+  --th-border: var(--th-step-4);        /* the default container stroke */
+  --th-border-strong: var(--th-step-5); /* inputs on hover, focus rings */
+
+  /* ── neutral (grey buttons, plain labels) ─────────────────────────────── */
+  --th-neutral-subtle: var(--th-step-2);
+  --th-neutral-muted: var(--th-step-4);
+  --th-neutral-emphasis: var(--th-step-5);
+  --th-neutral-on-emphasis: var(--th-step-0);
+
+  /* ── accent ───────────────────────────────────────────────────────────── */
+  --th-accent-subtle: var(--th-accent-1);
+  --th-accent-muted: var(--th-accent-3);
+  --th-accent-fg: var(--th-accent-5);
+  --th-accent-emphasis: var(--th-accent-5);
+  --th-accent-on-emphasis: var(--th-accent-on);
+  --th-accent-hover: var(--th-accent-4);
+  --th-accent-active: var(--th-accent-3);
+
+  /* ── status ───────────────────────────────────────────────────────────────
+   * Fills, then "thin" (text-weight) colours. The success / warning / info
+   * *surface* families are still inherited from upstream; see ./README.md.
+   */
+  --th-danger-subtle: var(--th-danger-fill);
+
+  /* Composed from the ramp's lightness/chroma knobs and per-hue values, so a
+     single knob change re-tunes every coloured text utility at once. */
+  --th-danger-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-danger-hue));
+  --th-danger-fg-hover: oklch(var(--th-thin-lightness-highlight) var(--th-thin-chroma) var(--th-danger-hue));
+  --th-attention-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-attention-hue));
+  --th-success-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-success-hue));
+  --th-done-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-done-hue));
+
+  /* A label sitting on an active/hover background needs a stronger fill than
+     --th-label-bg to stay readable. */
+  --th-label-bg-strong: color-mix(in srgb, var(--th-neutral-emphasis) 60%, transparent);
+
+  /* Diff surfaces. Composed from the status hues, so a variant that re-hues
+     `success` moves the added-line tint with it — no per-variant diff patching. */
+  --th-diff-added-row-bg: oklch(var(--th-diff-row-lightness) var(--th-diff-chroma) var(--th-success-hue));
+  --th-diff-added-word-bg: oklch(var(--th-diff-word-lightness) var(--th-diff-chroma) var(--th-success-hue));
+  --th-diff-added-row-border: oklch(var(--th-diff-border-lightness) var(--th-diff-chroma) var(--th-success-hue));
+  --th-diff-removed-row-bg: oklch(var(--th-diff-row-lightness) var(--th-diff-chroma) var(--th-danger-hue));
+  --th-diff-removed-word-bg: oklch(var(--th-diff-word-lightness) var(--th-diff-chroma) var(--th-danger-hue));
+  --th-diff-removed-row-border: oklch(var(--th-diff-border-lightness) var(--th-diff-chroma) var(--th-danger-hue));
+  --th-diff-moved-row-bg: oklch(var(--th-diff-row-lightness) var(--th-diff-chroma) var(--th-attention-hue));
+  --th-diff-moved-row-border: oklch(var(--th-diff-border-lightness) var(--th-diff-chroma) var(--th-attention-hue));
+
+  /* ── interaction ──────────────────────────────────────────────────────── */
+  /* Derived from the elevation tint so hover/active read correctly in both
+     modes without per-mode overrides. */
+  --th-hover: color-mix(in oklab, var(--th-elevation-tint) 7%, transparent);
+  --th-active: color-mix(in oklab, var(--th-elevation-tint) 12%, transparent);
+  --th-focus-ring: var(--th-accent-fg);
+  --th-selection-bg: var(--th-accent-emphasis);
+  --th-selection-fg: var(--th-accent-on-emphasis);
+  --th-shadow: color-mix(in oklab, var(--th-step-0) 55%, transparent);
+  --th-overlay-backdrop: color-mix(in oklab, var(--th-step-0) 72%, transparent);
+}

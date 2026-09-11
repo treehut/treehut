@@ -1,0 +1,350 @@
+/* Treehut component overrides.
+ *
+ * Structural and component-level divergence from upstream lives here rather
+ * than being edited into upstream's own CSS files. head_style.tmpl loads
+ * index.css first and theme-*.css second, so equal-specificity rules in this
+ * file win without needing !important or an artificial [data-theme] wrapper.
+ * That load order is the whole reason this approach is viable — if it ever
+ * changes, these rules stop applying and this comment is the place to look.
+ *
+ * Rule of thumb: if a change can be expressed here, it must be. Editing
+ * upstream CSS costs a merge conflict on every future pull; editing this file
+ * costs nothing. Colour changes belong further up the chain, in ./semantic.css
+ * or a ramp file — not here.
+ */
+
+:root {
+  /* Upstream ships 4px. Fomantic's modules hardcode the equivalent
+     `0.28571429rem` in ~30 places; see the note in ./README.md about
+     tokenising those so this single line actually reaches them. */
+  --border-radius: 6px;
+
+  --fonts-override: "Avenir Next", Avenir, Lexend, Montserrat, Corbel;
+  /* Keep a generic `monospace` tail: without it, a machine lacking Cascadia
+     falls back to the default (proportional) family for code. */
+  --fonts-monospace: "Cascadia Code PL", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace, var(--fonts-emoji);
+}
+
+/* ── typography ─────────────────────────────────────────────────────────────
+ * Small text at weight 400 goes muddy, especially on dark backgrounds where
+ * thin glyphs lose contrast against the canvas. Anything below body size gets
+ * bumped to 500.
+ */
+.ui.label,
+.ui.small.label,
+.ui.tiny.label,
+.ui.small.button,
+.ui.tiny.button,
+.ui.tabular.menu .item,
+.ui.secondary.pointing.menu .item,
+.text.small,
+.flex-item-body .time-since,
+relative-time,
+.repository .metas .item,
+.commit-list .message-wrapper,
+td .commit-summary {
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── de-boxing ──────────────────────────────────────────────────────────────
+ * Upstream wraps a lot of content that does not need a container: the profile
+ * sidebar, settings navigation, and two-column side menus all render as boxed
+ * segments nested inside other boxed segments. Strip the frame and let spacing
+ * do the work.
+ */
+.ui.vertical.menu {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Profile page left column. Matches user.css:112 at (1,0,0) and wins on load
+   order. There is no segment wrapping this card, so no need to unbox a parent. */
+#profile-avatar-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Hover still paints a background, so items keep a radius — but the section
+   header must not, or it reads as a stray filled block. */
+.settings .ui.vertical.menu .item:not(.header),
+.user-setting-menu .item:not(.header),
+.organization-setting-menu .item:not(.header) {
+  border-radius: var(--border-radius);
+}
+
+/* The sidebar section header. repo.css:1988 gives this a --color-box-header
+   fill at 1.1em, which looks like a leftover box once the surrounding borders
+   are gone — worse still when the first item is active and the two fills touch.
+   Demote it to a quiet label instead. Same (0,4,0) specificity as upstream. */
+.ui.vertical.menu .header.item {
+  background: none;
+  color: var(--th-fg);
+  font-size: 1.2em;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Active sidebar items carry their state with text contrast, not a fill.
+ * base.css:404-410 sets `background: var(--color-active)` and leaves active and
+ * inactive items the same colour; this inverts that split — inactive items drop
+ * to muted, the active one goes to full strength. Weight does part of the work
+ * too, so the cue survives for anyone who cannot separate the two greys.
+ */
+.ui.vertical.menu .item {
+  color: var(--th-fg-muted);
+}
+
+.ui.vertical.menu .active.item,
+.ui.vertical.menu .active.item:hover {
+  background: none;
+  color: var(--th-fg-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Sub-menu items (the collapsible Actions group) follow the same rule. */
+.ui.vertical.menu .item .menu .item {
+  color: var(--th-fg-muted);
+}
+.ui.vertical.menu .item .menu .active.item {
+  color: var(--th-fg-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── inner separators ───────────────────────────────────────────────────────
+ * Dropping a container's outer border leaves upstream's internal dividers
+ * floating with nothing to attach to, which reads worse than the original box.
+ * There are three separate mechanisms and all of them need stripping.
+ *
+ * 1. Menu items are divided by ::before pseudo-elements, painted at
+ *    base.css:421 and positioned by fomantic. Same (0,3,1) specificity, so
+ *    load order carries it.
+ */
+.ui.vertical.menu .item::before,
+.ui.vertical.menu > .item::before {
+  display: none;
+}
+
+/* 2. Card sections: modules/card.css:43 puts a border-top between every
+ *    `.content` block, and `.extra` gets the same treatment. Anchoring on the
+ *    ID beats those (0,3,0) rules outright.
+ */
+#profile-avatar-card > .content,
+#profile-avatar-card > .extra,
+#profile-avatar-card > .extra.content {
+  border-top: none;
+}
+
+/* 3. The profile info rows are a <ul> whose items are separated at
+ *    user.css:31. Reusing upstream's exact selector keeps this a pure
+ *    cancellation rather than a specificity fight.
+ */
+.user.profile .ui.card .extra.content > ul > li:not(:last-child) {
+  border-bottom: none;
+}
+
+/* ── checkboxes, radios, switches ───────────────────────────────────────────
+ * Monochrome rather than accent-green. Green on a small filled control reads as
+ * a status ("good", "passing") rather than as a selection, which is misleading
+ * on a forge where green genuinely means something elsewhere.
+ *
+ * Four separate sources of green, all in modules/checkbox.css unless noted:
+ *   1. hover/active border on custom checkboxes  → --color-primary
+ *   2. checked fill on custom checkboxes         → --color-accent
+ *   3. checked track on toggle switches          → --color-primary !important
+ *   4. native radios, which are NOT restyled     → the `accent-color` property
+ *
+ * Selectors below mirror upstream's exactly so these are pure substitutions
+ * rather than specificity fights.
+ */
+:is(form, .markup) input[type="checkbox"]:not([disabled]):hover,
+:is(form, .markup) input[type="checkbox"]:not([disabled]):active {
+  border-color: var(--th-border-strong);
+}
+
+form input[type="checkbox"]:checked {
+  background: var(--th-fg);
+}
+form input[type="checkbox"]:checked::after {
+  background: var(--th-canvas);
+}
+
+/* `!important` mirrors upstream's own declaration on this rule. */
+.ui.toggle.checkbox input:checked ~ label::before,
+.ui.toggle.checkbox input:focus:checked ~ label::before {
+  background: var(--th-fg-subtle) !important;
+}
+
+/* Radios are left native by upstream, so the only lever is accent-color.
+   Scoped to these inputs so range sliders and progress bars keep the accent. */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--th-fg);
+}
+
+/* ── repository file list ───────────────────────────────────────────────── */
+
+/* Green folder icons read as "changed" next to the green accent. Manilla yellow
+ * keeps them legible as folders.
+ *
+ * Only the diff file tree needs this now: the repository file list renders
+ * Catppuccin icons (see modules/base/catppuccin.go), which are line art tinted
+ * from --vscode-ctp-* rather than filled octicons, so it has no green folders to
+ * fix. The tree sidebar is a Vue component and still uses octicons.
+ *
+ * The `.svg` class is load-bearing: repo.css colours these at (1,5,1) via
+ * `.svg.octicon-file-directory-fill`. Writing `svg.octicon-…` instead drops a
+ * class for an element and loses at (1,4,2). */
+#diff-file-tree .svg.octicon-file-directory-fill,
+#diff-file-tree .svg.octicon-file-submodule {
+  color: var(--color-yellow-light);
+}
+
+.repository.file.list .non-diff-file-content .header .file-actions .btn-octicon {
+  padding: 6px;
+}
+
+/* Commit-history link, moved into the latest-commit bar (view_list.tmpl) so it
+   sits where GitHub puts it. `.latest-commit` is flex:1 and truncates, so this
+   must refuse to shrink or wrap or the count gets clipped instead. */
+.commit-history-link {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── repo button row ────────────────────────────────────────────────────────
+ * Taller than upstream's 30px. The `!important` on padding mirrors upstream's
+ * own declaration at repo.css:2169, which cannot be beaten otherwise. The input
+ * has to move in lockstep or the row stops aligning.
+ */
+.repo-button-row .button {
+  padding: 8px 12px !important;
+  height: 36px;
+}
+
+.repo-button-row input {
+  height: 36px;
+}
+
+/* The HTTPS / SSH protocol selector.
+ *
+ * clone_script.tmpl toggles `.primary` on the selected button and `.basic` on
+ * the other, so upstream paints the active one with the accent. Green reads as
+ * a status here rather than a selection, so this goes monochrome instead —
+ * fully inverted against the page, which is where the role-distance ramp pays
+ * off: --th-fg-strong/--th-canvas is near-white on near-black in the dark theme
+ * and near-black on white in the light one, from one declaration.
+ *
+ * Anchored on the IDs (1,0,0) to beat `.ui.primary.button` (0,3,0) without
+ * `!important`, and scoped to these two buttons so other primary buttons in the
+ * same row keep the accent.
+ */
+#repo-clone-https.primary,
+#repo-clone-ssh.primary,
+#repo-clone-https.primary:hover,
+#repo-clone-ssh.primary:hover,
+#repo-clone-https.primary:focus,
+#repo-clone-ssh.primary:focus {
+  background: var(--th-neutral-emphasis);
+  border-color: var(--th-neutral-emphasis);
+  color: var(--th-fg-strong);
+}
+
+/* Inactive side: upstream's `.basic` already reads neutral, but its hover
+   borrows --color-secondary-dark-2. Keep it in the monochrome family. */
+#repo-clone-https.basic:hover,
+#repo-clone-ssh.basic:hover,
+#repo-clone-https.basic:focus,
+#repo-clone-ssh.basic:focus {
+  color: var(--th-fg-strong);
+  border-color: var(--th-border-strong);
+}
+
+/* ── repository summary ─────────────────────────────────────────────────── */
+
+/* The language stats bar renders square corners that poke out of the rounded
+   summary container. */
+.repository .repository-summary {
+  overflow: hidden;
+}
+
+#language-stats stats-bar {
+  border-radius: 0;
+  opacity: 0.4;
+  transition: opacity 300ms;
+}
+#language-stats stats-bar:hover {
+  opacity: 1;
+}
+
+/* No .repository-menu grid override lives here any more: repo/sub_menu.tmpl no
+   longer renders that menu, so upstream's grid rules (repo.css:1867 and the 2x2
+   mobile reflow at :1873) have nothing to match. */
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+
+/* A narrower measure reads better on wide displays.
+ *
+ * The tripled `.ui.ui.ui` is not a typo — it mirrors the specificity hack in
+ * modules/container.css, whose `.page-content .ui.ui.ui.container:not(.fluid)`
+ * rule sets 1280px at (0,6,0). Matching that count and relying on load order is
+ * what lets this win without `!important`. Drop the repetition and this rule
+ * silently stops applying. */
+.page-content .ui.ui.ui.container:not(.fluid) {
+  --container-width: 1024px;
+}
+
+/* ── dropdowns ──────────────────────────────────────────────────────────── */
+
+details.dropdown > .content {
+  background-color: var(--th-canvas-overlay);
+}
+
+details.dropdown {
+  --dropdown-padding-inline: 1rem;
+}
+
+#navbar details.dropdown summary {
+  padding-inline: 0.75rem;
+}
+
+/* ── messages ───────────────────────────────────────────────────────────── */
+
+/* Attached messages inherit a negative margin that overhangs their container
+   by a pixel on each side. */
+.ui.attached.message {
+  margin-inline: 0;
+}
+
+/* ── commits ────────────────────────────────────────────────────────────── */
+
+/* Upstream paints the whole verified-commit label green, which now collides
+   with the accent. Keep the badge but drop it to a neutral border. */
+.sha.label.isSigned.isVerified {
+  border-color: var(--th-border);
+}
+.sha.label.isSigned.isVerified .signature {
+  border-inline-start: inherit;
+}
+
+/* ── issue comments ─────────────────────────────────────────────────────── */
+
+/* `!important` only because upstream's own declaration is `!important`
+   (repo.css:1100); nothing else can override it. */
+.repository.view.issue .comment-list .comment-code-cloud .segment.reactions .ui.label {
+  padding: 5px 6px !important;
+}
+
+/* ── activity feed ──────────────────────────────────────────────────────── */
+
+/* The trailing icons duplicate information already in the row. */
+#activity-feed .flex-item .flex-item-trailing {
+  display: none;
+}
+
+/* Timestamp in the latest-commit bar. `.latest-commit` is flex:1 and truncates,
+   so this must not shrink or the date wraps mid-word. */
+.commit-age {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

@@ -60,6 +60,11 @@ async function main() {
   await Promise.all([
     ...processFiles('node_modules/@primer/octicons/build/svg/*-16.svg', {prefix: 'octicon'}),
     ...processFiles('web_src/svg/*.svg'),
+    // treehut: Catppuccin file-type icons, vendored by
+    // tools/fetch-catppuccin-icons.mjs. Prefixed so they cannot collide with the
+    // octicon or gitea-* names, and kept in a subdirectory so the plain
+    // web_src/svg/*.svg glob above stays a hand-maintained list.
+    ...processFiles('web_src/svg/catppuccin/*.svg', {prefix: 'ctp'}),
   ]);
 }
 

@@ -1,0 +1,126 @@
+/* Treehut light ramp.
+ *
+ * Mirror of ./ramp-dark.css. Same knobs, same step names, opposite direction:
+ * step-0 is still "furthest from the text" (here, near-white) and step-9 is
+ * still "closest to the text" (here, near-black). Because both ramps agree on
+ * that meaning, ./semantic.css and ./bridge.css are mode-agnostic and are
+ * shared by every treehut theme.
+ */
+
+:root {
+  /* ── knobs ──────────────────────────────────────────────────────────────
+   * Neutrals are truly neutral in light mode: chroma 0, so every grey is a pure
+   * grey and the hue below is inert. A green cast that reads as a subtle warmth
+   * on a near-black canvas turns visibly minty across large pale surfaces, so
+   * the two ramps deliberately disagree here — ramp-dark.css keeps a whisper of
+   * chroma, this one does not.
+   *
+   * The hue is kept rather than deleted so the tint can be restored by raising
+   * chroma alone. Doing so barely moves contrast (fg-subtle 4.88 → 4.81 at
+   * 0.006), so it is a safe knob to play with.
+   *
+   * Note this affects NEUTRALS only. The accent ramp below carries its own
+   * chroma, so the theme keeps its green where green is intentional.
+   */
+  --th-neutral-hue: 150deg;
+  --th-neutral-chroma: 0;
+
+  --th-accent-hue: 149deg;
+  --th-accent-chroma: 0.125;
+
+  /* ── neutral ramp ──────────────────────────────────────────────────────
+   * Same chrome/text split as ramp-dark.css, mirrored. "Lower contrast chrome"
+   * means the opposite direction here: steps 1-5 move UP toward white rather
+   * than down toward black, so surfaces and borders sit closer to the canvas.
+   *
+   *   steps 0-5  CHROME — compressed toward white. The default container stroke
+   *              (step-4) lands at 1.27 against the canvas, which is quiet by
+   *              design; treehut leans on surface separation and spacing rather
+   *              than on visible borders.
+   *   steps 6-9  TEXT — pinned by legibility, untouched by chrome tuning.
+   *
+   * Verified against the canvas: fg 13.2, fg-muted 7.4, fg-subtle 4.8. Note
+   * fg-subtle was 4.28 before this pass — under AA — because it had been tuned
+   * against a darker surface set. It also clears 4.5 against the raised surface
+   * (4.57), which is the tighter of the two constraints in light mode.
+   */
+  --th-step-0: oklch(1.000 0 0);
+  --th-step-1: oklch(0.992 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-2: oklch(0.980 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-3: oklch(0.958 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-4: oklch(0.918 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-5: oklch(0.800 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-6: oklch(0.550 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-7: oklch(0.450 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-8: oklch(0.310 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-9: oklch(0.180 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  /* ── accent ramp ──────────────────────────────────────────────────────
+   * Same contract as the neutrals: accent-0 is the step nearest the canvas
+   * (here a pale wash) and accent-8 the step furthest from it (here deep
+   * green). The lightness values invert versus dark mode, but the ROLE of
+   * each step does not — which is why accent-5 means "the readable accent"
+   * in both modes and semantic.css needs no per-mode branching.
+   */
+  --th-accent-0: oklch(0.965 0.020 var(--th-accent-hue));
+  --th-accent-1: oklch(0.920 0.040 var(--th-accent-hue));
+  --th-accent-2: oklch(0.850 0.065 var(--th-accent-hue));
+  --th-accent-3: oklch(0.740 0.095 var(--th-accent-hue));
+  --th-accent-4: oklch(0.620 var(--th-accent-chroma) var(--th-accent-hue));
+  --th-accent-5: oklch(0.520 var(--th-accent-chroma) var(--th-accent-hue));
+  --th-accent-6: oklch(0.440 0.105 var(--th-accent-hue));
+  --th-accent-7: oklch(0.360 0.085 var(--th-accent-hue));
+  --th-accent-8: oklch(0.280 0.060 var(--th-accent-hue));
+
+  --th-accent-on: oklch(0.995 0.005 var(--th-accent-hue));
+
+  /* ── status hues ──────────────────────────────────────────────────────
+   * See ramp-dark.css. Light mode had no contrast problem to fix — upstream's
+   * pairing (#db2828 on #fff6f6) already measures 4.55 — so this is tuned to
+   * match rather than to change anything, landing at 4.61.
+   */
+  --th-danger-hue: 25deg;
+  --th-attention-hue: 41deg;
+  --th-success-hue: 145deg;
+  --th-done-hue: 298deg;
+
+  --th-danger-fill: oklch(0.985 0.010 var(--th-danger-hue));
+
+  /* See ramp-dark.css. Inverted: readable coloured text on a white canvas sits
+   * LOW in lightness, and the hover highlight goes lower still. Verified AA:
+   * red 6.05, orange 5.95, green 5.06, purple 5.96. */
+  --th-thin-lightness: 0.520;
+  --th-thin-lightness-highlight: 0.450;
+  --th-thin-chroma: 0.180;
+
+  /* See ramp-dark.css. Pale tints instead of dark ones; same hues. */
+  --th-diff-chroma: 0.045;
+  --th-diff-row-lightness: 0.945;
+  --th-diff-word-lightness: 0.890;
+  --th-diff-border-lightness: 0.870;
+
+  /* ── syntax palette ───────────────────────────────────────────────────
+   * Vercel Light, from NathanBrodin/zed-vercel-theme. See the note in
+   * ramp-dark.css about why these are literals rather than composed values.
+   */
+  --th-syntax-fg: #171717;
+  --th-syntax-comment: #666666;
+  --th-syntax-keyword: #bd2864;
+  --th-syntax-string: #297a3a;
+  --th-syntax-tag: #297a3a;
+  --th-syntax-constant: #006bff;
+  --th-syntax-entity: #7c00c7;
+
+  /* See the note in ramp-dark.css: recessed surfaces are darker than the
+   * canvas in both modes, so light mode reaches UP the ramp for this one. */
+  --th-step-inset: oklch(0.972 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  /* See ramp-dark.css for why this is per-ramp. Here it genuinely inverts:
+   * a dark tooltip on a light page. */
+  --th-step-inverted: oklch(0.175 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-inverted-fg: oklch(0.985 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  --th-elevation-tint: #000000;
+
+  color-scheme: light;
+}

@@ -4,6 +4,11 @@ const cssVarFiles = [
   fileURLToPath(new URL('web_src/css/base.css', import.meta.url)),
   fileURLToPath(new URL('web_src/css/themes/theme-gitea-light.css', import.meta.url)),
   fileURLToPath(new URL('web_src/css/themes/theme-gitea-dark.css', import.meta.url)),
+  // treehut: the --th-* role tokens. Both ramps declare the same names, so
+  // either would do; both are listed so neither looks optional.
+  fileURLToPath(new URL('web_src/css/treehut/ramp-light.css', import.meta.url)),
+  fileURLToPath(new URL('web_src/css/treehut/ramp-dark.css', import.meta.url)),
+  fileURLToPath(new URL('web_src/css/treehut/semantic.css', import.meta.url)),
 ];
 
 /** @type {import('stylelint').Config} */
@@ -17,6 +22,7 @@ export default {
   ],
   ignoreFiles: [
     '**/*.go',
+    '**/*.md',
     '/web_src/fomantic',
   ],
   overrides: [
