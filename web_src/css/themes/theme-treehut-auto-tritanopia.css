@@ -1,0 +1,2 @@
+@import "./theme-treehut-light-tritanopia.css" (prefers-color-scheme: light);
+@import "./theme-treehut-dark-tritanopia.css" (prefers-color-scheme: dark);

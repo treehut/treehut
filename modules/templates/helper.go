@@ -77,6 +77,7 @@ func NewFuncMap() template.FuncMap {
 		// svg / avatar / icon / color
 		"svg":           svg.RenderHTML,
 		"EntryIcon":     base.EntryIcon,
+		"FileIcon":      base.CatppuccinIcon, // treehut: per-filetype icons, see modules/base/catppuccin.go
 		"MigrationIcon": MigrationIcon,
 		"ActionIcon":    ActionIcon,
 		"SortArrow":     SortArrow,

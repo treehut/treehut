@@ -1,0 +1,170 @@
+/* Treehut dark ramp.
+ *
+ * Every colour in the dark themes is generated from the handful of knobs at the
+ * top of this file. Want a warmer grey, a deeper background, or a different
+ * accent hue? Change a knob, not 250 hex literals.
+ *
+ * The steps are named by ROLE DISTANCE, not by lightness: step-0 is the colour
+ * furthest from the text, step-9 is the colour closest to it. The light ramp
+ * uses the same names running the other way, which is what lets
+ * `semantic.css` be shared by both modes instead of duplicated per mode.
+ *
+ * See ./README.md for the layering contract.
+ */
+
+:root {
+  /* ── knobs ──────────────────────────────────────────────────────────────
+   * Neutrals carry a whisper of green so the greys feel related to the
+   * accent rather than sitting beside it. Chroma is deliberately tiny —
+   * forgejo's stock dark theme reads blue because its neutrals are ~0.02
+   * chroma at a blue hue; this is an order of magnitude flatter.
+   */
+  --th-neutral-hue: 150deg;
+  --th-neutral-chroma: 0.005;
+
+  /* The tree in Treehut. Raise chroma for a louder green. */
+  --th-accent-hue: 149deg;
+  --th-accent-chroma: 0.115;
+
+  /* ── neutral ramp ──────────────────────────────────────────────────────
+   * Near-black canvas: step-0 lands on #090b09. For calibration, that is
+   * roughly #0a0a0a; GitHub's dark canvas (#0d1117) sits at L≈0.176 and
+   * upstream forgejo's slate (#14171a) at L≈0.201, so this is a good deal
+   * darker than either.
+   *
+   * The ramp splits into two halves that are tuned independently, because they
+   * answer to different constraints:
+   *
+   *   steps 0-5  CHROME — surfaces, borders, grey fills. Kept close to the
+   *              canvas so the theme reads as near-black rather than as a
+   *              charcoal-grey theme. Adjacent steps clear ~1.05-1.15 contrast,
+   *              which is enough to separate a surface from the page without
+   *              any of them lifting into visible grey.
+   *   steps 6-9  TEXT — foreground colours. These are pinned by legibility, not
+   *              by aesthetics, and must NOT be dragged down with the chrome.
+   *
+   * That split leaves a deliberately large jump between step-5 and step-6. It
+   * is not a mistake: nothing uses those two as adjacent surfaces.
+   *
+   * Verified against the canvas: fg 13.1, fg-muted 7.8, fg-subtle 4.8 — all
+   * past WCAG AA for body text. fg-subtle is the one with no headroom; it feeds
+   * placeholder and timestamp text, so treat 0.590 as a floor. Earlier attempts
+   * at tightening the greys pulled it to 4.24 and 3.83, both failing AA.
+   */
+  --th-step-0: oklch(0.145 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-1: oklch(0.172 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-2: oklch(0.200 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-3: oklch(0.235 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-4: oklch(0.285 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-5: oklch(0.375 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-6: oklch(0.590 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-7: oklch(0.715 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-8: oklch(0.865 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-9: oklch(0.970 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  /* ── accent ramp ──────────────────────────────────────────────────────
+   * On a dark canvas the readable accent sits high in lightness, and
+   * "emphasis" (buttons, filled backgrounds) sits lower.
+   */
+  /* accent-0..2 are chrome, not text: faint washes and quiet borders. They
+     track the tightened neutral steps above so an accent-tinted surface does
+     not sit visibly higher than the plain surface beside it. */
+  --th-accent-0: oklch(0.170 0.030 var(--th-accent-hue));
+  --th-accent-1: oklch(0.230 0.055 var(--th-accent-hue));
+  --th-accent-2: oklch(0.330 0.080 var(--th-accent-hue));
+  --th-accent-3: oklch(0.500 0.100 var(--th-accent-hue));
+  --th-accent-4: oklch(0.580 var(--th-accent-chroma) var(--th-accent-hue));
+  --th-accent-5: oklch(0.660 var(--th-accent-chroma) var(--th-accent-hue));
+  --th-accent-6: oklch(0.740 0.105 var(--th-accent-hue));
+  --th-accent-7: oklch(0.820 0.080 var(--th-accent-hue));
+  --th-accent-8: oklch(0.900 0.050 var(--th-accent-hue));
+
+  /* Text that sits on top of an accent-emphasis fill. */
+  --th-accent-on: oklch(0.145 0.020 var(--th-accent-hue));
+
+  /* ── status hues ──────────────────────────────────────────────────────
+   * First of the status families (see README). Only the danger fill is defined
+   * so far; success / warning / info still fall through to upstream.
+   *
+   * The fill is much darker than upstream's #552222 because `.button.danger`
+   * paints its label with --color-thin-red, and gitea themes do not define that
+   * token — so it falls back to --color-red (#cc4848), a mid red. Mid red on
+   * upstream's fill measures 2.80 contrast. At L=0.200 it measures 4.02.
+   *
+   * Note the ceiling: darkening the fill alone cannot reach AA's 4.5, because it
+   * asymptotes near 4.38 at which point the button no longer separates from the
+   * canvas at all. Closing that last gap means defining --color-thin-red too
+   * (forgejo uses oklch(0.68 0.19 27deg), which would measure 5.86 here).
+   */
+  --th-danger-hue: 25deg;
+  --th-attention-hue: 41deg;
+  --th-success-hue: 145deg;
+  --th-done-hue: 298deg;
+
+  --th-danger-fill: oklch(0.200 0.065 var(--th-danger-hue));
+
+  /* "thin" elements: coloured TEXT, icons and hairlines rather than fills.
+   * Upstream's name, kept because upstream's CSS asks for it by that name.
+   * These need far more lightness than a fill does to stay readable on the
+   * canvas, which is exactly why the fallback to --color-red et al. looked
+   * wrong. Verified AA against the canvas at these values: red 6.34,
+   * orange 6.41, green 7.28, purple 6.43.
+   *
+   * The highlight variant is LIGHTER here and DARKER in the light ramp — in
+   * both cases "further from the canvas", i.e. more emphasis on hover. */
+  --th-thin-lightness: 0.680;
+  --th-thin-lightness-highlight: 0.760;
+  --th-thin-chroma: 0.170;
+
+  /* Diff tints, built from the SAME status hues as everything else. This is
+   * what makes a colourblind variant systemic: re-hue --th-success-hue and the
+   * added-line background moves with the success text, the check icons and the
+   * buttons, from one declaration. Verified ~11:1 for code text on every row. */
+  --th-diff-chroma: 0.055;
+  --th-diff-row-lightness: 0.230;
+  --th-diff-word-lightness: 0.330;
+  --th-diff-border-lightness: 0.300;
+
+  /* ── syntax palette ───────────────────────────────────────────────────
+   * Vercel Dark, from NathanBrodin/zed-vercel-theme (themes/vercel-theme.json).
+   *
+   * Deliberately NOT derived from the ramp hues above: this is a borrowed,
+   * hand-tuned palette and re-deriving it would destroy what makes it look the
+   * way it does. It is also the one place the fork's "compose everything from
+   * knobs" rule does not apply, so the literals live here rather than being
+   * spread across the chroma mapping in ./chroma.css.
+   *
+   * Note these are NOT re-hued by the colourblind variants. Syntax highlighting
+   * distinguishes ~7 categories, which is more than any CVD-safe palette can
+   * carry by hue alone; keeping one legible palette is the better trade.
+   */
+  --th-syntax-fg: #ededed;
+  --th-syntax-comment: #a1a1a1;
+  --th-syntax-keyword: #f12b82;
+  --th-syntax-string: #00ac3a;
+  --th-syntax-tag: #00ac3a;
+  --th-syntax-constant: #52a8ff;
+  --th-syntax-entity: #c472fb;
+
+  /* The one intentional asymmetry between the two ramps: recessed surfaces
+   * (text inputs, code wells, diff gutters) read as DARKER than the canvas in
+   * both light and dark mode, so this step cannot be expressed as a role
+   * distance. Dark mode reaches below step-0 to get there. */
+  --th-step-inset: oklch(0.100 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  /* The tooltip surface. Upstream paints tooltips dark in its LIGHT theme too,
+   * so this is not a role distance and lives per-ramp.
+   *
+   * At a near-black canvas "dark" would be invisible, so here it sits ABOVE the
+   * canvas and reads as a raised surface instead. The light ramp keeps it dark.
+   * Either way the contract holds: a tooltip is legible and distinct from the
+   * page behind it. */
+  --th-step-inverted: oklch(0.245 var(--th-neutral-chroma) var(--th-neutral-hue));
+  --th-step-inverted-fg: oklch(0.970 var(--th-neutral-chroma) var(--th-neutral-hue));
+
+  /* Direction the "raised"/"sunken" surfaces move, used by semantic.css.
+   * Dark mode raises toward light; light mode sinks toward dark. */
+  --th-elevation-tint: #ffffff;
+
+  color-scheme: dark;
+}

@@ -1,0 +1,154 @@
+/* Chroma token mapping — syntax highlighting.
+ *
+ * Forgejo highlights server-side with alecthomas/chroma, which emits ~75 short
+ * class names (`.k`, `.nf`, `.sr`…) and ships one hand-coloured stylesheet per
+ * mode in web_src/css/chroma/. Rather than editing those upstream files, this
+ * maps every class onto the seven `--th-syntax-*` tokens defined in the ramps.
+ *
+ * MODE-AGNOSTIC, like ./semantic.css: the mapping is shared and only the token
+ * values differ between ramp-light.css and ramp-dark.css. So the palette is
+ * swappable from one place, and this file never needs touching to change colours.
+ *
+ * The seven categories come from the source palette (Vercel), which is coarser
+ * than chroma's taxonomy — so several chroma classes share a token. Where the
+ * source palette has no opinion (namespaces, builtins, decorators) the class is
+ * grouped with the nearest category rather than left to upstream, otherwise it
+ * would keep the old theme's colour and look out of place.
+ *
+ * Structural rules (line tables, line numbers, highlight rows) stay in
+ * chroma/base.css and are untouched.
+ */
+
+/* ── comments ─────────────────────────────────────────────────────────────── */
+.chroma .c,
+.chroma .ch,
+.chroma .cm,
+.chroma .c1,
+.chroma .cs,
+.chroma .cp,
+.chroma .cpf,
+.chroma .gp {
+  color: var(--th-syntax-comment);
+}
+
+/* ── keywords and operators ───────────────────────────────────────────────── */
+.chroma .k,
+.chroma .kd,
+.chroma .kn,
+.chroma .kp,
+.chroma .kr,
+.chroma .o,
+.chroma .ow {
+  color: var(--th-syntax-keyword);
+}
+
+/* ── strings ──────────────────────────────────────────────────────────────
+ * Includes regex and symbols: the source palette gives string.regex and
+ * string.special the same colour as a plain string. */
+.chroma .l,
+.chroma .ld,
+.chroma .s,
+.chroma .s1,
+.chroma .s2,
+.chroma .sa,
+.chroma .sb,
+.chroma .sc,
+.chroma .sd,
+.chroma .se,
+.chroma .sh,
+.chroma .si,
+.chroma .sr,
+.chroma .ss,
+.chroma .sx,
+.chroma .dl {
+  color: var(--th-syntax-string);
+}
+
+/* ── constants: numbers, booleans, properties, labels ─────────────────────── */
+.chroma .m,
+.chroma .mb,
+.chroma .mf,
+.chroma .mh,
+.chroma .mi,
+.chroma .mo,
+.chroma .il,
+.chroma .kc,
+.chroma .no,
+.chroma .py,
+.chroma .nl,
+.chroma .ni,
+.chroma .bp {
+  color: var(--th-syntax-constant);
+}
+
+/* ── entities: functions, types, classes, attributes ──────────────────────── */
+.chroma .nf,
+.chroma .fm,
+.chroma .nc,
+.chroma .kt,
+.chroma .na,
+.chroma .nb,
+.chroma .nd,
+.chroma .ne,
+.chroma .nn {
+  color: var(--th-syntax-entity);
+}
+
+/* ── markup tags ──────────────────────────────────────────────────────────── */
+.chroma .nt {
+  color: var(--th-syntax-tag);
+}
+
+/* ── plain text: variables, punctuation, other names ──────────────────────── */
+.chroma .n,
+.chroma .nx,
+.chroma .nv,
+.chroma .vc,
+.chroma .vg,
+.chroma .vi,
+.chroma .vm,
+.chroma .p,
+.chroma .go {
+  color: var(--th-syntax-fg);
+}
+
+/* ── generic / markup structure ───────────────────────────────────────────── */
+.chroma .gh,
+.chroma .gu {
+  color: var(--th-syntax-constant);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chroma .ge {
+  font-style: italic;
+}
+
+.chroma .gs {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Errors reuse the theme's danger colour rather than a palette literal, so they
+   stay consistent with error styling elsewhere in the UI. */
+.chroma .gr,
+.chroma .gt,
+.chroma .err {
+  color: var(--th-danger-fg);
+}
+
+/* Inline diff markers inside a highlighted block. Driven by the diff tokens so
+   they match the surrounding diff view — and so they re-hue with the
+   colourblind variants instead of staying green/red. */
+.chroma .gd {
+  color: var(--th-fg);
+  background-color: var(--th-diff-removed-word-bg);
+}
+
+.chroma .gi {
+  color: var(--th-fg);
+  background-color: var(--th-diff-added-word-bg);
+}
+
+/* Whitespace markers should never be louder than the code around them. */
+.chroma .w {
+  color: var(--th-fg-subtle);
+}

@@ -1,0 +1,16 @@
+/* Treehut light, adjusted for deuteranopia and protanopia (red-green CVD).
+ *
+ * Identical hue set to theme-treehut-dark-deuteranopia-protanopia.css — see that
+ * file for how the hues were chosen and verified. Only the ramp underneath
+ * differs, so lightness and contrast come from the light theme unchanged.
+ */
+
+@import "./theme-treehut-light.css";
+
+:root {
+  --th-danger-hue: 20deg;
+  --th-success-hue: 250deg;
+  --th-attention-hue: 55deg;
+  --th-done-hue: 185deg;
+  --th-accent-hue: 250deg;
+}

@@ -1,0 +1,228 @@
+/* Treehut → upstream token bridge.
+ *
+ * Forgejo's CSS references ~233 colour tokens, most of them named by ordinal
+ * position rather than by role: --color-primary-light-5, --color-secondary-dark-8,
+ * and so on. There are 313 such references across 30+ files. Renaming them in
+ * place would mean re-resolving a conflict in every one of those files on every
+ * upstream pull, forever.
+ *
+ * So we don't rename them. We REDEFINE them, downstream of ./semantic.css.
+ * Upstream keeps its vocabulary and keeps working untouched; we author against
+ * --th-* and this file translates.
+ *
+ * ── the decoder ring ────────────────────────────────────────────────────────
+ *
+ * The ordinal names look arbitrary but they are not. Read upstream's own two
+ * theme files side by side and a rule falls out, consistent across both modes:
+ *
+ *   --color-X-light-N   blends X toward the CANVAS   (recede, wash out)
+ *   --color-X-dark-N    blends X away from the canvas (assert, stand out)
+ *
+ * That is why gitea-light sets --color-primary-hover to primary-dark-1 while
+ * gitea-dark sets it to primary-light-1: both mean "one step further from the
+ * page background". The literal words "light" and "dark" describe the Sass
+ * function that generated the value, not the direction it moves on screen.
+ *
+ * Encoding that rule as a blend does three useful things: the ramps stop being
+ * 40 hand-maintained hex literals, they stay correct in both modes from one
+ * definition, and changing --th-accent-hue in a ramp file repaints all of them.
+ *
+ * NOTE ON COMPLETENESS: this file is deliberately partial. Each treehut theme
+ * imports the upstream gitea theme first, so any token not overridden here
+ * still resolves to its upstream value. That is the safety net — a new token
+ * added upstream cannot break the fork, it just won't be treehut-tinted until
+ * someone maps it. Prefer adding a mapping here over touching upstream CSS.
+ */
+
+:root {
+  /* ── primary / accent ────────────────────────────────────────────────────
+   * Percentages mirror upstream's own progression (90/80/70/60/40/20/5): four
+   * gentle steps, then three big jumps into near-canvas or near-text.
+   */
+  --color-primary: var(--th-accent-emphasis);
+  --color-primary-contrast: var(--th-accent-on-emphasis);
+
+  --color-primary-light-1: color-mix(in oklab, var(--th-accent-emphasis) 90%, var(--th-canvas));
+  --color-primary-light-2: color-mix(in oklab, var(--th-accent-emphasis) 80%, var(--th-canvas));
+  --color-primary-light-3: color-mix(in oklab, var(--th-accent-emphasis) 70%, var(--th-canvas));
+  --color-primary-light-4: color-mix(in oklab, var(--th-accent-emphasis) 60%, var(--th-canvas));
+  --color-primary-light-5: color-mix(in oklab, var(--th-accent-emphasis) 40%, var(--th-canvas));
+  --color-primary-light-6: color-mix(in oklab, var(--th-accent-emphasis) 20%, var(--th-canvas));
+  --color-primary-light-7: color-mix(in oklab, var(--th-accent-emphasis) 5%, var(--th-canvas));
+
+  --color-primary-dark-1: color-mix(in oklab, var(--th-accent-emphasis) 90%, var(--th-fg-strong));
+  --color-primary-dark-2: color-mix(in oklab, var(--th-accent-emphasis) 80%, var(--th-fg-strong));
+  --color-primary-dark-3: color-mix(in oklab, var(--th-accent-emphasis) 70%, var(--th-fg-strong));
+  --color-primary-dark-4: color-mix(in oklab, var(--th-accent-emphasis) 60%, var(--th-fg-strong));
+  --color-primary-dark-5: color-mix(in oklab, var(--th-accent-emphasis) 40%, var(--th-fg-strong));
+  --color-primary-dark-6: color-mix(in oklab, var(--th-accent-emphasis) 20%, var(--th-fg-strong));
+  --color-primary-dark-7: color-mix(in oklab, var(--th-accent-emphasis) 5%, var(--th-fg-strong));
+
+  /* Alpha ramps mix in sRGB on purpose: oklab interpolation toward
+     `transparent` premultiplies and muddies the midpoints. */
+  --color-primary-alpha-10: color-mix(in srgb, var(--th-accent-emphasis) 10%, transparent);
+  --color-primary-alpha-20: color-mix(in srgb, var(--th-accent-emphasis) 20%, transparent);
+  --color-primary-alpha-30: color-mix(in srgb, var(--th-accent-emphasis) 30%, transparent);
+  --color-primary-alpha-40: color-mix(in srgb, var(--th-accent-emphasis) 40%, transparent);
+  --color-primary-alpha-50: color-mix(in srgb, var(--th-accent-emphasis) 50%, transparent);
+  --color-primary-alpha-60: color-mix(in srgb, var(--th-accent-emphasis) 60%, transparent);
+  --color-primary-alpha-70: color-mix(in srgb, var(--th-accent-emphasis) 70%, transparent);
+  --color-primary-alpha-80: color-mix(in srgb, var(--th-accent-emphasis) 80%, transparent);
+  --color-primary-alpha-90: color-mix(in srgb, var(--th-accent-emphasis) 90%, transparent);
+
+  --color-primary-hover: var(--th-accent-hover);
+  --color-primary-active: var(--th-accent-active);
+
+  /* ── secondary / neutral ─────────────────────────────────────────────────
+   * Upstream's "secondary" family is the neutral one: it is the default
+   * container stroke and the grey-button fill. Thirteen dark steps march from
+   * the border colour all the way to the text extreme.
+   */
+  --color-secondary: var(--th-border);
+
+  --color-secondary-light-1: color-mix(in oklab, var(--th-border) 75%, var(--th-canvas));
+  --color-secondary-light-2: color-mix(in oklab, var(--th-border) 55%, var(--th-canvas));
+  --color-secondary-light-3: color-mix(in oklab, var(--th-border) 35%, var(--th-canvas));
+  --color-secondary-light-4: color-mix(in oklab, var(--th-border) 15%, var(--th-canvas));
+
+  --color-secondary-dark-1: color-mix(in oklab, var(--th-border) 93%, var(--th-fg-strong));
+  --color-secondary-dark-2: color-mix(in oklab, var(--th-border) 86%, var(--th-fg-strong));
+  --color-secondary-dark-3: color-mix(in oklab, var(--th-border) 79%, var(--th-fg-strong));
+  --color-secondary-dark-4: color-mix(in oklab, var(--th-border) 72%, var(--th-fg-strong));
+  --color-secondary-dark-5: color-mix(in oklab, var(--th-border) 65%, var(--th-fg-strong));
+  --color-secondary-dark-6: color-mix(in oklab, var(--th-border) 58%, var(--th-fg-strong));
+  --color-secondary-dark-7: color-mix(in oklab, var(--th-border) 51%, var(--th-fg-strong));
+  --color-secondary-dark-8: color-mix(in oklab, var(--th-border) 44%, var(--th-fg-strong));
+  --color-secondary-dark-9: color-mix(in oklab, var(--th-border) 37%, var(--th-fg-strong));
+  --color-secondary-dark-10: color-mix(in oklab, var(--th-border) 30%, var(--th-fg-strong));
+  --color-secondary-dark-11: color-mix(in oklab, var(--th-border) 23%, var(--th-fg-strong));
+  --color-secondary-dark-12: color-mix(in oklab, var(--th-border) 16%, var(--th-fg-strong));
+  --color-secondary-dark-13: color-mix(in oklab, var(--th-border) 9%, var(--th-fg-strong));
+
+  --color-secondary-alpha-10: color-mix(in srgb, var(--th-border) 10%, transparent);
+  --color-secondary-alpha-20: color-mix(in srgb, var(--th-border) 20%, transparent);
+  --color-secondary-alpha-30: color-mix(in srgb, var(--th-border) 30%, transparent);
+  --color-secondary-alpha-40: color-mix(in srgb, var(--th-border) 40%, transparent);
+  --color-secondary-alpha-50: color-mix(in srgb, var(--th-border) 50%, transparent);
+  --color-secondary-alpha-60: color-mix(in srgb, var(--th-border) 60%, transparent);
+  --color-secondary-alpha-70: color-mix(in srgb, var(--th-border) 70%, transparent);
+  --color-secondary-alpha-80: color-mix(in srgb, var(--th-border) 80%, transparent);
+  --color-secondary-alpha-90: color-mix(in srgb, var(--th-border) 90%, transparent);
+
+  --color-secondary-hover: var(--th-neutral-emphasis);
+  --color-secondary-active: color-mix(in oklab, var(--th-neutral-emphasis) 80%, var(--th-fg-strong));
+
+  /* ── surfaces ────────────────────────────────────────────────────────── */
+  --color-body: var(--th-canvas);
+  --color-box-header: var(--th-canvas-raised);
+  --color-box-body: var(--th-canvas-surface);
+  --color-box-body-highlight: var(--th-canvas-highlight);
+  --color-nav-bg: var(--th-canvas-raised);
+  --color-nav-hover-bg: var(--th-hover);
+  --color-secondary-nav-bg: var(--th-canvas-raised);
+  --color-footer: var(--th-canvas-raised);
+  --color-menu: var(--th-canvas-overlay);
+  --color-card: var(--th-canvas-surface);
+  --color-button: var(--th-canvas-surface);
+  --color-code-bg: var(--th-canvas-inset);
+  --color-secondary-bg: var(--th-neutral-subtle);
+  --color-expand-button: var(--th-neutral-subtle);
+  --color-project-column-bg: var(--th-canvas-raised);
+  --fancy-card-bg: var(--th-canvas-surface);
+  --fancy-card-border: var(--th-border);
+
+  /* ── text ─────────────────────────────────────────────────────────────── */
+  --color-text-dark: var(--th-fg-strong);
+  --color-text: var(--th-fg);
+  --color-text-light: var(--th-fg-muted);
+  --color-text-light-1: var(--th-fg-muted);
+  --color-text-light-2: var(--th-fg-subtle);
+  --color-text-light-3: var(--th-fg-subtle);
+  --color-placeholder-text: var(--th-fg-subtle);
+  --color-caret: var(--th-fg);
+
+  /* ── borders & dividers ───────────────────────────────────────────────── */
+  --color-light-border: var(--th-border-subtle);
+  --color-timeline: var(--th-border-subtle);
+
+  /* ── inputs ───────────────────────────────────────────────────────────── */
+  --color-input-text: var(--th-fg-strong);
+  --color-input-background: var(--th-canvas-inset);
+  --color-input-toggle-background: var(--th-neutral-muted);
+  --color-input-border: var(--th-border);
+  --color-input-border-hover: var(--th-border-strong);
+
+  /* ── interaction ──────────────────────────────────────────────────────── */
+  --color-hover: var(--th-hover);
+  --color-active: var(--th-active);
+  --color-accent: var(--th-accent-fg);
+  --color-small-accent: var(--th-accent-subtle);
+  --color-selection-bg: var(--th-selection-bg);
+  --color-selection-fg: var(--th-selection-fg);
+  --color-shadow: var(--th-shadow);
+  --color-overlay-backdrop: var(--th-overlay-backdrop);
+  --color-editor-line-highlight: var(--th-accent-subtle);
+
+  /* ── labels & reactions ───────────────────────────────────────────────── */
+  --color-label-text: var(--th-fg);
+  --color-label-bg: color-mix(in srgb, var(--th-neutral-emphasis) 30%, transparent);
+  --color-label-hover-bg: color-mix(in srgb, var(--th-neutral-emphasis) 55%, transparent);
+  --color-label-active-bg: var(--th-neutral-emphasis);
+  --color-reaction-bg: var(--th-hover);
+  --color-reaction-hover-bg: var(--th-accent-muted);
+  --color-reaction-active-bg: var(--th-accent-subtle);
+
+  /* ── status ───────────────────────────────────────────────────────────────
+   * `.button.danger` (modules/button.css:67) reads --color-danger-bg with
+   * --color-error-bg as its fallback. Only forgejo's themes define the former,
+   * so gitea-derived themes like ours silently took the fallback. Defining it
+   * here is what makes the danger button legible; --color-error-bg is left
+   * alone so form validation surfaces keep upstream's appearance.
+   */
+  --color-danger-bg: var(--th-danger-subtle);
+
+  /* The `--color-thin-*` family. Upstream reads these for coloured TEXT
+   * (`.text.red` etc. at base.css:668-692) and for the danger button's label and
+   * border, always with a `var(--x, var(--color-red))`-style fallback because
+   * only forgejo's own themes define them. Taking that fallback is what gave the
+   * danger button 2.80 contrast; defining them properly brings it to 5.91.
+   *
+   * --color-thin-red-highlight matters more than it looks: it is the danger
+   * button's hover colour, and while it fell back to --color-red — the same
+   * value as the resting state — the button had no hover feedback at all.
+   */
+  --color-thin-red: var(--th-danger-fg);
+  --color-thin-red-highlight: var(--th-danger-fg-hover);
+  --color-thin-orange: var(--th-attention-fg);
+  --color-thin-green: var(--th-success-fg);
+  --color-thin-purple: var(--th-done-fg);
+
+  /* Read at base.css:1046 and switch.css:68 for labels on an active tab. */
+  --color-label-bg-alt: var(--th-label-bg-strong);
+
+  /* Diff colours. Bridging these is what lets the colourblind variants recolour
+   * diffs AND the rest of the UI from the same hue knobs. Forgejo's own
+   * colourblind themes patch only these nine tokens, which is why they change
+   * code diffs and nothing else.
+   */
+  --color-diff-added-row-bg: var(--th-diff-added-row-bg);
+  --color-diff-added-word-bg: var(--th-diff-added-word-bg);
+  --color-diff-added-row-border: var(--th-diff-added-row-border);
+  --color-diff-removed-row-bg: var(--th-diff-removed-row-bg);
+  --color-diff-removed-word-bg: var(--th-diff-removed-word-bg);
+  --color-diff-removed-row-border: var(--th-diff-removed-row-border);
+  --color-diff-moved-row-bg: var(--th-diff-moved-row-bg);
+  --color-diff-moved-row-border: var(--th-diff-moved-row-border);
+  --color-diff-inactive: var(--th-canvas-raised);
+
+  /* ── markup ───────────────────────────────────────────────────────────── */
+  --color-markup-table-row: var(--th-hover);
+  --color-markup-code-block: var(--th-canvas-inset);
+  --color-markup-code-inline: var(--th-neutral-subtle);
+
+  /* ── tooltips ─────────────────────────────────────────────────────────── */
+  --color-tooltip-text: var(--th-fg-on-inverted);
+  --color-tooltip-bg: color-mix(in srgb, var(--th-canvas-inverted) 94%, transparent);
+
+  accent-color: var(--th-accent-fg);
+}

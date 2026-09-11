@@ -1,0 +1,27 @@
+/* Catppuccin Latte palette for the vendored file-type icons (light themes).
+ *
+ * See ./catppuccin-mocha.css for why this exists and why `text` and `overlay1`
+ * are mapped onto treehut's foreground tokens instead of Catppuccin's.
+ */
+
+:root {
+  /* neutral outlines — treehut's, not Catppuccin's */
+  --vscode-ctp-text: var(--th-fg); /* authentic Latte: #4c4f69 */
+  --vscode-ctp-overlay1: var(--th-fg-subtle); /* authentic Latte: #8c8fa1 */
+
+  /* accents — authentic Catppuccin Latte */
+  --vscode-ctp-rosewater: #dc8a78;
+  --vscode-ctp-flamingo: #dd7878;
+  --vscode-ctp-pink: #ea76cb;
+  --vscode-ctp-mauve: #8839ef;
+  --vscode-ctp-red: #d20f39;
+  --vscode-ctp-maroon: #e64553;
+  --vscode-ctp-peach: #fe640b;
+  --vscode-ctp-yellow: #df8e1d;
+  --vscode-ctp-green: #40a02b;
+  --vscode-ctp-teal: #179299;
+  --vscode-ctp-sky: #04a5e5;
+  --vscode-ctp-sapphire: #209fb5;
+  --vscode-ctp-blue: #1e66f5;
+  --vscode-ctp-lavender: #7287fd;
+}

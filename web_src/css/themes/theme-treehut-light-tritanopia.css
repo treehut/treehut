@@ -1,0 +1,15 @@
+/* Treehut light, adjusted for tritanopia (blue-yellow CVD).
+ *
+ * Identical hue set to theme-treehut-dark-tritanopia.css — see that file for how
+ * the hues were chosen, and for the known limitation about accent green versus
+ * info blue.
+ */
+
+@import "./theme-treehut-light.css";
+
+:root {
+  --th-danger-hue: 25deg;
+  --th-success-hue: 145deg;
+  --th-attention-hue: 100deg;
+  --th-done-hue: 300deg;
+}

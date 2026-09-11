@@ -88,14 +88,14 @@ h4.ui.header .sub.header {
   opacity: 1;
 }
 
-.ui.header:not(h1, h2, h3, h4, h5, h6) {
+.ui.header:not(h1,h2,h3,h4,h5,h6) {
   font-size: 1.28571429em;
 }
 
 .ui.attached.header {
   position: relative;
   background: var(--color-box-header);
-  padding: 0.785rem 1rem;
+  padding: 0.78571429rem 1rem;
   margin: 0;
   border-radius: 0;
   border: 1px solid var(--color-secondary);
@@ -106,14 +106,14 @@ h4.ui.header .sub.header {
 }
 
 .ui.top.attached.header {
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
 .ui.bottom.attached.header {
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 
-.ui.attached.header:not(h1, h2, h3, h4, h5, h6) {
+.ui.attached.header:not(h1,h2,h3,h4,h5,h6) {
   font-size: 1em;
 }
 
