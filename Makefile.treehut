@@ -1,17 +1,18 @@
-VERSION =
-REV =
-TAG = latest
+VERSION :=
+
+VERSION_PARTS := $(subst ., ,$(VERSION))
+
+VER_MAJOR :=              $(word 1,$(VERSION_PARTS))
+VER_MINOR := $(VER_MAJOR).$(word 2,$(VERSION_PARTS))
+VER_PATCH := $(VER_MINOR).$(word 3,$(VERSION_PARTS))
+VER_REV   := $(VER_PATCH).$(word 4,$(VERSION_PARTS))
 
 DOCKER ?= docker
 
 ARGFLAGS := --build-arg RELEASE_VERSION=$(VERSION) --build-arg TREEHUT_REV=$(REV)
 
-TEST_TAG := treehut:testing
-
 test: check-version
-	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
-	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
-	$(DOCKER) build $(ARGFLAGS) -t $(TEST_TAG) .
+	$(DOCKER) build $(ARGFLAGS) -t treehut .
 	$(DOCKER) run --name treehut-mini --rm \
 		-p 127.0.0.1:3022:3022 \
 		-p 127.0.0.1:3000:3000 \
@@ -19,16 +20,20 @@ test: check-version
 		$(TEST_TAG)
 .PHONY: test
 
-TAGFLAGS := -t ghcr.io/treehut/treehut \
-	-t ghcr.io/treehut/treehut:$(TAG) \
-	-t ghcr.io/treehut/treehut:$(VERSION) \
-	-t ghcr.io/treehut/treehut:$(VERSION).$(REV)
+TAGFLAGS := -t ghcr.io/treehut/treehut
+
+# pub: check-version
+# 	$(DOCKER) buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+# .PHONY: pub
 
 pub: check-version
-	docker buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
-.PHONY: pub
+	$(DOCKER) build --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+	$(DOCKER) push ghcr.io/treehut/treehut
+	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_MAJOR)
+	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_MINOR)
+	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_PATCH)
+	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_REV)
 
 check-version:
-	@if [ "$(VERSION)" = "" ]; then echo "please specify VERSION="; exit 1; fi
-	@if [ "$(REV)" = "" ]; then echo "please specify REV="; exit 1; fi
+	@if [ "$(word 4,$(VERSION_PARTS))" = "" ]; then echo "please specify a full VERSION= (ie. 1.0.0.0)"; exit 1; fi
 .PHONY: check-version
