@@ -33,6 +33,7 @@ func FullSteps(task *actions_model.ActionTask) []*actions_model.ActionTaskStep {
 	// 3. preStep(Success) -> step1(Success) -> step2(Failure) -> step3 -> postStep(Waiting): lastHasRunStep is step2.
 	// So its Stopped is the Started of postStep when there are no more steps to run.
 	var lastHasRunStep *actions_model.ActionTaskStep
+	var lastDoneStep *actions_model.ActionTaskStep
 
 	var logIndex int64
 	for _, step := range task.Steps {
@@ -41,6 +42,9 @@ func FullSteps(task *actions_model.ActionTask) []*actions_model.ActionTaskStep {
 		}
 		if step.Status.HasRun() {
 			lastHasRunStep = step
+		}
+		if step.Status.IsDone() { // may be a skipped step, which doesn't have a Stopped timestamp
+			lastDoneStep = step
 		}
 		logIndex += step.LogLength
 	}
@@ -66,13 +70,16 @@ func FullSteps(task *actions_model.ActionTask) []*actions_model.ActionTaskStep {
 	if lastHasRunStep == nil {
 		lastHasRunStep = preStep
 	}
+	if lastDoneStep == nil {
+		lastDoneStep = preStep
+	}
 
 	postStep := &actions_model.ActionTaskStep{
 		Name:   postStepName,
 		Status: actions_model.StatusWaiting,
 	}
 	// If the lastHasRunStep is the last step, or it has failed, postStep has started.
-	if lastHasRunStep.Status.IsFailure() || lastHasRunStep == task.Steps[len(task.Steps)-1] {
+	if lastHasRunStep.Status.IsFailure() || lastDoneStep == task.Steps[len(task.Steps)-1] {
 		postStep.LogIndex = logIndex
 		postStep.LogLength = task.LogLength - postStep.LogIndex
 		postStep.Started = lastHasRunStep.Stopped

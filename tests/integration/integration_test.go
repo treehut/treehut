@@ -808,8 +808,9 @@ func newAITester(t *testing.T, setupAI ...func(*auth.AuthorizedIntegration)) *Au
 	require.NoError(t, err)
 	ait.jwtSigningKey = jwtSigningKey
 
+	uniqueTest := gouuid.New().String()
 	ait.testServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/actions/.well-known/openid-configuration" {
+		if r.URL.Path == fmt.Sprintf("/api/actions/%s/.well-known/openid-configuration", uniqueTest) {
 			retval := map[string]any{
 				"issuer":                                ait.authorizedIntegration.Issuer,
 				"jwks_uri":                              fmt.Sprintf("%s/.keys", ait.authorizedIntegration.Issuer),
@@ -819,7 +820,7 @@ func newAITester(t *testing.T, setupAI ...func(*auth.AuthorizedIntegration)) *Au
 			require.NoError(t, err)
 			return
 		}
-		if r.URL.Path == "/api/actions/.keys" {
+		if r.URL.Path == fmt.Sprintf("/api/actions/%s/.keys", uniqueTest) {
 			jwk, err := ait.jwtSigningKey.ToJWK()
 			require.NoError(t, err)
 			jwk["use"] = "sig"
@@ -843,7 +844,7 @@ func newAITester(t *testing.T, setupAI ...func(*auth.AuthorizedIntegration)) *Au
 	ait.authorizedIntegration = &auth.AuthorizedIntegration{
 		UserID:   2,
 		Scope:    auth.AccessTokenScopeAll,
-		Issuer:   fmt.Sprintf("%s/api/actions", ait.testServer.URL),
+		Issuer:   fmt.Sprintf("%s/api/actions/%s", ait.testServer.URL, uniqueTest),
 		Audience: fmt.Sprintf("https://forgejo.example.org/-/coolguy/authorized-integration/%s", gouuid.New().String()),
 		ClaimRules: &auth.ClaimRules{
 			Rules: []auth.ClaimRule{

@@ -10,8 +10,14 @@ end_to_end_pr=$2
 forgejo=$3
 forgejo_ref=$4
 
+cd $forgejo
+minor_version=$(make show-version-minor)
+
 cd $end_to_end
 date >last-upgrade
+
+echo -n "$minor_version" >forgejo/release-under-test
+
 organizations=lib/ORGANIZATIONS
 if ! test -f $organizations; then
   echo "$organizations file not found"

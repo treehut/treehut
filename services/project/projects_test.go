@@ -494,22 +494,35 @@ func TestGetProjectByIDForOwnerErrors(t *testing.T) {
 	require.NoError(t, CreateProject(t.Context(), orgProject))
 
 	t.Run("individual, wrong owner", func(t *testing.T) {
-		_, err := GetProjectByIDForOwner(t.Context(), project.ID, 99)
+		_, err := GetProjectByIDForOwner(t.Context(), project.ID, 99, nil)
 		assert.ErrorIs(t, err, util.ErrInvalidArgument)
 	})
 
 	t.Run("repository, wrong owner", func(t *testing.T) {
-		_, err := GetProjectByIDForOwner(t.Context(), repoProject.ID, 99)
+		_, err := GetProjectByIDForOwner(t.Context(), repoProject.ID, 0, &repo_model.Repository{ID: 99})
 		assert.ErrorIs(t, err, util.ErrInvalidArgument)
 	})
 
 	t.Run("organization, wrong owner", func(t *testing.T) {
-		_, err := GetProjectByIDForOwner(t.Context(), orgProject.ID, 99)
+		_, err := GetProjectByIDForOwner(t.Context(), orgProject.ID, 99, nil)
+		assert.ErrorIs(t, err, util.ErrInvalidArgument)
+	})
+
+	t.Run("user, not repository", func(t *testing.T) {
+		_, err := GetProjectByIDForOwner(t.Context(), project.ID, 0, &repo_model.Repository{ID: ownerID})
+		require.ErrorIs(t, err, util.ErrInvalidArgument)
+
+		_, err = GetProjectByIDForOwner(t.Context(), orgProject.ID, 0, &repo_model.Repository{ID: ownerID})
+		require.ErrorIs(t, err, util.ErrInvalidArgument)
+	})
+
+	t.Run("repo, not user", func(t *testing.T) {
+		_, err := GetProjectByIDForOwner(t.Context(), repoProject.ID, repoID, nil)
 		assert.ErrorIs(t, err, util.ErrInvalidArgument)
 	})
 
 	t.Run("not existing project", func(t *testing.T) {
-		_, err := GetProjectByIDForOwner(t.Context(), 1234567890, 99)
+		_, err := GetProjectByIDForOwner(t.Context(), 1234567890, 99, nil)
 		assert.ErrorIs(t, err, util.ErrNotExist)
 	})
 }
@@ -590,7 +603,7 @@ func TestCRUDProject(t *testing.T) {
 	err := CreateProject(t.Context(), project)
 	require.NoError(t, err)
 
-	wantProject, err := GetProjectByIDForOwner(t.Context(), project.ID, ownerID)
+	wantProject, err := GetProjectByIDForOwner(t.Context(), project.ID, ownerID, nil)
 	require.NoError(t, err)
 	assert.Equal(t, wantProject.Title, projectTitle)
 

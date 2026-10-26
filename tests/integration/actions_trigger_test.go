@@ -2023,21 +2023,23 @@ func TestActionsForkPullRequest(t *testing.T) {
 		// Workflow defined in the PR base branch will be run, which is trusted code.  Therefore it will not require
 		// approval, and will be provided secrets.
 		runFromBase
-		// Workflow defined in the PR base branch will be run, which is trusted code.  Therefore it will not require
-		// approval, and will be provided secrets... but... due to a current implementation bug, some of these cases do
-		// not provide secrets, since they're marked as a pull request from a forked repo.  (This bug is outside the
-		// scope of the security fix currently being authored, and so it is documented & tested here, but should be
-		// remediated and changed to runFromBase).
-		runFromBaseWithBuggySecrets
 		// Workflow will be run without recognition that it is a pull request; for example when making a comment on a PR
 		// and triggering the issue_comment event.
 		runFromBaseWithoutPullRequest
+	)
+	type expectedRef int
+	const (
+		// forgejo.ref will be refs/pull/%d/head
+		refPullRequest expectedRef = iota
+		// refs/heads/main
+		refBaseBranch
 	)
 	type testCase struct {
 		name             string // must be safe to use in a repo name
 		workflowPreamble string
 		triggerEvent     func(t *testing.T, baseRepo *repo_model.Repository, pr *issues_model.PullRequest, token string)
 		expectedResult   expectedResult
+		expectedRef      expectedRef
 	}
 
 	testCases := []testCase{
@@ -2051,43 +2053,43 @@ func TestActionsForkPullRequest(t *testing.T) {
 			name:             "pull_request-assigned",
 			workflowPreamble: "on: { pull_request: { types: [assigned] } }\n",
 			triggerEvent:     assignPR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-unassigned",
 			workflowPreamble: "on: { pull_request: { types: [unassigned] } }\n",
 			triggerEvent:     unassignPR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-labeled",
 			workflowPreamble: "on: { pull_request: { types: [labeled] } }\n",
 			triggerEvent:     labelPR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-unlabeled",
 			workflowPreamble: "on: { pull_request: { types: [unlabeled] } }\n",
 			triggerEvent:     unlabelPR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-edited",
 			workflowPreamble: "on: { pull_request: { types: [edited] } }\n",
 			triggerEvent:     editPRTitle,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-closed",
 			workflowPreamble: "on: { pull_request: { types: [closed] } }\n",
 			triggerEvent:     closePR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-reopened",
 			workflowPreamble: "on: { pull_request: { types: [reopened] } }\n",
 			triggerEvent:     reopenPR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-synchronize",
@@ -2099,139 +2101,154 @@ func TestActionsForkPullRequest(t *testing.T) {
 			name:             "pull_request-milestoned",
 			workflowPreamble: "on: { pull_request: { types: [milestoned] } }\n",
 			triggerEvent:     milestonePR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-demilestoned",
 			workflowPreamble: "on: { pull_request: { types: [demilestoned] } }\n",
 			triggerEvent:     demilestonePR,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-review_requested",
 			workflowPreamble: "on: { pull_request: { types: [review_requested] } }\n",
 			triggerEvent:     requestReview,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request-review_request_removed",
 			workflowPreamble: "on: { pull_request: { types: [review_request_removed] } }\n",
 			triggerEvent:     removeReviewRequest,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request_target-assigned",
 			workflowPreamble: "on: { pull_request_target: { types: [assigned] } }\n",
 			triggerEvent:     assignPR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-unassigned",
 			workflowPreamble: "on: { pull_request_target: { types: [unassigned] } }\n",
 			triggerEvent:     unassignPR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-labeled",
 			workflowPreamble: "on: { pull_request_target: { types: [labeled] } }\n",
 			triggerEvent:     labelPR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-unlabeled",
 			workflowPreamble: "on: { pull_request_target: { types: [unlabeled] } }\n",
 			triggerEvent:     unlabelPR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-edited",
 			workflowPreamble: "on: { pull_request_target: { types: [edited] } }\n",
 			triggerEvent:     editPRTitle,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-closed",
 			workflowPreamble: "on: { pull_request_target: { types: [closed] } }\n",
 			triggerEvent:     closePR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-reopened",
 			workflowPreamble: "on: { pull_request_target: { types: [reopened] } }\n",
 			triggerEvent:     reopenPR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-synchronize",
 			workflowPreamble: "on: { pull_request_target: { types: [synchronize] } }\n",
 			triggerEvent:     synchronizePR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-milestoned",
 			workflowPreamble: "on: { pull_request_target: { types: [milestoned] } }\n",
 			triggerEvent:     milestonePR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-demilestoned",
 			workflowPreamble: "on: { pull_request_target: { types: [demilestoned] } }\n",
 			triggerEvent:     demilestonePR,
 			expectedResult:   runFromBase,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "pull_request_target-review_requested",
 			workflowPreamble: "on: { pull_request_target: { types: [review_requested] } }\n",
 			triggerEvent:     requestReview,
 			expectedResult:   runFromBase,
+			expectedRef:      refPullRequest, // unexpected for pull_request_target, possible bug; generateGiteaContextForRun doesn't get a PR payload; out of scope for current patch
 		},
 		{
 			name:             "pull_request_target-review_request_removed",
 			workflowPreamble: "on: { pull_request_target: { types: [review_request_removed] } }\n",
 			triggerEvent:     removeReviewRequest,
 			expectedResult:   runFromBase,
+			expectedRef:      refPullRequest, // unexpected for pull_request_target, possible bug; generateGiteaContextForRun doesn't get a PR payload; out of scope for current patch
 		},
 		{
 			name:             "pull_request_review",
 			workflowPreamble: "on: { pull_request_review: { } }",
 			triggerEvent:     createPRReview,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request_review-submitted",
 			workflowPreamble: "on: { pull_request_review: { types: [submitted] } }",
 			triggerEvent:     createPRReview,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request_review-edited",
 			workflowPreamble: "on: { pull_request_review: { types: [edited] } }",
 			triggerEvent:     createPRReview, // no API provided for editing, but editing & submitting are treated the same internally
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "pull_request_review_comment-created",
 			workflowPreamble: "on: { pull_request_review_comment: { types: [created] } }",
 			triggerEvent:     createPRReviewComment,
-			expectedResult:   runFromBaseWithBuggySecrets,
+			expectedResult:   runFromBase,
 		},
 		{
 			name:             "issue_comment-created",
 			workflowPreamble: "on: { issue_comment: { types: [created] } }",
 			triggerEvent:     createPRComment,
 			expectedResult:   runFromBaseWithoutPullRequest,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "issue_comment-edited",
 			workflowPreamble: "on: { issue_comment: { types: [edited] } }",
 			triggerEvent:     editPRComment,
 			expectedResult:   runFromBaseWithoutPullRequest,
+			expectedRef:      refBaseBranch,
 		},
 		{
 			name:             "issue_comment-deleted",
 			workflowPreamble: "on: { issue_comment: { types: [deleted] } }",
 			triggerEvent:     deletePRComment,
 			expectedResult:   runFromBaseWithoutPullRequest,
+			expectedRef:      refBaseBranch,
 		},
 	}
 
@@ -2331,7 +2348,7 @@ jobs:
 					assert.True(t, actionRun.IsForkPullRequest, "run must be marked as IsForkPullRequest")
 					assert.True(t, actionRun.NeedApproval, "run must be marked as NeedApproval")
 					require.NoError(t, actions_service.UpdateTrustedWithPullRequest(t.Context(), user2.ID, pullRequest, actions_service.UserTrustedOnce))
-				case runFromBase, runFromBaseWithBuggySecrets:
+				case runFromBase:
 					actionRun := unittest.AssertExistsAndLoadBean(t, &actions_model.ActionRun{RepoID: baseRepo.ID})
 					assert.True(t, actionRun.IsForkPullRequest, "run must be !IsForkPullRequest")
 					assert.False(t, actionRun.NeedApproval, "run must be !NeedApproval")
@@ -2366,19 +2383,21 @@ jobs:
 					// marked as `IsForkPullRequest` (which is technically correct), and then the token only gets
 					// read-only permissions (which is a surprise).  This is a bug; StatusCreated is correct:
 					writeToRepoCode(t, baseRepo, task.Secrets["FORGEJO_TOKEN"], http.StatusForbidden)
-				case runFromBaseWithBuggySecrets:
-					assert.Contains(t, string(task.GetWorkflowPayload()), "job-base:") // running the workflow from the base branch, not the fork, which is why it can be trusted
-					assert.Len(t, task.Secrets, 3)                                     // runFromBaseWithBuggySecrets should be eliminated and act like runFromBase, because it's trusted, but has no repo secrets
-					// runFromBase... SHOULD give us a token that has write permissions to the repo's units, and which
-					// would return http.StatusOK to this request, but it doesn't.  Every one of these cases ends up
-					// marked as `IsForkPullRequest` (which is technically correct), and then the token only gets
-					// read-only permissions (which is a surprise).  This is a bug; StatusCreated is correct:
-					writeToRepoCode(t, baseRepo, task.Secrets["FORGEJO_TOKEN"], http.StatusForbidden)
 				case runFromBaseWithoutPullRequest:
 					assert.Contains(t, string(task.GetWorkflowPayload()), "job-base:") // running the workflow from the base branch, not the fork, which is why it can be trusted
 					assert.Contains(t, task.Secrets, "MY_SECRET")
 					assert.Len(t, task.Secrets, 4)
 					writeToRepoCode(t, baseRepo, task.Secrets["FORGEJO_TOKEN"], http.StatusCreated)
+				}
+
+				ref, ok := task.Context.AsMap()["ref"]
+				switch tc.expectedRef {
+				case refPullRequest:
+					require.True(t, ok, "'ref' must exist in context")
+					assert.Equal(t, "refs/pull/1/head", ref)
+				case refBaseBranch:
+					require.True(t, ok, "'ref' must exist in context")
+					assert.Equal(t, "refs/heads/main", ref)
 				}
 
 				runner.execTask(t, task, &mockTaskOutcome{

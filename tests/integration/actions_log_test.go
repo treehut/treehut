@@ -315,9 +315,7 @@ jobs:
 				Content: "\U0001F3C1  Job succeeded",
 			},
 		},
-		// sendEmptyUpdateLog changes the behaviour of execTask to facilitate this test case -- the last `UpdateLog()`
-		// API call is performed with Rows:[] and NoMore:true, rather than the other test cases which provide the last
-		// log line along with the NoMore flag.
+		// Triggers the "finish logs with empty rows" behaviour that this test case is intended for:
 		sendEmptyUpdateLog: true,
 	}
 

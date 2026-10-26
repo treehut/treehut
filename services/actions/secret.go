@@ -38,10 +38,11 @@ func getSecretsOfJob(ctx context.Context, job *actions_model.ActionRunJob) (map[
 		return getSecretsOfInnerWorkflowCall(ctx, job)
 	}
 
-	if job.Run.IsForkPullRequest && job.Run.TriggerEvent != actions_module.GithubEventPullRequestTarget {
-		// ignore secrets for fork pull request, except GITHUB_TOKEN, GITEA_TOKEN and FORGEJO_TOKEN which are automatically generated.
-		// for the tasks triggered by pull_request_target event, they could access the secrets because they will run in the context of the base branch
-		// see the documentation: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
+	if canAccessSecrets, err := job.CanAccessSecrets(ctx); err != nil {
+		return nil, fmt.Errorf("failed evaluating CanAccessSecrets: %w", err)
+	} else if !canAccessSecrets {
+		// Ignore secrets for this run, (except the automatic GITHUB_TOKEN, GITEA_TOKEN and FORGEJO_TOKEN, which aren't
+		// `getSecretsOfJob`'s responsibility)
 		return map[string]string{}, nil
 	}
 

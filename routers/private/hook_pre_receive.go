@@ -585,6 +585,28 @@ func preReceivePull(ctx *preReceiveContext, oldCommitID, newCommitID string, ref
 		return
 	}
 
+	// special case: when mirroring, refs/pull/... will get push-deleted
+	// let pre-receive pass and ignore deletion in agit.ProcReceive
+	// (returning an error here would prevent mirroring the other refs)
+	//
+	// check before fetching the pull request, since non-existing PRs may get deleted
+	// https://codeberg.org/forgejo/forgejo/pulls/14885
+	objectFormat := ctx.Repo.GetObjectFormat()
+	if newCommitID == objectFormat.EmptyObjectID().String() {
+		if ctx.canWriteCode() {
+			// pass to agit.ProcReceive
+			return
+		}
+		if ctx.Written() {
+			return
+		}
+		// user has no write permission: hard-failure
+		ctx.JSON(http.StatusForbidden, private.Response{
+			UserMsg: "Pull-requests cannot be deleted via git push.",
+		})
+		return
+	}
+
 	pr, err := issues_model.GetPullRequestByIndex(ctx, ctx.Repo.Repository.ID, pullIndex)
 	if err != nil {
 		ctx.JSON(http.StatusForbidden, private.Response{

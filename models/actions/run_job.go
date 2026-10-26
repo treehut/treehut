@@ -212,6 +212,28 @@ func (job *ActionRunJob) NamespacedJobID() NamespacedJobIdentifier {
 	}
 }
 
+// Evaluate whether this job can access the secrets defined in the repository, owner, and global contexts.  Most
+// workflows can, but when a workflow is generated from a pull request it will vary.
+func (job *ActionRunJob) CanAccessSecrets(ctx context.Context) (bool, error) {
+	if err := job.LoadRun(ctx); err != nil {
+		return false, fmt.Errorf("failure in LoadRun: %w", err)
+	}
+
+	// All jobs that are generated from within the repository have access to secrets.
+	if !job.Run.IsForkPullRequest {
+		return true, nil
+	}
+
+	// When Forgejo receives events from a pull request, we want to avoid running untrusted workflows that are contained
+	// within the pull request while providing them secrets.  The rules involved in which events run workflows from
+	// which branch are intricate, implemented in IsDefaultBranchWorkflow & getPullRequestCommitAndApproval, based upon
+	// the PR, the user making the action, and the event being triggered.
+	//
+	// If `WorkflowSourceCommit` is present, then we're running a workflow from a trusted base branch and we can provide
+	// secrets:
+	return job.Run.WorkflowSourceCommit.Has(), nil
+}
+
 func GetRunJobByID(ctx context.Context, id int64) (*ActionRunJob, error) {
 	var job ActionRunJob
 	has, err := db.GetEngine(ctx).Where("id=?", id).Get(&job)

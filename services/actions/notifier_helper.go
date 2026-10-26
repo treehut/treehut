@@ -384,6 +384,8 @@ func handleWorkflows(
 		}
 		workflowSourceCommit := commit
 		if dwf.SourceCommit != nil && dwf.SourceCommit.ID.String() != commit.ID.String() {
+			// Note: ActionRunJob.CanAccessSecrets uses the presence/absence of WorkflowSourceCommit; don't change
+			// without consideration to the impacts of secrets access.
 			run.WorkflowSourceCommit = optional.Some(dwf.SourceCommit.ID.String())
 			workflowSourceCommit = dwf.SourceCommit
 		}

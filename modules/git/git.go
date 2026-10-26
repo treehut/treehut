@@ -306,7 +306,11 @@ func syncGitConfig() (err error) {
 	}
 
 	// refs/pull/ were previously hidden
-	if err = configSet("receive.hideRefs", ""); err != nil {
+	if err = configUnsetAll("receive.hideRefs", "refs/pull/"); err != nil {
+		return err
+	}
+	// "" was erroneously set in https://codeberg.org/forgejo/forgejo/pulls/13661
+	if err = configUnsetAll("receive.hideRefs", ""); err != nil {
 		return err
 	}
 
@@ -423,7 +427,8 @@ func configUnsetAll(key, value string) error {
 	if err == nil {
 		// exist, need to remove
 		_, _, err = NewCommand(DefaultContext, "config", "--global", "--unset-all").AddDynamicArguments(key, regexp.QuoteMeta(value)).RunStdString(nil)
-		if err != nil {
+		if err != nil && !IsErrorExitCode(err, 5) {
+			// exit code 5: try to unset an option which does not exist
 			return fmt.Errorf("failed to unset git global config %s, err: %w", key, err)
 		}
 		return nil

@@ -85,6 +85,41 @@ func TestAPIWatch(t *testing.T) {
 			AddTokenAuth(tokenWithRepoScope)
 		MakeRequest(t, req, http.StatusNoContent)
 	})
+
+	t.Run("Watch private repo", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+
+		req := NewRequest(t, "PUT", "/api/v1/repos/user2/repo2/subscription").
+			AddTokenAuth(tokenWithRepoScope)
+		MakeRequest(t, req, http.StatusOK)
+
+		t.Run("Other user", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			session := loginUser(t, "user5")
+			otherToken := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeReadUser)
+
+			req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/users/%s/subscriptions", user)).
+				AddTokenAuth(otherToken)
+			resp := MakeRequest(t, req, http.StatusOK)
+
+			var repos []api.Repository
+			DecodeJSON(t, resp, &repos)
+			assert.Empty(t, repos)
+		})
+
+		t.Run("Self", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/users/%s/subscriptions", user)).
+				AddTokenAuth(token)
+			resp := MakeRequest(t, req, http.StatusOK)
+
+			var repos []api.Repository
+			DecodeJSON(t, resp, &repos)
+			assert.Len(t, repos, 1)
+		})
+	})
 }
 
 func TestAPIWatchRepoAccessTokenResources(t *testing.T) {
@@ -152,7 +187,8 @@ func TestAPIWatchRepoAccessTokenResources(t *testing.T) {
 	t.Run("specific repo access token", func(t *testing.T) {
 		defer tests.PrintCurrentTest(t)()
 
-		repo2OnlyToken := createFineGrainedRepoAccessToken(t, "user2",
+		repo2OnlyToken := createFineGrainedRepoAccessToken(
+			t, "user2",
 			[]auth_model.AccessTokenScope{auth_model.AccessTokenScopeReadUser},
 			[]int64{2},
 		)

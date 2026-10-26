@@ -16,51 +16,6 @@ import (
 	"xorm.io/builder"
 )
 
-// GetStarredRepos returns the repos starred by a particular user
-func GetStarredRepos(ctx context.Context, userID int64, private bool, listOptions db.ListOptions, reducer RepositoryAuthorizationReducer) ([]*Repository, error) {
-	sess := db.GetEngine(ctx).
-		Where("star.uid=?", userID).
-		Join("LEFT", "star", "`repository`.id=`star`.repo_id")
-	if !private {
-		sess = sess.And("is_private=?", false)
-	}
-	sess = sess.And(reducer.RepoReadAccessFilter())
-
-	if listOptions.Page != 0 {
-		sess = db.SetSessionPagination(sess, &listOptions)
-
-		repos := make([]*Repository, 0, listOptions.PageSize)
-		return repos, sess.Find(&repos)
-	}
-
-	repos := make([]*Repository, 0, 10)
-	return repos, sess.Find(&repos)
-}
-
-// GetWatchedRepos returns the repos watched by a particular user
-func GetWatchedRepos(ctx context.Context, userID int64, private bool, listOptions db.ListOptions, reducer RepositoryAuthorizationReducer) ([]*Repository, int64, error) {
-	sess := db.GetEngine(ctx).
-		Where("watch.user_id=?", userID).
-		And(BuilderWatchAnything()).
-		Join("LEFT", "watch", "`repository`.id=`watch`.repo_id")
-	if !private {
-		sess = sess.And("is_private=?", false)
-	}
-	sess = sess.And(reducer.RepoReadAccessFilter())
-
-	if listOptions.Page != 0 {
-		sess = db.SetSessionPagination(sess, &listOptions)
-
-		repos := make([]*Repository, 0, listOptions.PageSize)
-		total, err := sess.FindAndCount(&repos)
-		return repos, total, err
-	}
-
-	repos := make([]*Repository, 0, 10)
-	total, err := sess.FindAndCount(&repos)
-	return repos, total, err
-}
-
 // GetRepoAssignees returns all users that have write access and can be assigned to issues
 // of the repository,
 func GetRepoAssignees(ctx context.Context, repo *Repository) (_ []*user_model.User, err error) {

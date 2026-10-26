@@ -30,6 +30,7 @@
   index: 6
   trigger_event: "pull_request_target"
   is_fork_pull_request: true
+  workflow_source_commit: abc123
 
 # Supporting data for Case 603
 -

@@ -135,34 +135,15 @@ func GetSearchOpts(id int64, isShowClosed bool, sortType, keyword string, projec
 
 // GetProjectByIDForOwner Fetches a Project by its ID from the DB
 // and checks if it belongs to the given owner
-func GetProjectByIDForOwner(ctx context.Context, projectID, ownerID int64) (*project_model.Project, error) {
+func GetProjectByIDForOwner(ctx context.Context, projectID, ownerID int64, repo *repo_model.Repository) (*project_model.Project, error) {
 	project, err := project_model.GetProjectByID(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not get project %d for owner %d: %w", projectID, ownerID, err)
 	}
-	if err := ensureProjectOwnedBy(project, ownerID); err != nil {
-		return nil, err
+	if !project.CanBeAccessedByOwnerRepo(ownerID, repo) {
+		return nil, project_module.ErrMismatchedOwner{Message: "Project did not belong to given owner"}
 	}
 	return project, nil
-}
-
-func ensureProjectOwnedBy(project *project_model.Project, ownerID int64) error {
-	errMismatchedOwner := project_module.ErrMismatchedOwner{Message: "Project did not belong to given owner"}
-	switch project.Type {
-	case project_module.TypeIndividual:
-		if project.OwnerID != ownerID {
-			return errMismatchedOwner
-		}
-	case project_module.TypeOrganization:
-		if project.OwnerID != ownerID {
-			return errMismatchedOwner
-		}
-	case project_module.TypeRepository:
-		if project.RepoID != ownerID {
-			return errMismatchedOwner
-		}
-	}
-	return nil
 }
 
 // ListProjectsByOptions Lists Projects by search options

@@ -251,7 +251,9 @@ type mockTaskOutcome struct {
 	// stepStates, when non-nil, is included in the final UpdateTask's
 	// TaskState.Steps. Lets tests exercise per-step LogIndex/LogLength
 	// (and other StepState fields) without reaching into the DB directly.
-	stepStates         []*runnerv1.StepState
+	stepStates []*runnerv1.StepState
+	// sendEmptyUpdateLog changes the behaviour so that the last `UpdateLog()` API call is performed with Rows:[] and
+	// NoMore:true, rather than providing the last log line along with the NoMore flag.
 	sendEmptyUpdateLog bool
 }
 
@@ -267,14 +269,22 @@ func (r *mockRunner) execTask(t *testing.T, task *runnerv1.Task, outcome *mockTa
 		assert.EqualValues(t, idx+1, resp.Msg.AckIndex)
 	}
 	if outcome.sendEmptyUpdateLog {
-		resp, err := r.client.runnerServiceClient.UpdateLog(t.Context(), connect.NewRequest(&runnerv1.UpdateLogRequest{
-			TaskId: task.Id,
-			Index:  int64(len(outcome.logRows)),
-			Rows:   []*runnerv1.LogRow{},
-			NoMore: true,
-		}))
-		require.NoError(t, err)
-		assert.EqualValues(t, len(outcome.logRows), resp.Msg.AckIndex)
+		// When a forgejo-runner completes a task, it will start a retry loop of sending UpdateLog & UpdateTask until
+		// both succeed, or the retries are exhausted, so that transient failures in a service call don't lose the final
+		// statuses of a task, or the final log uploads.  This can cause the final UpdateLog to be invoked multiple
+		// times.  In order to verify that this works and doesn't trigger any error cases, the mock runner always
+		// invokes the last UpdateLog twice and verifies that neither have errors. (retry reference:
+		// https://code.forgejo.org/forgejo/runner/src/commit/c4a92ffa5e3a400ae7e9c40a2914e649eb338ad7/internal/pkg/report/reporter.go#L400-L411)
+		for range 2 {
+			resp, err := r.client.runnerServiceClient.UpdateLog(t.Context(), connect.NewRequest(&runnerv1.UpdateLogRequest{
+				TaskId: task.Id,
+				Index:  int64(len(outcome.logRows)),
+				Rows:   []*runnerv1.LogRow{},
+				NoMore: true,
+			}))
+			require.NoError(t, err)
+			assert.EqualValues(t, len(outcome.logRows), resp.Msg.AckIndex)
+		}
 	}
 	sentOutputKeys := make([]string, 0, len(outcome.outputs))
 	for outputKey, outputValue := range outcome.outputs {

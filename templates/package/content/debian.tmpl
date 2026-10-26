@@ -44,7 +44,7 @@ sudo apt update</code></pre></div>
 	{{if .PackageDescriptor.Metadata.Description}}
 		<h4 class="ui top attached header">{{ctx.Locale.Tr "packages.about"}}</h4>
 		<div class="ui attached segment">
-			{{.PackageDescriptor.Metadata.Description}}
+			<span class="tw-whitespace-pre-line">{{.PackageDescriptor.Metadata.Description}}</span>
 		</div>
 	{{end}}
 

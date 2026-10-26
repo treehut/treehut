@@ -21,10 +21,16 @@ import (
 
 // getStarredRepos returns the repos that the user with the specified userID has
 // starred
-func getStarredRepos(ctx *context.APIContext, user *user_model.User, private bool, listOptions db.ListOptions) ([]*api.Repository, error) {
-	starredRepos, err := repo_model.GetStarredRepos(ctx, user.ID, private, listOptions, ctx.Reducer())
+func getStarredRepos(ctx *context.APIContext, user *user_model.User, listOptions db.ListOptions) ([]*api.Repository, int64, error) {
+	starredRepos, total, err := repo_model.SearchRepository(ctx, &repo_model.SearchRepoOptions{
+		ListOptions:          listOptions,
+		Actor:                ctx.Doer(),
+		StarredByID:          user.ID,
+		Private:              ctx.IsSigned(),
+		AuthorizationReducer: ctx.Reducer(),
+	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	repos := make([]*api.Repository, len(starredRepos))
@@ -33,13 +39,13 @@ func getStarredRepos(ctx *context.APIContext, user *user_model.User, private boo
 		// account here:
 		//
 		// nosemgrep: forgejo-api-use-resource-GetUserRepoPermission
-		permission, err := access_model.GetUserRepoPermission(ctx, starred, user)
+		permission, err := access_model.GetUserRepoPermission(ctx, starred, ctx.Doer())
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		repos[i] = convert.ToRepo(ctx, starred, permission)
 	}
-	return repos, nil
+	return repos, total, nil
 }
 
 // GetStarredRepos returns the repos that the given user has starred
@@ -69,14 +75,13 @@ func GetStarredRepos(ctx *context.APIContext) {
 	//   "404":
 	//     "$ref": "#/responses/notFound"
 
-	private := ctx.User().ID == ctx.Doer().ID
-	repos, err := getStarredRepos(ctx, ctx.User(), private, utils.GetListOptions(ctx))
+	repos, total, err := getStarredRepos(ctx, ctx.User(), utils.GetListOptions(ctx))
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "getStarredRepos", err)
 		return
 	}
 
-	ctx.SetTotalCountHeader(int64(ctx.User().NumStars))
+	ctx.SetTotalCountHeader(total)
 	ctx.JSON(http.StatusOK, &repos)
 }
 
@@ -104,13 +109,13 @@ func GetMyStarredRepos(ctx *context.APIContext) {
 	//   "403":
 	//     "$ref": "#/responses/forbidden"
 
-	repos, err := getStarredRepos(ctx, ctx.Doer(), true, utils.GetListOptions(ctx))
+	repos, total, err := getStarredRepos(ctx, ctx.Doer(), utils.GetListOptions(ctx))
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "getStarredRepos", err)
 		return
 	}
 
-	ctx.SetTotalCountHeader(int64(ctx.Doer().NumStars))
+	ctx.SetTotalCountHeader(total)
 	ctx.JSON(http.StatusOK, &repos)
 }
 

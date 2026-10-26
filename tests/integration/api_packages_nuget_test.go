@@ -786,6 +786,20 @@ AAAjQmxvYgAAAGm7ENm9SGxMtAFVvPUsPJTF6PbtAAAAAFcVogEJAAAAAQAAAA==`)
 			assert.Len(t, result.Versions, 1)
 			assert.Equal(t, packageVersion, result.Versions[0])
 		})
+
+		t.Run("validate token scope", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			req := NewRequest(t, "GET", fmt.Sprintf("%s/package/%s/index.json", url, packageName)).
+				AddTokenAuth(token)
+			MakeRequest(t, req, http.StatusOK)
+
+			// No write package access:
+			invalidScopeToken := getUserToken(t, user.Name, auth_model.AccessTokenScopeWriteRepository)
+			req = NewRequest(t, "GET", fmt.Sprintf("%s/package/%s/index.json", url, packageName)).
+				AddTokenAuth(invalidScopeToken)
+			MakeRequest(t, req, http.StatusUnauthorized)
+		})
 	})
 
 	t.Run("Delete", func(t *testing.T) {

@@ -10,7 +10,9 @@ import (
 	auth_model "forgejo.org/models/auth"
 	user_model "forgejo.org/models/user"
 	"forgejo.org/modules/log"
+	"forgejo.org/modules/optional"
 	"forgejo.org/services/auth"
+	"forgejo.org/services/authz"
 )
 
 var (
@@ -20,11 +22,21 @@ var (
 
 type nugetAuthenticationResult struct {
 	*auth.BaseAuthenticationResult
-	user *user_model.User
+	user    *user_model.User
+	scope   auth_model.AccessTokenScope
+	reducer authz.AuthorizationReducer
 }
 
 func (r *nugetAuthenticationResult) User() *user_model.User {
 	return r.user
+}
+
+func (r *nugetAuthenticationResult) Scope() optional.Option[auth_model.AccessTokenScope] {
+	return optional.Some(r.scope)
+}
+
+func (r *nugetAuthenticationResult) Reducer() authz.AuthorizationReducer {
+	return r.reducer
 }
 
 type Auth struct{}
@@ -52,5 +64,12 @@ func (a *Auth) Verify(req *http.Request, w http.ResponseWriter, sess auth.Sessio
 		log.Error("UpdateLastUsed:  %v", err)
 	}
 
-	return &auth.AuthenticationSuccess{Result: &nugetAuthenticationResult{user: u}}
+	reducer, err := authz.GetAuthorizationReducerForAccessToken(req.Context(), token)
+	if err != nil {
+		return &auth.AuthenticationError{Error: fmt.Errorf("access token GetAuthorizationReducerForAccessToken: %w", err)}
+	}
+
+	return &auth.AuthenticationSuccess{
+		Result: &nugetAuthenticationResult{user: u, scope: token.Scope, reducer: reducer},
+	}
 }

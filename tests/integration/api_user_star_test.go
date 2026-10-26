@@ -117,6 +117,41 @@ func TestAPIStar(t *testing.T) {
 			assertDisabledStarsNotFound(t, req)
 		})
 	})
+
+	t.Run("Star private repo", func(t *testing.T) {
+		defer tests.PrintCurrentTest(t)()
+
+		req := NewRequest(t, "PUT", "/api/v1/user/starred/user2/repo2").
+			AddTokenAuth(tokenWithUserScope)
+		MakeRequest(t, req, http.StatusNoContent)
+
+		t.Run("Other user", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			session := loginUser(t, "user5")
+			otherToken := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeReadUser)
+
+			req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/users/%s/starred", user)).
+				AddTokenAuth(otherToken)
+			resp := MakeRequest(t, req, http.StatusOK)
+
+			var repos []api.Repository
+			DecodeJSON(t, resp, &repos)
+			assert.Empty(t, repos)
+		})
+
+		t.Run("Self", func(t *testing.T) {
+			defer tests.PrintCurrentTest(t)()
+
+			req = NewRequest(t, "GET", fmt.Sprintf("/api/v1/users/%s/starred", user)).
+				AddTokenAuth(token)
+			resp := MakeRequest(t, req, http.StatusOK)
+
+			var repos []api.Repository
+			DecodeJSON(t, resp, &repos)
+			assert.Len(t, repos, 1)
+		})
+	})
 }
 
 func TestAPIStarRepoAccessTokenResources(t *testing.T) {

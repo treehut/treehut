@@ -143,6 +143,7 @@ func ParseControlFile(r io.Reader) (*Package, error) {
 	}
 
 	key := ""
+	descParagraph := false
 	var depends strings.Builder
 	var control strings.Builder
 
@@ -158,7 +159,23 @@ func ParseControlFile(r io.Reader) (*Package, error) {
 		if line[0] == ' ' || line[0] == '\t' {
 			switch key {
 			case "Description":
-				p.Metadata.Description += line
+				// From https://www.debian.org/doc/debian-policy/ch-controlfields.html#description
+				// Point 3, if the line is ' .', then interpret it as a blank line.
+				if line == " ." {
+					// The first newline is to end the current line, the second newline is
+					// to indicate the blank line.
+					p.Metadata.Description += "\n\n"
+					descParagraph = true
+					continue
+				}
+
+				if descParagraph {
+					// New paragraph is started, strip the leading space.
+					descParagraph = false
+					p.Metadata.Description += strings.TrimPrefix(line, " ")
+				} else {
+					p.Metadata.Description += line
+				}
 			case "Depends":
 				depends.WriteString(trimmed)
 			}

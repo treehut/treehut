@@ -17,8 +17,14 @@ import (
 )
 
 // getWatchedRepos returns the repos that the user with the specified userID is watching
-func getWatchedRepos(ctx *context.APIContext, user *user_model.User, private bool, listOptions db.ListOptions) ([]*api.Repository, int64, error) {
-	watchedRepos, total, err := repo_model.GetWatchedRepos(ctx, user.ID, private, listOptions, ctx.Reducer())
+func getWatchedRepos(ctx *context.APIContext, user *user_model.User, listOptions db.ListOptions) ([]*api.Repository, int64, error) {
+	watchedRepos, total, err := repo_model.SearchRepository(ctx, &repo_model.SearchRepoOptions{
+		ListOptions:          listOptions,
+		Actor:                ctx.Doer(),
+		WatchedByID:          user.ID,
+		Private:              ctx.IsSigned(),
+		AuthorizationReducer: ctx.Reducer(),
+	})
 	if err != nil {
 		return nil, 0, err
 	}
@@ -29,7 +35,7 @@ func getWatchedRepos(ctx *context.APIContext, user *user_model.User, private boo
 		// account here:
 		//
 		// nosemgrep: forgejo-api-use-resource-GetUserRepoPermission
-		permission, err := access_model.GetUserRepoPermission(ctx, watched, user)
+		permission, err := access_model.GetUserRepoPermission(ctx, watched, ctx.Doer())
 		if err != nil {
 			return nil, 0, err
 		}
@@ -65,8 +71,7 @@ func GetWatchedRepos(ctx *context.APIContext) {
 	//   "404":
 	//     "$ref": "#/responses/notFound"
 
-	private := ctx.User().ID == ctx.Doer().ID
-	repos, total, err := getWatchedRepos(ctx, ctx.User(), private, utils.GetListOptions(ctx))
+	repos, total, err := getWatchedRepos(ctx, ctx.User(), utils.GetListOptions(ctx))
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "getWatchedRepos", err)
 		return
@@ -100,7 +105,7 @@ func GetMyWatchedRepos(ctx *context.APIContext) {
 	//   "403":
 	//     "$ref": "#/responses/forbidden"
 
-	repos, total, err := getWatchedRepos(ctx, ctx.Doer(), true, utils.GetListOptions(ctx))
+	repos, total, err := getWatchedRepos(ctx, ctx.Doer(), utils.GetListOptions(ctx))
 	if err != nil {
 		ctx.Error(http.StatusInternalServerError, "getWatchedRepos", err)
 		return

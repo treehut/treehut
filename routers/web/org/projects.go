@@ -36,7 +36,7 @@ const (
 )
 
 func getAndCheckProjectByID(ctx *context.Context, projectID int64) *project_model.Project {
-	project, err := project_service.GetProjectByIDForOwner(ctx, projectID, ctx.ContextUser.ID)
+	project, err := project_service.GetProjectByIDForOwner(ctx, projectID, ctx.ContextUser.ID, nil)
 	if err != nil {
 		ctx.NotFoundOrServerError("GetProjectByIDForOwner", func(err error) bool {
 			return errors.Is(err, util.ErrInvalidArgument) || project_model.IsErrProjectNotExist(err)

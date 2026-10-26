@@ -23,7 +23,7 @@ const (
 	packageVersion      = "0:1.0.1-te~st"
 	packageArchitecture = "amd64"
 	packageAuthor       = "KN4CK3R"
-	description         = "Description with multiple lines."
+	description         = "Description with multiple lines.\n\nNew paragraph!"
 	projectURL          = "https://gitea.io"
 )
 
@@ -141,7 +141,7 @@ func (nopCloser) Close() error {
 func TestParseControlFile(t *testing.T) {
 	buildContent := func(name, version, architecture string) *bytes.Buffer {
 		var buf bytes.Buffer
-		buf.WriteString("Package: " + name + "\nVersion: " + version + "\nArchitecture: " + architecture + "\nMaintainer: " + packageAuthor + " <kn4ck3r@gitea.io>\nHomepage: " + projectURL + "\nDepends: a,\n b\nDescription: Description\n with multiple\n lines.")
+		buf.WriteString("Package: " + name + "\nVersion: " + version + "\nArchitecture: " + architecture + "\nMaintainer: " + packageAuthor + " <kn4ck3r@gitea.io>\nHomepage: " + projectURL + "\nDepends: a,\n b\nDescription: Description\n with multiple\n lines.\n .\n New paragraph!")
 		return &buf
 	}
 

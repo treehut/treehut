@@ -384,7 +384,7 @@ func (*Service) UpdateLog(
 	}
 
 	var remove func()
-	if req.Msg.NoMore {
+	if req.Msg.NoMore && !task.LogInStorage {
 		task.LogInStorage = true
 		updateTaskColumns = append(updateTaskColumns, "log_in_storage")
 		remove, err = actions.TransferLogs(ctx, task.LogFilename)
@@ -393,8 +393,10 @@ func (*Service) UpdateLog(
 		}
 	}
 
-	if err := actions_model.UpdateTask(ctx, task, updateTaskColumns...); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("update task: %w", err))
+	if len(updateTaskColumns) != 0 {
+		if err := actions_model.UpdateTask(ctx, task, updateTaskColumns...); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("update task: %w", err))
+		}
 	}
 	if remove != nil {
 		remove()
