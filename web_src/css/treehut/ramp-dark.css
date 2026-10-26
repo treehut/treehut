@@ -83,8 +83,8 @@
   --th-accent-on: oklch(0.145 0.020 var(--th-accent-hue));
 
   /* ── status hues ──────────────────────────────────────────────────────
-   * First of the status families (see README). Only the danger fill is defined
-   * so far; success / warning / info still fall through to upstream.
+   * The status families (see README). Danger and attention (warning) have
+   * fills; success / error / info surfaces still fall through to upstream.
    *
    * The fill is much darker than upstream's #552222 because `.button.danger`
    * paints its label with --color-thin-red, and gitea themes do not define that
@@ -97,18 +97,39 @@
    * (forgejo uses oklch(0.68 0.19 27deg), which would measure 5.86 here).
    */
   --th-danger-hue: 25deg;
-  --th-attention-hue: 41deg;
+  --th-attention-hue: 85deg;
   --th-success-hue: 145deg;
   --th-done-hue: 298deg;
 
+  /* Attention is amber, as in Primer, and also paints warnings (message boxes
+   * and "Warning" alerts). It used to be 41°, upstream's orange, which sat so
+   * close to danger that the pair scored 0.047 under NORMAL vision: a Warning
+   * and a Caution alert were nearly the same colour. 85° is the point furthest
+   * from both danger and success (0.170), and as a side effect it also stops
+   * danger and attention collapsing under tritanopia (0.009 → 0.141). */
+
+  /* Info is its own blue rather than the accent: the accent is green, 4° from
+   * success, so an accent-coloured "Note" alert would read as a "Tip". 245° is
+   * the clearest blue that stays well clear of both success and done (0.152
+   * worst-case OKLab distance under normal vision). */
+  --th-info-hue: 245deg;
+
   --th-danger-fill: oklch(0.200 0.065 var(--th-danger-hue));
+
+  /* Warning surfaces: upstream always sets warning text on its own fill inside
+   * its own border, so all three come from the attention hue together. The
+   * fill sits at the same depth as the danger fill; amber text on it measures
+   * 6.18. */
+  --th-attention-fill: oklch(0.205 0.045 var(--th-attention-hue));
+  --th-attention-border: oklch(0.420 0.090 var(--th-attention-hue));
 
   /* "thin" elements: coloured TEXT, icons and hairlines rather than fills.
    * Upstream's name, kept because upstream's CSS asks for it by that name.
    * These need far more lightness than a fill does to stay readable on the
    * canvas, which is exactly why the fallback to --color-red et al. looked
-   * wrong. Verified AA against the canvas at these values: red 6.34,
-   * orange 6.41, green 7.28, purple 6.43.
+   * wrong. Verified AA against the canvas at these values (the numbers
+   * tools/verify-cvd-hues.mjs prints): red 6.36, amber 6.82, green 7.33,
+   * purple 6.44, blue 6.93.
    *
    * The highlight variant is LIGHTER here and DARKER in the light ramp — in
    * both cases "further from the canvas", i.e. more emphasis on hover. */

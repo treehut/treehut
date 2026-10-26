@@ -72,21 +72,38 @@ labels and focus rings together rather than requiring a per-component patch.
 ### Colourblind variants
 
 The six shipped variants are hue overrides and nothing else — status text, icons,
-labels, badges **and diff backgrounds** all compose from four hues, so one
-declaration moves them together. That is the whole reason the diff family is
+labels, badges, markdown alerts **and diff backgrounds** all compose from five
+hues (danger, success, attention, done, info), so one declaration moves them
+together. That is the whole reason the diff family is
 bridged: forgejo's own colourblind themes patch only the nine `--color-diff-*`
 tokens, which is why they recolour code diffs and leave the rest of the UI
 red-green.
 
 Hues were not chosen by eye. `tools/verify-cvd-hues.mjs` simulates dichromacy
 (Viénot, Brettel & Mollon 1999) and reports the worst-case OKLab distance between
-any two status colours after simulation:
+any two status colours after simulation, in both modes:
 
 ```
-base theme                deutan 0.010  tritan 0.009   ← indistinguishable
-deuteranopia-protanopia   deutan 0.082  protan 0.105
-tritanopia                tritan 0.201
+                          dark                          light
+base theme                deutan 0.010  tritan 0.109    deutan 0.008  tritan 0.080
+deuteranopia-protanopia   deutan 0.082  protan 0.085    deutan 0.041  protan 0.069
+tritanopia                tritan 0.109                  tritan 0.080
 ```
+
+It also checks every status colour against AA on the canvas, and exits
+non-zero if one fails. That is how the light ramp's thin lightness was set:
+the deuteranopia variant's teal `done` was at 4.47.
+
+Light mode is consistently tighter, and the deuteranopia variant's light-mode
+danger/attention pair (0.041) is the weakest variant score. Earlier versions of
+the tool only sampled the dark ramp, so it went unnoticed. Retuning it is open
+work.
+
+Adding info (v17's "Note" alert blue) cost the variants some headroom, because
+a fifth colour has to fit somewhere. Info is blue in the base and tritanopia
+themes but sky (211°) in deuteranopia-protanopia, where success already
+occupies blue. Moving attention from orange (41°) to amber (85°) won some back:
+the base theme now scores 0.109 under tritanopia instead of 0.009.
 
 Run it after touching any hue. The results are counter-intuitive: the obvious
 "keep danger red, make attention yellow" fix scores 0.012 — no better than the
@@ -111,21 +128,26 @@ Until then, treehut inherits upstream's versions of all of the above. That is
 correct-but-untinted, not broken.
 
 **Done so far:** every token upstream reads through a *fallback*
-(`--color-danger-bg`, the five `--color-thin-*`, `--color-label-bg-alt`) plus the
-nine `--color-diff-*` tokens. Hue knobs live in the ramps, roles in
+(`--color-danger-bg`, `--color-thin-red-highlight`, `--color-label-bg-alt`), the
+whole `--color-thin-*` text family including v17's blue and violet, the
+`--color-warning-{text,bg,border}` family (from `attention`), plus the nine
+`--color-diff-*` tokens. Hue knobs live in the ramps, roles in
 `semantic.css`, upstream names in `bridge.css`. Follow that shape for the rest.
 
-**Still inherited from upstream:** the `--color-{success,warning,error,info}-*`
-surface families and the named `--color-{red,green,yellow,…}` set. These are the
+**Still inherited from upstream:** the `--color-{success,error,info}-*` surface
+families and the named `--color-{red,green,yellow,…}` set. These are the
 remaining reason a colourblind variant cannot re-hue *everything* — notably
 `--color-blue` / `--color-info-*`, which is why the tritanopia variant carries a
-known limitation about accent green reading close to info blue.
+known limitation about accent green reading close to info blue. The warning
+family is the pattern to copy: text, fill and border bridged together from one
+role, because upstream always uses them as a set.
 
 ### The fallback trap
 
 Some tokens are **defined only by forgejo's themes, while upstream CSS reads them
 with a fallback**. A gitea-derived theme like ours takes the fallback and
-silently gets a colour pairing nobody designed. `modules/button.css:67-75`:
+silently gets a colour pairing nobody designed. As of v16, `modules/button.css`
+read:
 
 ```css
 background: var(--color-danger-bg, var(--color-error-bg));
@@ -133,9 +155,14 @@ color:      var(--color-thin-red,  var(--color-red));
 &:hover { color: var(--color-thin-red-highlight, var(--color-red)); }
 ```
 
-Gitea's themes define none of the three, so the danger button rendered mid-red
+Gitea's themes defined none of the three, so the danger button rendered mid-red
 text on a dark-red fill at **2.80** contrast, and its hover fell back to the same
 value as its resting state — no hover feedback at all. Bridged, it measures 5.91.
+
+v17 fixed part of this upstream: `base.css` now defines every `--color-thin-*`
+for all themes, derived from `--hue-*` knobs. `--color-danger-bg` and
+`--color-thin-red-highlight` are still forgejo-only, so the trap remains for
+those two (now at `modules/button.css:76-83`).
 
 Note that darkening the *fill* alone could not have fixed this: it asymptotes
 around 4.38, at which point the button no longer separates from the canvas. Both
@@ -147,8 +174,13 @@ To find any remaining instances:
 grep -rhoE 'var\(--color-[a-z0-9-]+, *var\(--color-[a-z0-9-]+\)\)' web_src/css --include='*.css' | sort -u
 ```
 
-That list should stay empty. If a future upstream pull adds a new one, bridge it
-rather than letting the fallback stand.
+Every token on the left of each match should be defined in `bridge.css`; as of
+v17 there are three, all bridged. If a future upstream pull adds a new one,
+bridge it rather than letting the fallback stand.
+
+Also diff the `--color-thin-*` definitions at the top of upstream `base.css`
+after each pull. Upstream now adds new thin colours there (v17 added blue and
+violet), and an unbridged one silently keeps upstream's hue.
 
 ## Rules of thumb
 

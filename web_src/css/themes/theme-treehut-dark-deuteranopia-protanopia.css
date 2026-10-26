@@ -16,8 +16,16 @@
  * status colours after simulation. Higher is better; the base theme scores 0.010
  * under deuteranopia, i.e. danger and success are essentially the same colour.
  *
- *   base theme      danger 25  success 145  attention 41  done 298  → 0.010
- *   this variant    danger 20  success 250  attention 55  done 185  → 0.082
+ *   base theme      danger 25  success 145  attention 85  done 298  info 245  → 0.010
+ *   this variant    danger 20  success 250  attention 55  done 181  info 211  → 0.082
+ *
+ * (Dark mode. Light mode is tighter: danger/attention drops to 0.041 there.
+ * See the colourblind section of ../treehut/README.md.)
+ *
+ * Info (the blue of "Note" alerts) cannot stay blue here, because success has
+ * taken blue: at 250° the two are literally the same colour. 211° (sky) is the
+ * best remaining slot. Placing it cost done 4° (185° → 181°, still teal) to keep
+ * the variant's score where it was before info existed.
  *
  * Note that the obvious "conventional" fixes do NOT work here. Keeping danger
  * red and moving attention to yellow scores 0.012 — no better than the base —
@@ -35,7 +43,8 @@
   --th-danger-hue: 20deg;
   --th-success-hue: 250deg;
   --th-attention-hue: 55deg;
-  --th-done-hue: 185deg;
+  --th-done-hue: 181deg;
+  --th-info-hue: 211deg;
 
   /* The accent follows success so the brand reads as one colour rather than
      competing with the success state. */

@@ -173,7 +173,7 @@
   --color-reaction-active-bg: var(--th-accent-subtle);
 
   /* ── status ───────────────────────────────────────────────────────────────
-   * `.button.danger` (modules/button.css:67) reads --color-danger-bg with
+   * `.button.danger` (modules/button.css:78) reads --color-danger-bg with
    * --color-error-bg as its fallback. Only forgejo's themes define the former,
    * so gitea-derived themes like ours silently took the fallback. Defining it
    * here is what makes the danger button legible; --color-error-bg is left
@@ -181,15 +181,29 @@
    */
   --color-danger-bg: var(--th-danger-subtle);
 
+  /* The warning family: message boxes, the header banner, release-tag notices
+   * and the "Warning" markdown alert (markup/attention.css). Upstream always
+   * uses the three together (text on its own fill, inside its own border), so
+   * they are bridged together. Mapping the text alone would set treehut amber
+   * on upstream's fill, a pairing nobody checked. */
+  --color-warning-text: var(--th-attention-fg);
+  --color-warning-bg: var(--th-attention-subtle);
+  --color-warning-border: var(--th-attention-muted);
+
   /* The `--color-thin-*` family. Upstream reads these for coloured TEXT
-   * (`.text.red` etc. at base.css:668-692) and for the danger button's label and
-   * border, always with a `var(--x, var(--color-red))`-style fallback because
-   * only forgejo's own themes define them. Taking that fallback is what gave the
-   * danger button 2.80 contrast; defining them properly brings it to 5.91.
+   * (`.text.red` etc. at base.css:675-700), for the danger button's label and
+   * border, and for the markdown alert boxes. Before v17 only forgejo's own
+   * themes defined them, so gitea-derived themes like ours fell through to
+   * `var(--color-red)`: that is what gave the danger button 2.80 contrast.
+   * Since v17, base.css derives them for every theme from upstream's --hue-*
+   * knobs, but those hues are upstream's; mapping them here keeps them on
+   * treehut's hues and lets the colourblind variants re-hue them.
    *
    * --color-thin-red-highlight matters more than it looks: it is the danger
    * button's hover colour, and while it fell back to --color-red — the same
    * value as the resting state — the button had no hover feedback at all.
+   * Upstream still defines it only in forgejo-dark, so this one remains a
+   * fallback trap.
    */
   --color-thin-red: var(--th-danger-fg);
   --color-thin-red-highlight: var(--th-danger-fg-hover);
@@ -197,7 +211,15 @@
   --color-thin-green: var(--th-success-fg);
   --color-thin-purple: var(--th-done-fg);
 
-  /* Read at base.css:1046 and switch.css:68 for labels on an active tab. */
+  /* Added in v17 for the markdown alert boxes (markup/attention.css): Note is
+   * blue and Important is violet. Following Primer, Important maps to `done`;
+   * upstream's violet (293°) and purple (298°) are near-identical anyway.
+   * Note gets its own `info` role rather than the accent, because the accent is
+   * green and would make a Note look like a Tip. */
+  --color-thin-blue: var(--th-info-fg);
+  --color-thin-violet: var(--th-done-fg);
+
+  /* Read at base.css:1014 and switch.css:72 for labels on an active tab. */
   --color-label-bg-alt: var(--th-label-bg-strong);
 
   /* Diff colours. Bridging these is what lets the colourblind variants recolour

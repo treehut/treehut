@@ -80,16 +80,27 @@
    * match rather than to change anything, landing at 4.61.
    */
   --th-danger-hue: 25deg;
-  --th-attention-hue: 41deg;
+  --th-attention-hue: 85deg; /* amber; see ramp-dark.css */
   --th-success-hue: 145deg;
   --th-done-hue: 298deg;
+  --th-info-hue: 245deg; /* see ramp-dark.css for why info is not the accent */
 
   --th-danger-fill: oklch(0.985 0.010 var(--th-danger-hue));
 
+  /* See ramp-dark.css. A pale cream fill and a tan border, close to upstream's
+   * own warning box; amber text on the fill measures 5.38. */
+  --th-attention-fill: oklch(0.975 0.025 var(--th-attention-hue));
+  --th-attention-border: oklch(0.850 0.070 var(--th-attention-hue));
+
   /* See ramp-dark.css. Inverted: readable coloured text on a white canvas sits
    * LOW in lightness, and the hover highlight goes lower still. Verified AA:
-   * red 6.05, orange 5.95, green 5.06, purple 5.96. */
-  --th-thin-lightness: 0.520;
+   * red 6.31, amber 5.78, green 5.25, purple 6.26, blue 5.48.
+   *
+   * The binding constraint is not here but in the deuteranopia variant: its
+   * teal `done` (181°) is the least contrasty hue at this lightness, and at
+   * 0.520 it measured 4.47, just under AA. 0.510 brings it to 4.67. Teal and
+   * cyan lose the most when clipped to sRGB, which is what browsers paint. */
+  --th-thin-lightness: 0.510;
   --th-thin-lightness-highlight: 0.450;
   --th-thin-chroma: 0.180;
 

@@ -7,20 +7,30 @@
  * ── how these hues were chosen ────────────────────────────────────────────
  * Tritanopia affects the S-cone, so the red-green axis survives — red danger and
  * green success are both fine here and are deliberately kept, which is why this
- * variant still looks like Treehut. The failure is elsewhere: the base theme
- * scores 0.009 because danger (25°) and attention (41°) are indistinguishable
- * once blue is removed, and purple `done` collapses toward red.
+ * variant still looks like Treehut. The failure is elsewhere: while attention
+ * was upstream's orange (41°), danger and attention were indistinguishable
+ * once blue is removed (0.009), and purple `done` collapses toward red.
  *
- *   base theme      danger 25  success 145  attention 41   done 298  → 0.009
- *   this variant    danger 25  success 145  attention 100  done 300  → 0.201
+ *   base theme      danger 25  success 145  attention 85   done 298  info 245  → 0.109
+ *   this variant    danger 25  success 145  attention 100  done 300  info 245  → 0.109
  *
- * So attention moves from orange to olive-yellow, well clear of danger, and done
- * moves a couple of degrees to buy separation from it.
+ * Moving the base theme's attention to amber (85°) fixed most of that on its
+ * own, so the worst pair is now the same in both: success/info, below. This
+ * variant still buys room on the next pairs down by moving attention on to
+ * olive-yellow and done two degrees: danger/attention 0.141 → 0.201 and
+ * success/done 0.186 → 0.213.
+ *
+ * Info keeps the base theme's blue, and success/info is the closest pair:
+ * blue against green is exactly the confusion tritanopia causes. 245° is the
+ * best blue; the only higher-scoring slot is pink (~338°), which would make
+ * "Note" alerts read as something else entirely. Light mode is tighter: 0.080,
+ * right at the edge of "marginal".
  *
  * KNOWN LIMITATION: the accent stays green, and tritanopes confuse blue with
- * green. Upstream's `--color-blue` and `--color-info-*` families are not bridged
- * yet, so an accent-green link can still read close to an info-blue one. Fixing
- * that needs those families tokenised first — see the status-families note in
+ * green. Thin info text ("Note" alerts) is bridged, but upstream's
+ * `--color-blue` and `--color-info-*` surface families are not yet, so an
+ * accent-green link can still read close to an info-blue one. Fixing that
+ * needs those families tokenised first — see the status-families note in
  * ../treehut/README.md.
  */
 
@@ -31,6 +41,7 @@
   --th-success-hue: 145deg;
   --th-attention-hue: 100deg;
   --th-done-hue: 300deg;
+  --th-info-hue: 245deg;
 
   /* Accent left at the base theme's green on purpose: red-green vision is
      intact under tritanopia, so there is nothing to fix. */

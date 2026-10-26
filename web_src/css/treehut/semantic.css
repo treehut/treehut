@@ -12,7 +12,7 @@
  *   fg-*       foreground / text / icons
  *   border-*   strokes and dividers
  *   accent-*   the brand colour and interactive affordances
- *   <role>-*   success / attention / danger / done, each with the same
+ *   <role>-*   success / attention / danger / done / info, each with the same
  *              fg / emphasis / muted / subtle shape
  *
  * Within a family the suffixes always mean the same thing:
@@ -62,10 +62,13 @@
   --th-accent-active: var(--th-accent-3);
 
   /* ── status ───────────────────────────────────────────────────────────────
-   * Fills, then "thin" (text-weight) colours. The success / warning / info
-   * *surface* families are still inherited from upstream; see ./README.md.
+   * Fills, then "thin" (text-weight) colours. Warning surfaces come from
+   * `attention`; the success / error / info *surface* families are still
+   * inherited from upstream; see ./README.md.
    */
   --th-danger-subtle: var(--th-danger-fill);
+  --th-attention-subtle: var(--th-attention-fill);
+  --th-attention-muted: var(--th-attention-border);
 
   /* Composed from the ramp's lightness/chroma knobs and per-hue values, so a
      single knob change re-tunes every coloured text utility at once. */
@@ -74,6 +77,7 @@
   --th-attention-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-attention-hue));
   --th-success-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-success-hue));
   --th-done-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-done-hue));
+  --th-info-fg: oklch(var(--th-thin-lightness) var(--th-thin-chroma) var(--th-info-hue));
 
   /* A label sitting on an active/hover background needs a stronger fill than
      --th-label-bg to stay readable. */
