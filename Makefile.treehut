@@ -31,18 +31,18 @@ IMAGE := ghcr.io/treehut/treehut
 IMAGE_TAGS := latest $(VER_MAJOR) $(VER_MINOR) $(VER_PATCH) $(VER_REV)
 TAGFLAGS := $(addprefix -t $(IMAGE):,$(IMAGE_TAGS))
 
-# pub: check-version
-# 	$(DOCKER) buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
-# .PHONY: pub
+pub: check-version
+	$(DOCKER) buildx build --push --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+.PHONY: pub
 
 # `docker push` takes one image per call, so each tag is pushed separately.
-pub: check-version
-	$(DOCKER) build --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
-	$(DOCKER) push ghcr.io/treehut/treehut
-	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_MAJOR)
-	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_MINOR)
-	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_PATCH)
-	$(DOCKER) push ghcr.io/treehut/treehut ghcr.io/treehut/treehut:$(VER_REV)
+# pub: check-version
+# 	$(DOCKER) build --platform linux/amd64 $(ARGFLAGS) $(TAGFLAGS) .
+# 	$(DOCKER) push ghcr.io/treehut/treehut
+# 	$(DOCKER) push ghcr.io/treehut/treehut:$(VER_MAJOR)
+# 	$(DOCKER) push ghcr.io/treehut/treehut:$(VER_MINOR)
+# 	$(DOCKER) push ghcr.io/treehut/treehut:$(VER_PATCH)
+# 	$(DOCKER) push ghcr.io/treehut/treehut:$(VER_REV)
 
 check-version:
 	@echo "$(VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "please specify a full VERSION= (ie. 17.0.0.1)"; exit 1; }
