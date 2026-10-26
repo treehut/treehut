@@ -106,13 +106,9 @@ endif
 FORGEJO_VERSION_MAJOR=$(shell echo $(FORGEJO_VERSION) | sed -e 's/\..*//')
 FORGEJO_VERSION_MINOR=$(shell echo $(FORGEJO_VERSION) | sed -E -e 's/^([0-9]+\.[0-9]+).*/\1/')
 
+FORGEJO_VERSION_API ?= ${FORGEJO_VERSION}
 RELEASE_VERSION ?= ${FORGEJO_VERSION}
 VERSION ?= ${RELEASE_VERSION}
-
-FORGEJO_VERSION_API ?= ${FORGEJO_VERSION}
-
-TREEHUT_REV ?= 0
-TREEHUT_VERSION ?= ${FORGEJO_VERSION}.${TREEHUT_REV}
 
 # Strip binaries by default to reduce size, allow overriding for debugging
 STRIP ?= 1

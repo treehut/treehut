@@ -283,7 +283,7 @@ func loadServerFrom(rootCfg ConfigProvider) {
 	}
 
 	AbsoluteAssetURL = MakeAbsoluteAssetURL(AppURL, StaticURLPrefix)
-	AssetVersion = strings.ReplaceAll(AppVer, "+", "~") // make sure the version string is clear (no real escaping is needed)
+	AssetVersion = strings.ReplaceAll(TreehutVersion, "+", "~") // make sure the version string is clear (no real escaping is needed)
 
 	var defaultLocalURL string
 	switch Protocol {

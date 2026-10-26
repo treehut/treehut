@@ -6,7 +6,7 @@ ARG GOPROXY
 ENV GOPROXY=${GOPROXY:-https://proxy.golang.org}
 
 ARG RELEASE_VERSION
-ARG TREEHUT_REV="0"
+ARG TREEHUT_VERSION
 ARG TAGS="sqlite sqlite_unlock_notify"
 ENV TAGS="bindata timetzdata $TAGS"
 ARG CGO_EXTRA_CFLAGS
@@ -47,7 +47,7 @@ RUN go build contrib/environment-to-ini/environment-to-ini.go && xx-verify envir
 RUN --mount=type=cache,target=/go/pkg/mod/cache/ LDFLAGS="-buildid=" \
   make FORGEJO_GENERATE_SKIP_HASH=true \
     RELEASE_VERSION=$RELEASE_VERSION \
-    TREEHUT_REV=$TREEHUT_REV GOFLAGS="-trimpath" \
+    TREEHUT_VERSION=$TREEHUT_VERSION GOFLAGS="-trimpath" \
   go-check generate-backend static-executable && xx-verify gitea
 
 # Copy local files
